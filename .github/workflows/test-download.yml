@@ -1,0 +1,42 @@
+name: Test Single Download
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Test WAF bypass with browser headers
+        run: |
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+          REF="https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis"
+          URL="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_01_06_ATENCIONES.zip"
+
+          echo "=== Test HEAD request ==="
+          curl -v --head \
+            -H "User-Agent: $UA" \
+            -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+            -H "Accept-Language: es-PE,es;q=0.9" \
+            -H "Referer: $REF" \
+            -H "Connection: keep-alive" \
+            "$URL" 2>&1 | grep -E "^[<>*]|HTTP|Content|x-deny|Location" | head -30
+
+          echo ""
+          echo "=== Test GET first 1MB only ==="
+          HTTP=$(curl -L --max-filesize 1048576 \
+            -H "User-Agent: $UA" \
+            -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+            -H "Accept-Language: es-PE,es;q=0.9" \
+            -H "Referer: $REF" \
+            -o /tmp/test_download \
+            -w "%{http_code}" \
+            "$URL" 2>&1 || true)
+          
+          SIZE=$(stat -c%s /tmp/test_download 2>/dev/null || echo 0)
+          echo "HTTP Code: $HTTP"
+          echo "Downloaded: ${SIZE} bytes"
+          echo "File type: $(file /tmp/test_download)"
+          echo "First bytes (hex):"
+          xxd /tmp/test_download | head -5
