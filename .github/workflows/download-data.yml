@@ -4,85 +4,97 @@ on:
   workflow_dispatch:
     inputs:
       files:
-        description: 'Archivos a descargar (separados por coma): 2023s2, 2024s1, 2024s2, all'
+        description: 'Archivos: 2021s1, 2021s2, 2022s2, 2023s2, 2024s1, 2024s2, 2025s1, all'
         required: true
         default: 'all'
 
 jobs:
   download:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download SIS files
+      - name: Download SIS files with browser headers
         run: |
           mkdir -p data/raw
-          
-          declare -A FILES
-          FILES["2023s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2023_07_12_ATENCIONES_0.zip"
-          FILES["2024s1"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_01_06_ATENCIONES.zip"
-          FILES["2024s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_07_12_ATENCIONES.zip"
-          FILES["2022s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip"
-          FILES["2021s1"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip"
-          FILES["2021s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip"
-          FILES["2025s1"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2025_01_06_ATENCIONES.zip"
+
+          # El portal usa CloudWAF que bloquea requests sin headers de navegador.
+          # Confirmado: User-Agent + Accept + Referer de Chrome bypasea el WAF.
+          # Fuente: prueba exitosa con 2017 (96.8 MB, HTTP 200).
+          UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+          REF="https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis"
+
+          download_file() {
+            local KEY=$1
+            local URL=$2
+            local FILENAME=$(basename "$URL")
+            local DEST="data/raw/$FILENAME"
+
+            echo ""
+            echo "--- [$KEY] $FILENAME ---"
+
+            HTTP_CODE=$(curl -L \
+              --retry 3 --retry-delay 10 \
+              --max-time 600 \
+              -H "User-Agent: $UA" \
+              -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+              -H "Accept-Language: es-PE,es;q=0.9,en;q=0.8" \
+              -H "Referer: $REF" \
+              -H "Connection: keep-alive" \
+              -o "$DEST" \
+              -w "%{http_code}" \
+              --progress-bar \
+              "$URL")
+
+            local SIZE=$(stat -c%s "$DEST" 2>/dev/null || echo 0)
+            local SIZE_MB=$(awk "BEGIN {printf \"%.1f\", $SIZE/1048576}")
+
+            if [ "$HTTP_CODE" = "200" ] && [ "$SIZE" -gt 10485760 ]; then
+              echo "OK  $FILENAME -> ${SIZE_MB} MB (HTTP $HTTP_CODE)"
+              # Quick inspect
+              CSV=$(unzip -Z1 "$DEST" 2>/dev/null | head -1)
+              ROWS=$(unzip -p "$DEST" "$CSV" 2>/dev/null | wc -l)
+              echo "    CSV: $CSV | Filas: $ROWS"
+            else
+              echo "FAIL $FILENAME -> ${SIZE_MB} MB (HTTP $HTTP_CODE)"
+              head -c 300 "$DEST" 2>/dev/null && echo ""
+              rm -f "$DEST"
+            fi
+          }
 
           INPUT="${{ github.event.inputs.files }}"
-          
+
+          run_download() {
+            case $1 in
+              2021s1) download_file "2021s1" "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip" ;;
+              2021s2) download_file "2021s2" "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip" ;;
+              2022s2) download_file "2022s2" "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip" ;;
+              2023s2) download_file "2023s2" "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2023_07_12_ATENCIONES_0.zip" ;;
+              2024s1) download_file "2024s1" "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_01_06_ATENCIONES.zip" ;;
+              2024s2) download_file "2024s2" "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_07_12_ATENCIONES.zip" ;;
+              2025s1) download_file "2025s1" "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2025_01_06_ATENCIONES.zip" ;;
+              *) echo "Clave desconocida: $1" ;;
+            esac
+          }
+
           if [ "$INPUT" = "all" ]; then
-            KEYS="${!FILES[@]}"
+            for KEY in 2021s1 2021s2 2022s2 2023s2 2024s1 2024s2 2025s1; do
+              run_download "$KEY"
+            done
           else
-            KEYS=$(echo "$INPUT" | tr ',' ' ')
+            for KEY in $(echo "$INPUT" | tr ',' ' '); do
+              run_download "$KEY"
+            done
           fi
 
-          for KEY in $KEYS; do
-            URL="${FILES[$KEY]}"
-            if [ -z "$URL" ]; then
-              echo "⚠️  Clave desconocida: $KEY"
-              continue
-            fi
-            FILENAME=$(basename "$URL")
-            echo "⬇️  Descargando $KEY → $FILENAME"
-            curl -L --retry 3 --retry-delay 5 \
-              -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
-              -H "Referer: https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis" \
-              -o "data/raw/$FILENAME" \
-              "$URL" \
-              --progress-bar
-            
-            SIZE=$(du -sh "data/raw/$FILENAME" 2>/dev/null | cut -f1)
-            echo "✅  $FILENAME → $SIZE"
-          done
-
           echo ""
-          echo "=== Archivos en data/raw/ ==="
-          ls -lh data/raw/
+          echo "=== RESUMEN ==="
+          ls -lh data/raw/ 2>/dev/null || echo "Sin archivos descargados"
 
-      - name: Inspect downloaded CSVs
-        run: |
-          cd data/raw
-          for ZIP in *.zip; do
-            echo ""
-            echo "📦 $ZIP"
-            ZIP_SIZE=$(du -sh "$ZIP" | cut -f1)
-            echo "   ZIP: $ZIP_SIZE"
-            CSV=$(unzip -Z1 "$ZIP" | head -1)
-            echo "   CSV dentro: $CSV"
-            # CSV size uncompressed
-            CSV_SIZE=$(unzip -Z "$ZIP" | grep "$CSV" | awk '{print $4}')
-            echo "   CSV descomprimido: $(echo "$CSV_SIZE / 1073741824" | bc -l | head -c6) GB"
-            # Row count
-            ROWS=$(unzip -p "$ZIP" "$CSV" | wc -l)
-            echo "   Filas aprox: $ROWS"
-            # First row (columns)
-            HEADER=$(unzip -p "$ZIP" "$CSV" | head -1)
-            echo "   Columnas: $HEADER"
-          done
-
-      - name: Upload as artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: sis-data-raw
