@@ -60,16 +60,31 @@ SEXO_META = {
 
 # ─── Funciones auxiliares ─────────────────────────────────────────────────────
 
-def _read_csv(stream: io.BytesIO, source_name: str) -> pd.DataFrame:
-    """Lee el CSV del SIS desde un BytesIO, manejando encoding."""
+def _read_csv(stream: io.BytesIO, source_name: str, chunksize: int = 100_000) -> pd.DataFrame:
+    """
+    Lee el CSV del SIS en chunks para manejar archivos de 1+ GB
+    sin agotar la RAM. Chunksize por defecto: 100k filas (~80 MB RAM).
+    """
     stream.seek(0)
     for enc in ["utf-8", "latin-1", "cp1252"]:
         try:
             stream.seek(0)
-            df = pd.read_csv(stream, encoding=enc, low_memory=False)
-            logger.info(f"{source_name}: {len(df):,} filas leídas (encoding={enc})")
+            chunks = []
+            reader = pd.read_csv(
+                stream, encoding=enc, chunksize=chunksize,
+                low_memory=False, on_bad_lines="skip"
+            )
+            total = 0
+            for chunk in reader:
+                chunks.append(chunk)
+                total += len(chunk)
+                if total % 1_000_000 == 0:
+                    logger.info(f"{source_name}: {total:,} filas leidas...")
+            df = pd.concat(chunks, ignore_index=True)
+            logger.info(f"{source_name}: {len(df):,} filas totales (encoding={enc})")
             return df
         except UnicodeDecodeError:
+            chunks = []
             continue
     raise ValueError(f"No se pudo decodificar {source_name}")
 
