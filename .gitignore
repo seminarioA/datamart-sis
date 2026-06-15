@@ -1,0 +1,25 @@
+# Datos crudos (archivos grandes, no versionar)
+data/raw/
+data/processed/
+
+# Logs ETL
+*.log
+
+# Variables de entorno (contienen credenciales)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
