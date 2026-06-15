@@ -1,0 +1,91 @@
+name: Download SIS Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      files:
+        description: 'Archivos a descargar (separados por coma): 2023s2, 2024s1, 2024s2, all'
+        required: true
+        default: 'all'
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download SIS files
+        run: |
+          mkdir -p data/raw
+          
+          declare -A FILES
+          FILES["2023s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2023_07_12_ATENCIONES_0.zip"
+          FILES["2024s1"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_01_06_ATENCIONES.zip"
+          FILES["2024s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_07_12_ATENCIONES.zip"
+          FILES["2022s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip"
+          FILES["2021s1"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip"
+          FILES["2021s2"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip"
+          FILES["2025s1"]="https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2025_01_06_ATENCIONES.zip"
+
+          INPUT="${{ github.event.inputs.files }}"
+          
+          if [ "$INPUT" = "all" ]; then
+            KEYS="${!FILES[@]}"
+          else
+            KEYS=$(echo "$INPUT" | tr ',' ' ')
+          fi
+
+          for KEY in $KEYS; do
+            URL="${FILES[$KEY]}"
+            if [ -z "$URL" ]; then
+              echo "⚠️  Clave desconocida: $KEY"
+              continue
+            fi
+            FILENAME=$(basename "$URL")
+            echo "⬇️  Descargando $KEY → $FILENAME"
+            curl -L --retry 3 --retry-delay 5 \
+              -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" \
+              -H "Referer: https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis" \
+              -o "data/raw/$FILENAME" \
+              "$URL" \
+              --progress-bar
+            
+            SIZE=$(du -sh "data/raw/$FILENAME" 2>/dev/null | cut -f1)
+            echo "✅  $FILENAME → $SIZE"
+          done
+
+          echo ""
+          echo "=== Archivos en data/raw/ ==="
+          ls -lh data/raw/
+
+      - name: Inspect downloaded CSVs
+        run: |
+          cd data/raw
+          for ZIP in *.zip; do
+            echo ""
+            echo "📦 $ZIP"
+            ZIP_SIZE=$(du -sh "$ZIP" | cut -f1)
+            echo "   ZIP: $ZIP_SIZE"
+            CSV=$(unzip -Z1 "$ZIP" | head -1)
+            echo "   CSV dentro: $CSV"
+            # CSV size uncompressed
+            CSV_SIZE=$(unzip -Z "$ZIP" | grep "$CSV" | awk '{print $4}')
+            echo "   CSV descomprimido: $(echo "$CSV_SIZE / 1073741824" | bc -l | head -c6) GB"
+            # Row count
+            ROWS=$(unzip -p "$ZIP" "$CSV" | wc -l)
+            echo "   Filas aprox: $ROWS"
+            # First row (columns)
+            HEADER=$(unzip -p "$ZIP" "$CSV" | head -1)
+            echo "   Columnas: $HEADER"
+          done
+
+      - name: Upload as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sis-data-raw
+          path: data/raw/*.zip
+          retention-days: 7
+          if-no-files-found: warn
