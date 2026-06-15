@@ -24,71 +24,87 @@ logger = logging.getLogger(__name__)
 # ─── URLs de descarga directa del portal ─────────────────────────────────────
 # Fuente: https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis
 SOURCE_FILES = {
+    # Tamaños verificados con archivos reales descargados:
+    #   2017 ZIP=96.9 MB  / CSV=1.39 GB descomprimido
+    #   2025_s2 ZIP=172.6 MB / CSV=1.12 GB descomprimido
+    # Tamaños de 2018-2020 provienen de los metadatos del portal (API JSON de datosabiertos.gob.pe).
+    # Tamaños de 2021-2024 son desconocidos — no se dispone de los archivos ni de metadatos confiables.
     2017: {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2017_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2017_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2017_ATENCIONES.csv",
-        "size_mb": 92.4
+        "zip_mb": 96.9,    # verificado
+        "csv_gb": 1.39,    # verificado
     },
     2018: {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2018_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2018_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2018_ATENCIONES.csv",
-        "size_mb": 94.6
+        "zip_mb": 94.62,   # fuente: metadatos portal
+        "csv_gb": None,    # desconocido
     },
     2019: {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2019_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2019_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2019_ATENCIONES.csv",
-        "size_mb": 97.2
+        "zip_mb": 97.21,   # fuente: metadatos portal
+        "csv_gb": None,
     },
     2020: {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2020_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2020_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2020_ATENCIONES.csv",
-        "size_mb": 55.7
+        "zip_mb": 55.67,   # fuente: metadatos portal
+        "csv_gb": None,
     },
     "2021_s1": {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2021_01_06_ATENCIONES.csv",
-        "size_mb": 70
+        "zip_mb": None,    # desconocido
+        "csv_gb": None,
     },
     "2021_s2": {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2021_07_12_ATENCIONES.csv",
-        "size_mb": 70
+        "zip_mb": None,
+        "csv_gb": None,
     },
     "2022_s1": {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2022_01_06_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2022_01_06_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2022_01_06_ATENCIONES.csv",
-        "size_mb": 80
+        "zip_mb": None,
+        "csv_gb": None,
     },
     "2022_s2": {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip",
         "filename": "OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip",
         "csv_inside": "OPENDATA_DS_01_2022_07_12_ATENCIONES.csv",
-        "size_mb": 80
+        "zip_mb": None,
+        "csv_gb": None,
     },
     2023: {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2023_ATENCIONES.zip",
         "filename": "OPENDATA_DS_01_2023_ATENCIONES.zip",
         "csv_inside": "OPENDATA_DS_01_2023_ATENCIONES.csv",
-        "size_mb": 7.2
+        "zip_mb": None,    # desconocido — no se pudo descargar ni verificar
+        "csv_gb": None,
     },
     2024: {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2024_ATENCIONES.zip",
         "filename": "OPENDATA_DS_01_2024_ATENCIONES.zip",
         "csv_inside": "OPENDATA_DS_01_2024_ATENCIONES.csv",
-        "size_mb": 7.1
+        "zip_mb": None,
+        "csv_gb": None,
     },
     "2025_s2": {
         "url": "https://www.datosabiertos.gob.pe/sites/default/files/OPENDATA_DS_01_2025_07_12_ATENCIONES.zip",
         "filename": "OPENDATA_DS_01_2025_07_12_ATENCIONES.zip",
         "csv_inside": "OPENDATA_DS_01_2025_07_12_ATENCIONES.csv",
-        "size_mb": 7
+        "zip_mb": 172.6,   # verificado
+        "csv_gb": 1.12,    # verificado
     },
 }
 
