@@ -1,7 +1,6 @@
 """
 DataMart SIS — Dashboard API
-Usa vistas materializadas para consultas instantáneas.
-Las MVs se crean en background al iniciar y se refrescan cada 10 minutos.
+Vistas materializadas + connection pool + HTTP cache headers.
 """
 import threading
 import time
@@ -10,20 +9,20 @@ from pathlib import Path
 import psycopg2
 import psycopg2.extras
 import psycopg2.pool
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 
 DATABASE_URL = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/datamart_sis"
 TEMPLATES = Path(__file__).parent / "templates"
 
 app = FastAPI(title="DataMart SIS")
 
-# ── Connection pool: máx 5 conexiones para el web app (ELT usa 1 aparte) ──────
+# ── Connection pool (max 5 para no saturar PG con max_connections=30) ──────────
 _pool = psycopg2.pool.ThreadedConnectionPool(1, 5, DATABASE_URL)
 
-# ── Cache ──────────────────────────────────────────────────────────────────────
+# ── Cache in-memory (15 min TTL) ───────────────────────────────────────────────
 _cache: dict = {}
-CACHE_TTL = 900  # 15 min
+CACHE_TTL = 900
 
 
 def _cached(key: str, fn):
@@ -48,10 +47,22 @@ def _q(sql: str, params=None) -> list[dict]:
         _pool.putconn(c)
 
 
+# ── HTTP cache middleware (browser-level caching) ──────────────────────────────
+@app.middleware("http")
+async def cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/api/") and path not in ("/api/status",):
+        response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=60"
+    elif path == "/api/status":
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 # ── Materialized views ─────────────────────────────────────────────────────────
 _MV_SQLS = {
     "mv_kpis": """
-        SELECT COALESCE(SUM(cantidad_atenciones), 0) AS total_atenciones,
+        SELECT COALESCE(SUM(cantidad_atenciones),0) AS total_atenciones,
                COUNT(*) AS total_registros
         FROM datamart_sis.fact_atenciones_sis
     """,
@@ -63,8 +74,8 @@ _MV_SQLS = {
     """,
     "mv_por_region": """
         SELECT u.region,
-               SUM(f.cantidad_atenciones)    AS atenciones,
-               COUNT(DISTINCT f.cod_ipress)  AS ipress
+               SUM(f.cantidad_atenciones)   AS atenciones,
+               COUNT(DISTINCT f.cod_ipress) AS ipress
         FROM datamart_sis.fact_atenciones_sis f
         JOIN datamart_sis.dim_ubicacion u ON u.cod_ubigeo = f.cod_ubigeo
         GROUP BY u.region ORDER BY atenciones DESC
@@ -93,7 +104,7 @@ _MV_SQLS = {
         SELECT f.nivel_eess,
                COALESCE(n.desc_nivel_eess, f.nivel_eess) AS nivel,
                SUM(f.cantidad_atenciones)   AS atenciones,
-               COUNT(DISTINCT f.cod_ipress)  AS ipress
+               COUNT(DISTINCT f.cod_ipress) AS ipress
         FROM datamart_sis.fact_atenciones_sis f
         LEFT JOIN datamart_sis.dim_nivel_ipress n ON n.nivel_eess = f.nivel_eess
         GROUP BY f.nivel_eess, n.desc_nivel_eess ORDER BY atenciones DESC
@@ -108,13 +119,11 @@ _MV_SQLS = {
     """,
 }
 
-# Tracks which MVs currently exist and are queryable
 _MV_READY: dict[str, bool] = {k: False for k in _MV_SQLS}
 _MV_LAST_REFRESH: float = 0.0
 
 
 def _build_mvs(refresh: bool = False):
-    """Crea o refresca las MVs secuencialmente. Corre en thread de background."""
     global _MV_LAST_REFRESH
     try:
         c = psycopg2.connect(DATABASE_URL)
@@ -130,9 +139,7 @@ def _build_mvs(refresh: bool = False):
                             f"CREATE MATERIALIZED VIEW IF NOT EXISTS datamart_sis.{name} AS {sql}"
                         )
                     _MV_READY[name] = True
-                    # Invalidate the relevant cache key so next request re-queries the MV
-                    cache_key = name[3:]  # strip "mv_"
-                    _cache.pop(cache_key, None)
+                    _cache.pop(name[3:], None)  # invalidate cache on refresh
                 except Exception:
                     pass
         c.close()
@@ -140,22 +147,19 @@ def _build_mvs(refresh: bool = False):
     except Exception:
         pass
     finally:
-        # Re-schedule refresh every 10 minutes
         threading.Timer(600, _build_mvs, kwargs={"refresh": True}).start()
 
 
 def _qmv(mv_name: str) -> list[dict]:
-    """Query un MV si está listo, o devuelve [] si aún se está construyendo."""
     if not _MV_READY.get(mv_name):
         return []
     return _q(f"SELECT * FROM datamart_sis.{mv_name}")
 
 
-# ── Startup: crear MVs en background ──────────────────────────────────────────
 threading.Thread(target=_build_mvs, kwargs={"refresh": False}, daemon=True).start()
 
 
-# ── Routes ─────────────────────────────────────────────────────────────────────
+# ── Routes ──────────────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 def index():
     return (TEMPLATES / "index.html").read_text()
@@ -163,12 +167,11 @@ def index():
 
 @app.get("/api/status")
 def api_status():
-    ready_count = sum(_MV_READY.values())
-    total = len(_MV_READY)
+    ready = sum(_MV_READY.values())
     return {
-        "mvs_ready": ready_count,
-        "mvs_total": total,
-        "building": ready_count < total,
+        "mvs_ready": ready,
+        "mvs_total": len(_MV_READY),
+        "building": ready < len(_MV_READY),
         "last_refresh": int(_MV_LAST_REFRESH) or None,
         "detail": _MV_READY,
     }
