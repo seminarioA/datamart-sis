@@ -11,11 +11,14 @@ import psycopg2.extras
 import psycopg2.pool
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 DATABASE_URL = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/datamart_sis"
 TEMPLATES = Path(__file__).parent / "templates"
+STATIC = Path(__file__).parent / "static"
 
 app = FastAPI(title="DataMart SIS")
+app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 # ── Connection pool (max 5 para no saturar PG con max_connections=30) ──────────
 _pool = psycopg2.pool.ThreadedConnectionPool(1, 5, DATABASE_URL)

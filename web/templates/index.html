@@ -331,8 +331,10 @@ const fmt = n => {
   return v.toLocaleString('es-PE')
 }
 const fmtFull = n => n == null ? '—' : Number(n).toLocaleString('es-PE')
-// Strip diacritics, uppercase, trim — handles both our data and GeoJSON NOMBDEP
+// Strip diacritics, uppercase, trim
 const norm = s => !s ? '' : s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
+// Normalize a GeoJSON feature name to match our lookup keys
+const geoKey = s => norm(s)
 const trunc = (s, n) => s && s.length > n ? s.slice(0, n-2)+'..' : (s||'')
 const isDark = () => document.body.classList.contains('dark')
 
@@ -467,13 +469,13 @@ function renderMap(geojson) {
 
   _geojsonLayer = L.geoJSON(geojson, {
     style: feat => {
-      const key = norm(feat.properties.NOMBDEP || feat.properties.name || '')
+      const key = geoKey(feat.properties.name || '')
       const v = _regionLookup[key] || 0
       return { fillColor: mapColor(v, max), weight: 0.8, color: '#777', fillOpacity: .85 }
     },
     onEachFeature: (feat, layer) => {
-      const key = norm(feat.properties.NOMBDEP || feat.properties.name || '')
-      const name = feat.properties.NOMBDEP || feat.properties.name || key
+      const key = geoKey(feat.properties.name || '')
+      const name = feat.properties.name || key
       const v = _regionLookup[key] || 0
       layer.bindTooltip(
         `<strong style="font-size:12px">${name}</strong><br>${fmtFull(v)} atenciones`,
@@ -500,12 +502,14 @@ function renderMap(geojson) {
   legend.addTo(_map)
 }
 
-// Build region lookup — LIMA METROPOLITANA + LIMA REGION both → "LIMA" in GeoJSON
+// Build region lookup — maps our region names to Natural Earth GeoJSON names (normalized)
+// Natural Earth: "Lima" = Lima metro, "Lima Province" = Lima region, "Callao" = Callao
 function buildRegionLookup(regionRows) {
   _regionLookup = {}
   regionRows.forEach(d => {
     let key = norm(d.region)
-    if (key === 'LIMA METROPOLITANA' || key === 'LIMA REGION') key = 'LIMA'
+    if (key === 'LIMA METROPOLITANA') key = 'LIMA'
+    else if (key === 'LIMA REGION') key = 'LIMA PROVINCE'
     if (key === 'SIN ESPECIFICAR' || !key) return
     _regionLookup[key] = (_regionLookup[key] || 0) + Number(d.atenciones)
   })
@@ -601,10 +605,10 @@ async function loadCharts() {
   renderAllCharts(_lastData)
 }
 
-// ── GeoJSON (fetched by browser, not VPS) ─────────────────────────────────────
+// ── GeoJSON (served locally — no external dependency) ─────────────────────────
 async function loadGeoJSON() {
   try {
-    const r = await fetch('https://raw.githubusercontent.com/juanifioren/peru-geojson/master/departments.geojson')
+    const r = await fetch('/static/peru.geojson')
     if (!r.ok) throw new Error()
     _geojson = await r.json()
     if (_lastData?.region?.length) {
@@ -614,7 +618,7 @@ async function loadGeoJSON() {
   } catch {
     document.getElementById('map').insertAdjacentHTML(
       'afterbegin',
-      '<div style="padding:20px;color:var(--muted);font-size:12px;text-align:center">GeoJSON no disponible (requiere internet en el navegador)</div>'
+      '<div style="padding:20px;color:var(--muted);font-size:12px;text-align:center">Mapa no disponible</div>'
     )
   }
 }
