@@ -254,6 +254,75 @@ body.dark .leaflet-tile { filter: brightness(.8) invert(1) contrast(1.1) hue-rot
   font-size: 10px; font-weight: 700;
   padding: 1px 5px; border-radius: 2px;
 }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+/* Tablet landscape ≤ 1100px */
+@media (max-width: 1100px) {
+  .kpi-strip { grid-template-columns: repeat(3, 1fr); }
+  .kpi-value { font-size: 20px; }
+}
+
+/* Tablet portrait ≤ 860px — map goes full width, charts stack below */
+@media (max-width: 860px) {
+  .main-row {
+    flex-direction: column;
+    height: auto;
+    padding: 8px 8px 4px;
+  }
+  .map-col {
+    flex: none;
+    height: 380px;
+  }
+  #map { height: 380px; }
+  .map-col .panel { height: 380px; }
+  .right-col {
+    flex: none;
+    padding-left: 0;
+    margin-top: 6px;
+    gap: 6px;
+    display: flex;
+    flex-direction: column;
+  }
+  .right-col .panel-anio {
+    flex: none;
+    height: 220px;
+    margin-bottom: 0;
+  }
+  .right-col .pair {
+    flex: none;
+    height: auto;
+  }
+  .right-col .pair .panel { height: 200px; min-height: 0; }
+  .bottom-row {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 4px 8px 8px;
+  }
+  .bottom-row-2 { grid-template-columns: 1fr; }
+}
+
+/* Phone ≤ 540px — single column everything */
+@media (max-width: 540px) {
+  header { padding: 9px 12px; }
+  header h1 { font-size: 13px; }
+  header .sub { display: none; }
+  .header-right .status-text { display: none; }
+  .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+  .kpi { padding: 9px 10px; }
+  .kpi-label { font-size: 9px; }
+  .kpi-value { font-size: 17px; }
+  .main-row { padding: 6px 6px 4px; }
+  .map-col { height: 300px; }
+  #map { height: 300px; }
+  .map-col .panel { height: 300px; }
+  .right-col .pair { grid-template-columns: 1fr; }
+  .right-col .pair .panel { height: 180px; }
+  .bottom-row {
+    grid-template-columns: 1fr;
+    padding: 4px 6px 6px;
+  }
+  .bottom-row .panel .panel-body { height: 240px; }
+}
 </style>
 </head>
 <body>
@@ -754,6 +823,13 @@ async function pollStatus() {
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 Promise.all([loadKPIs(), loadCharts(), loadGeoJSON(), pollStatus()])
+
+// Invalidate Leaflet size when layout shifts (e.g. viewport resize)
+let _resizeTimer
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer)
+  _resizeTimer = setTimeout(() => _map.invalidateSize(), 150)
+})
 </script>
 </body>
 </html>
