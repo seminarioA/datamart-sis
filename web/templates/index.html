@@ -219,6 +219,41 @@ body.dark .leaflet-tile { filter: brightness(.8) invert(1) contrast(1.1) hue-rot
 }
 .leg-row { display: flex; align-items: center; gap: 5px; }
 .leg-sw { width: 13px; height: 13px; border: 1px solid #aaa; flex-shrink: 0; }
+
+/* ── Region detail card ──────────────────────────────────────────────────── */
+.region-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  min-width: 170px;
+  display: none;
+}
+.region-card.visible { display: block; }
+.rc-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.rc-name {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--text); line-height: 1.2;
+}
+.rc-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 13px; padding: 0 2px;
+  line-height: 1;
+}
+.rc-close:hover { color: var(--text); }
+.rc-rows { padding: 6px 8px; display: grid; gap: 4px; }
+.rc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.rc-label { font-size: 10px; color: var(--muted); }
+.rc-val { font-size: 11px; font-weight: 600; color: var(--text); }
+.rc-rank-badge {
+  display: inline-block;
+  background: var(--navy); color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 1px 5px; border-radius: 2px;
+}
 </style>
 </head>
 <body>
@@ -463,6 +498,21 @@ function mapColor(v, max) {
   return getComputedStyle(document.documentElement).getPropertyValue(MAP_STOPS[i]).trim()
 }
 
+let _regionCardCtrl = null
+let _selectedLayer  = null
+
+function showRegionCard(key, name) {
+  const d = _regionDetail[key]
+  if (!d || !_regionCardCtrl) return
+  const el = _regionCardCtrl.getContainer()
+  el.querySelector('.rc-name').textContent = name
+  el.querySelector('#rc-atenciones').textContent = fmtFull(d.atenciones)
+  el.querySelector('#rc-pct').textContent = (d.pct * 100).toFixed(1) + ' %'
+  el.querySelector('#rc-ipress').textContent = d.ipress ? fmtFull(d.ipress) : '—'
+  el.querySelector('#rc-rank').innerHTML = `<span class="rc-rank-badge">#${d.rank}</span>`
+  el.classList.add('visible')
+}
+
 function renderMap(geojson) {
   if (_geojsonLayer) _map.removeLayer(_geojsonLayer)
   const max = Math.max(...Object.values(_regionLookup).map(Number).filter(Boolean))
@@ -474,17 +524,61 @@ function renderMap(geojson) {
       return { fillColor: mapColor(v, max), weight: 0.8, color: '#777', fillOpacity: .85 }
     },
     onEachFeature: (feat, layer) => {
-      const key = geoKey(feat.properties.name || '')
+      const key  = geoKey(feat.properties.name || '')
       const name = feat.properties.name || key
-      const v = _regionLookup[key] || 0
+      const v    = _regionLookup[key] || 0
       layer.bindTooltip(
         `<strong style="font-size:12px">${name}</strong><br>${fmtFull(v)} atenciones`,
         { sticky: true, offset: [8, 0] }
       )
-      layer.on('mouseover', e => e.target.setStyle({ weight: 2, color: '#333', fillOpacity: .95 }))
-      layer.on('mouseout',  e => _geojsonLayer.resetStyle(e.target))
+      layer.on('mouseover', e => {
+        if (e.target !== _selectedLayer)
+          e.target.setStyle({ weight: 2, color: '#333', fillOpacity: .95 })
+      })
+      layer.on('mouseout', e => {
+        if (e.target !== _selectedLayer) _geojsonLayer.resetStyle(e.target)
+      })
+      layer.on('click', e => {
+        if (_selectedLayer && _selectedLayer !== e.target) _geojsonLayer.resetStyle(_selectedLayer)
+        _selectedLayer = e.target
+        e.target.setStyle({ weight: 2.5, color: 'var(--navy)', fillOpacity: .95 })
+        showRegionCard(key, name)
+        L.DomEvent.stopPropagation(e)
+      })
     }
   }).addTo(_map)
+
+  // Close card when clicking empty map area
+  _map.on('click', () => {
+    if (_selectedLayer) { _geojsonLayer.resetStyle(_selectedLayer); _selectedLayer = null }
+    if (_regionCardCtrl) _regionCardCtrl.getContainer().classList.remove('visible')
+  })
+
+  // Region detail card (top-left control)
+  if (!_regionCardCtrl) {
+    _regionCardCtrl = L.control({ position: 'topleft' })
+    _regionCardCtrl.onAdd = () => {
+      const el = L.DomUtil.create('div', 'region-card')
+      el.innerHTML = `
+        <div class="rc-header">
+          <span class="rc-name"></span>
+          <button class="rc-close" title="Cerrar">&times;</button>
+        </div>
+        <div class="rc-rows">
+          <div class="rc-row"><span class="rc-label">Atenciones</span><span class="rc-val" id="rc-atenciones">—</span></div>
+          <div class="rc-row"><span class="rc-label">% del total</span><span class="rc-val" id="rc-pct">—</span></div>
+          <div class="rc-row"><span class="rc-label">IPRESS</span><span class="rc-val" id="rc-ipress">—</span></div>
+          <div class="rc-row"><span class="rc-label">Ranking</span><span class="rc-val" id="rc-rank">—</span></div>
+        </div>`
+      L.DomEvent.disableClickPropagation(el)
+      el.querySelector('.rc-close').addEventListener('click', () => {
+        el.classList.remove('visible')
+        if (_selectedLayer) { _geojsonLayer.resetStyle(_selectedLayer); _selectedLayer = null }
+      })
+      return el
+    }
+    _regionCardCtrl.addTo(_map)
+  }
 
   // Legend
   const legend = L.control({ position: 'bottomright' })
@@ -504,14 +598,28 @@ function renderMap(geojson) {
 
 // Build region lookup — maps our region names to Natural Earth GeoJSON names (normalized)
 // Natural Earth: "Lima" = Lima metro, "Lima Province" = Lima region, "Callao" = Callao
+let _regionDetail = {}   // geoKey → { label, atenciones, ipress, rank, pct }
 function buildRegionLookup(regionRows) {
   _regionLookup = {}
-  regionRows.forEach(d => {
+  _regionDetail  = {}
+  const totalAtenciones = regionRows.reduce((s, d) => s + Number(d.atenciones), 0)
+  const sorted = [...regionRows].sort((a, b) => Number(b.atenciones) - Number(a.atenciones))
+  sorted.forEach((d, idx) => {
     let key = norm(d.region)
+    const label = d.region  // original label for display
     if (key === 'LIMA METROPOLITANA') key = 'LIMA'
     else if (key === 'LIMA REGION') key = 'LIMA PROVINCE'
     if (key === 'SIN ESPECIFICAR' || !key) return
-    _regionLookup[key] = (_regionLookup[key] || 0) + Number(d.atenciones)
+    const at = Number(d.atenciones)
+    _regionLookup[key] = (_regionLookup[key] || 0) + at
+    if (!_regionDetail[key]) {
+      _regionDetail[key] = { label, atenciones: at, ipress: Number(d.ipress || 0), rank: idx + 1, pct: at / totalAtenciones }
+    } else {
+      // Merge Lima metro + Lima region into separate detail entries
+      _regionDetail[key].atenciones += at
+      _regionDetail[key].ipress     += Number(d.ipress || 0)
+      _regionDetail[key].pct        += at / totalAtenciones
+    }
   })
 }
 
