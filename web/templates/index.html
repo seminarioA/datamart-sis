@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DataMart SIS</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #efefef;
+  --surface: #ffffff;
+  --border: #cccccc;
+  --text: #111111;
+  --muted: #666666;
+  --accent: #b91c1c;
+  --navy: #1a3a5c;
+  --navy2: #2c5f8a;
+  --navy3: #4a7fb5;
+  --navy4: #7aa8d2;
+  --navy5: #ccdff2;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+header {
+  background: var(--navy);
+  color: #fff;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-bottom: 3px solid var(--accent);
+}
+header .title-block h1 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+header .title-block .subtitle {
+  color: #8fb3cc;
+  font-size: 11px;
+  margin-top: 1px;
+}
+header .status-block {
+  margin-left: auto;
+  text-align: right;
+  font-size: 11px;
+  color: #7799aa;
+}
+header .status-block .loading-indicator {
+  color: #aaccdd;
+}
+
+/* ── KPI strip ───────────────────────────────────────────────────────────── */
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  background: var(--border);
+  gap: 1px;
+  border-bottom: 1px solid var(--border);
+}
+.kpi {
+  background: var(--surface);
+  padding: 12px 14px;
+  text-align: center;
+}
+.kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--navy);
+  line-height: 1.1;
+  margin-top: 3px;
+  font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+}
+.kpi-value.red { color: var(--accent); }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.main-row {
+  display: flex;
+  height: 496px;
+  gap: 0;
+  padding: 12px 12px 6px 12px;
+}
+.map-col {
+  flex: 0 0 57%;
+  display: flex;
+  flex-direction: column;
+}
+.right-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-left: 6px;
+}
+
+.bottom-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 6px 12px 12px 12px;
+  gap: 6px;
+}
+
+/* ── Panel ───────────────────────────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.panel-header {
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-body {
+  flex: 1;
+  padding: 10px;
+  min-height: 0;
+  position: relative;
+}
+.panel-body canvas {
+  display: block;
+}
+
+/* ── Map ─────────────────────────────────────────────────────────────────── */
+#map {
+  flex: 1;
+  min-height: 0;
+}
+.map-col .panel {
+  flex: 1;
+  min-height: 0;
+}
+.map-col .panel .panel-body {
+  padding: 0;
+}
+
+/* ── Right col panels ────────────────────────────────────────────────────── */
+.right-col .panel-anio {
+  flex: 0 0 55%;
+  min-height: 0;
+  margin-bottom: 6px;
+}
+.right-col .panel-sexo-nivel {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  min-height: 0;
+}
+.right-col .panel-sexo-nivel .panel {
+  min-height: 0;
+}
+
+/* ── Bottom row panels ────────────────────────────────────────────────────── */
+.bottom-row .panel .panel-body {
+  height: 280px;
+}
+
+/* ── Map legend ──────────────────────────────────────────────────────────── */
+.legend-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  font-size: 10px;
+  line-height: 1.9;
+}
+.legend-box .legend-title {
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text);
+}
+.legend-swatch {
+  width: 13px;
+  height: 13px;
+  border: 1px solid #aaa;
+  flex-shrink: 0;
+}
+
+/* ── Leaflet popup ───────────────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  font-size: 12px;
+}
+.leaflet-popup-tip-container { display: none; }
+
+/* ── Misc ────────────────────────────────────────────────────────────────── */
+.empty-msg {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 20px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>DataMart SIS &mdash; Atenciones de Salud</h1>
+    <div class="subtitle">Seguro Integral de Salud &nbsp;|&nbsp; Peru &nbsp;|&nbsp; Datos Abiertos MINSA</div>
+  </div>
+  <div class="status-block">
+    <div class="loading-indicator" id="status">Cargando datos...</div>
+  </div>
+</header>
+
+<!-- KPI strip -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-label">Total Atenciones</div>
+    <div class="kpi-value red" id="kpi-atenciones">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Periodo</div>
+    <div class="kpi-value" id="kpi-periodo">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Regiones</div>
+    <div class="kpi-value" id="kpi-regiones">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">IPRESS Activas</div>
+    <div class="kpi-value" id="kpi-ipress">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Tipos de Servicio</div>
+    <div class="kpi-value" id="kpi-servicios">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">Planes de Seguro</div>
+    <div class="kpi-value" id="kpi-planes">—</div>
+  </div>
+</div>
+
+<!-- Main row: map + charts -->
+<div class="main-row">
+
+  <!-- Map -->
+  <div class="map-col">
+    <div class="panel">
+      <div class="panel-header">Atenciones por Departamento</div>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- Right column -->
+  <div class="right-col">
+    <div class="panel panel-anio">
+      <div class="panel-header">Atenciones por Ano</div>
+      <div class="panel-body">
+        <canvas id="chart-anio"></canvas>
+      </div>
+    </div>
+    <div class="panel-sexo-nivel">
+      <div class="panel">
+        <div class="panel-header">Por Sexo</div>
+        <div class="panel-body">
+          <canvas id="chart-sexo"></canvas>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">Por Nivel EESS</div>
+        <div class="panel-body">
+          <canvas id="chart-nivel"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom row -->
+<div class="bottom-row">
+  <div class="panel">
+    <div class="panel-header">Top Regiones</div>
+    <div class="panel-body">
+      <canvas id="chart-region"></canvas>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">Top Servicios</div>
+    <div class="panel-body">
+      <canvas id="chart-servicios"></canvas>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">Por Grupo de Edad</div>
+    <div class="panel-body">
+      <canvas id="chart-edad"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-row" style="padding-top:0">
+  <div class="panel">
+    <div class="panel-header">Por Plan de Seguro</div>
+    <div class="panel-body">
+      <canvas id="chart-plan"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Formatting ─────────────────────────────────────────────────────────────────
+const fmt = n => {
+  if (n == null) return '—'
+  const v = Number(n)
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + ' B'
+  if (v >= 1e6) return (v / 1e6).toFixed(2) + ' M'
+  if (v >= 1e3) return (v / 1e3).toFixed(0) + ' K'
+  return v.toLocaleString('es-PE')
+}
+const fmtFull = n => (n == null) ? '—' : Number(n).toLocaleString('es-PE')
+const norm = s => s
+  ? s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
+  : ''
+const trunc = (s, n) => s && s.length > n ? s.slice(0, n - 2) + '..' : (s || '')
+
+// ── Chart.js defaults ─────────────────────────────────────────────────────────
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+Chart.defaults.font.size = 11
+Chart.defaults.color = '#555'
+Chart.defaults.plugins.legend.display = false
+Chart.defaults.plugins.tooltip.backgroundColor = '#111'
+Chart.defaults.plugins.tooltip.padding = 8
+Chart.defaults.plugins.tooltip.cornerRadius = 2
+Chart.defaults.plugins.tooltip.titleFont = { size: 11, weight: '600' }
+Chart.defaults.plugins.tooltip.bodyFont = { size: 11 }
+
+const NAVY  = '#1a3a5c'
+const NAVY2 = '#2c5f8a'
+const NAVY3 = '#4a7fb5'
+const NAVY4 = '#7aa8d2'
+const NAVY5 = '#ccdff2'
+const RED   = '#b91c1c'
+const PALETTE = [NAVY, NAVY2, NAVY3, NAVY4, NAVY5, '#4a9b8c', '#7a5c00', '#5c1e7a']
+
+// ── Leaflet map ────────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true, scrollWheelZoom: false })
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://openstreetmap.org">OSM</a>, CARTO',
+  subdomains: 'abcd',
+  maxZoom: 18
+}).addTo(map)
+map.setView([-9.2, -75.0], 5)
+
+let regionLookup = {}
+let geojsonLayer = null
+
+const MAP_COLORS = ['#ccdff2', '#7aadda', '#3a7bbf', '#1a5c90', '#0d3357']
+function mapColor(value, max) {
+  if (!max || !value) return MAP_COLORS[0]
+  const t = value / max
+  if (t > 0.80) return MAP_COLORS[4]
+  if (t > 0.60) return MAP_COLORS[3]
+  if (t > 0.40) return MAP_COLORS[2]
+  if (t > 0.20) return MAP_COLORS[1]
+  return MAP_COLORS[0]
+}
+
+function buildMap(geojson) {
+  if (geojsonLayer) map.removeLayer(geojsonLayer)
+  const max = Math.max(...Object.values(regionLookup).map(Number))
+
+  geojsonLayer = L.geoJSON(geojson, {
+    style: feat => {
+      const key = norm(feat.properties.NOMBDEP || feat.properties.name || '')
+      const v = regionLookup[key] || 0
+      return { fillColor: mapColor(v, max), weight: 0.8, color: '#888', fillOpacity: 0.85 }
+    },
+    onEachFeature: (feat, layer) => {
+      const key = norm(feat.properties.NOMBDEP || feat.properties.name || '')
+      const name = feat.properties.NOMBDEP || feat.properties.name || key
+      const v = regionLookup[key] || 0
+      layer.bindTooltip(
+        `<strong style="font-size:12px">${name}</strong><br>${fmtFull(v)} atenciones`,
+        { sticky: true, offset: [10, 0] }
+      )
+      layer.on('mouseover', e => e.target.setStyle({ weight: 2, color: '#333', fillOpacity: 0.95 }))
+      layer.on('mouseout',  e => geojsonLayer.resetStyle(e.target))
+    }
+  }).addTo(map)
+
+  // Legend
+  const legend = L.control({ position: 'bottomright' })
+  legend.onAdd = () => {
+    const d = L.DomUtil.create('div', 'legend-box')
+    d.innerHTML = `<div class="legend-title">Atenciones</div>` + [
+      ['#ccdff2', '0 &ndash; 20 %'],
+      ['#7aadda', '20 &ndash; 40 %'],
+      ['#3a7bbf', '40 &ndash; 60 %'],
+      ['#1a5c90', '60 &ndash; 80 %'],
+      ['#0d3357', '80 &ndash; 100 %'],
+    ].map(([c, l]) =>
+      `<div class="legend-row"><div class="legend-swatch" style="background:${c}"></div>${l}</div>`
+    ).join('')
+    return d
+  }
+  legend.addTo(map)
+}
+
+// ── Chart builders ─────────────────────────────────────────────────────────────
+function hbar(id, labels, values, colors) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const parent = el.parentElement
+  el.style.height = (parent.clientHeight - 4) + 'px'
+  return new Chart(el, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: Array.isArray(colors) ? colors : colors || NAVY,
+        borderWidth: 0,
+        barPercentage: 0.75,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: '#e4e4e4' }, border: { display: false }, ticks: { callback: fmt } },
+        y: { grid: { display: false }, border: { display: false },
+             ticks: { font: { size: 10 } } }
+      },
+      plugins: {
+        tooltip: { callbacks: { label: c => '  ' + fmtFull(c.raw) } }
+      }
+    }
+  })
+}
+
+function vbar(id, labels, values) {
+  const el = document.getElementById(id)
+  if (!el) return
+  const parent = el.parentElement
+  el.style.height = (parent.clientHeight - 4) + 'px'
+  return new Chart(el, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: NAVY,
+        borderWidth: 0,
+        barPercentage: 0.7,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { grid: { color: '#e4e4e4' }, border: { display: false }, ticks: { callback: fmt } },
+        x: { grid: { display: false }, border: { display: false },
+             ticks: { font: { size: 10 } } }
+      },
+      plugins: {
+        tooltip: { callbacks: { label: c => '  ' + fmtFull(c.raw) } }
+      }
+    }
+  })
+}
+
+// ── Data loading ───────────────────────────────────────────────────────────────
+async function loadKPIs() {
+  try {
+    const r = await fetch('/api/kpis')
+    const d = await r.json()
+    document.getElementById('kpi-atenciones').textContent = fmt(d.total_atenciones)
+    document.getElementById('kpi-periodo').textContent =
+      (d.anio_inicio && d.anio_fin) ? `${d.anio_inicio} – ${d.anio_fin}` : '—'
+    document.getElementById('kpi-regiones').textContent  = fmtFull(d.regiones)
+    document.getElementById('kpi-ipress').textContent    = fmt(d.ipress)
+    document.getElementById('kpi-servicios').textContent = fmtFull(d.servicios)
+    document.getElementById('kpi-planes').textContent    = fmtFull(d.planes)
+    document.getElementById('status').textContent =
+      `${fmtFull(d.total_registros)} registros en FACT | ` +
+      `Actualizado ${new Date().toLocaleTimeString('es-PE')}`
+  } catch(e) {
+    document.getElementById('status').textContent = 'Error al cargar KPIs'
+  }
+}
+
+async function loadCharts() {
+  const [anio, region, edad, sexo, servicios, nivel, plan] = await Promise.all([
+    fetch('/api/por-anio').then(r => r.json()),
+    fetch('/api/por-region').then(r => r.json()),
+    fetch('/api/por-edad').then(r => r.json()),
+    fetch('/api/por-sexo').then(r => r.json()),
+    fetch('/api/top-servicios').then(r => r.json()),
+    fetch('/api/por-nivel').then(r => r.json()),
+    fetch('/api/por-plan').then(r => r.json()),
+  ])
+
+  // Atenciones por año
+  vbar('chart-anio',
+    anio.map(d => d.anio),
+    anio.map(d => Number(d.atenciones))
+  )
+
+  // Por sexo
+  hbar('chart-sexo',
+    sexo.map(d => d.sexo),
+    sexo.map(d => Number(d.atenciones)),
+    [NAVY, NAVY3]
+  )
+
+  // Por nivel EESS
+  hbar('chart-nivel',
+    nivel.map(d => d.nivel || d.nivel_eess),
+    nivel.map(d => Number(d.atenciones)),
+    [NAVY, NAVY2, NAVY3, NAVY4]
+  )
+
+  // Top regiones
+  hbar('chart-region',
+    region.slice(0, 14).map(d => d.region),
+    region.slice(0, 14).map(d => Number(d.atenciones)),
+    NAVY
+  )
+
+  // Top servicios
+  hbar('chart-servicios',
+    servicios.map(d => trunc(d.servicio || d.cod_servicio, 32)),
+    servicios.map(d => Number(d.atenciones)),
+    NAVY2
+  )
+
+  // Por grupo de edad
+  hbar('chart-edad',
+    edad.map(d => d.grupo_edad),
+    edad.map(d => Number(d.atenciones)),
+    NAVY3
+  )
+
+  // Por plan de seguro
+  hbar('chart-plan',
+    plan.map(d => d.desc_plan_seguro || d.cod_plan_seguro),
+    plan.map(d => Number(d.atenciones)),
+    plan.map((_, i) => PALETTE[i % PALETTE.length])
+  )
+
+  // Build region lookup for map
+  regionLookup = {}
+  region.forEach(d => { regionLookup[norm(d.region)] = Number(d.atenciones) })
+
+  // Fetch Peru departments GeoJSON from public CDN (fetched by the browser, not the VPS)
+  try {
+    const geo = await fetch(
+      'https://raw.githubusercontent.com/juanifioren/peru-geojson/master/departments.geojson'
+    )
+    if (!geo.ok) throw new Error('GeoJSON no disponible')
+    const geojson = await geo.json()
+    buildMap(geojson)
+  } catch (e) {
+    document.getElementById('map').insertAdjacentHTML(
+      'afterbegin',
+      '<div class="empty-msg">Mapa no disponible (requiere acceso a internet desde el navegador)</div>'
+    )
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+loadKPIs()
+loadCharts()
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: datamart-sis-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: datamart_sis
+      POSTGRES_USER: datamart
+      POSTGRES_PASSWORD: FTNIdAQSBTZ5zloaSGl11L4
+    ports:
+      - "5433:5432"
+    volumes:
+      - datamart_sis_postgres_data:/var/lib/postgresql/data
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c max_connections=20
+      -c max_wal_size=512MB
+volumes:
+  datamart_sis_postgres_data:
