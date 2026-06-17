@@ -597,9 +597,31 @@ async function loadCharts() {
   }
 }
 
+// ── Status polling (mientras se construyen las MVs) ────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/status')
+    const d = await r.json()
+    if (d.building) {
+      document.getElementById('status').textContent =
+        `Construyendo vistas (${d.mvs_ready}/${d.mvs_total})... los datos apareceran en ~${
+          Math.ceil((d.mvs_total - d.mvs_ready) * 1.2)
+        } min`
+      setTimeout(checkStatus, 30000)
+    } else {
+      document.getElementById('status').textContent =
+        `Vistas listas | Actualizado ${new Date().toLocaleTimeString('es-PE')}`
+      // Reload charts once MVs are ready
+      _cache_loaded = true
+    }
+  } catch(e) {}
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────────
+let _cache_loaded = false
 loadKPIs()
 loadCharts()
+checkStatus()
 </script>
 </body>
 </html>
