@@ -6,7 +6,7 @@
 <title>DataMart SIS</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -159,7 +159,7 @@ header .sub {
   flex: 1; padding: 10px;
   min-height: 0; position: relative;
 }
-.panel-body canvas { display: block; }
+.chart-wrap { width: 100%; height: 100%; }
 
 /* ── Spinner ─────────────────────────────────────────────────────────────── */
 .spinner {
@@ -367,7 +367,7 @@ body.dark .leaflet-tile { filter: brightness(.8) invert(1) contrast(1.1) hue-rot
       <div class="panel-header">Atenciones por Año</div>
       <div class="panel-body">
         <div class="spinner" id="spin-anio"></div>
-        <canvas id="chart-anio" hidden></canvas>
+        <div id="chart-anio" class="chart-wrap"></div>
       </div>
     </div>
     <div class="pair">
@@ -375,14 +375,14 @@ body.dark .leaflet-tile { filter: brightness(.8) invert(1) contrast(1.1) hue-rot
         <div class="panel-header">Por Sexo</div>
         <div class="panel-body">
           <div class="spinner" id="spin-sexo"></div>
-          <canvas id="chart-sexo" hidden></canvas>
+          <div id="chart-sexo" class="chart-wrap"></div>
         </div>
       </div>
       <div class="panel">
         <div class="panel-header">Por Nivel EESS</div>
         <div class="panel-body">
           <div class="spinner" id="spin-nivel"></div>
-          <canvas id="chart-nivel" hidden></canvas>
+          <div id="chart-nivel" class="chart-wrap"></div>
         </div>
       </div>
     </div>
@@ -395,21 +395,21 @@ body.dark .leaflet-tile { filter: brightness(.8) invert(1) contrast(1.1) hue-rot
     <div class="panel-header">Top Regiones</div>
     <div class="panel-body">
       <div class="spinner" id="spin-region"></div>
-      <canvas id="chart-region" hidden></canvas>
+      <div id="chart-region" class="chart-wrap"></div>
     </div>
   </div>
   <div class="panel">
     <div class="panel-header">Top Servicios</div>
     <div class="panel-body">
       <div class="spinner" id="spin-servicios"></div>
-      <canvas id="chart-servicios" hidden></canvas>
+      <div id="chart-servicios" class="chart-wrap"></div>
     </div>
   </div>
   <div class="panel">
     <div class="panel-header">Por Grupo de Edad</div>
     <div class="panel-body">
       <div class="spinner" id="spin-edad"></div>
-      <canvas id="chart-edad" hidden></canvas>
+      <div id="chart-edad" class="chart-wrap"></div>
     </div>
   </div>
 </div>
@@ -419,7 +419,7 @@ body.dark .leaflet-tile { filter: brightness(.8) invert(1) contrast(1.1) hue-rot
     <div class="panel-header">Por Plan de Seguro</div>
     <div class="panel-body">
       <div class="spinner" id="spin-plan"></div>
-      <canvas id="chart-plan" hidden></canvas>
+      <div id="chart-plan" class="chart-wrap"></div>
     </div>
   </div>
 </div>
@@ -447,7 +447,18 @@ function applyTheme(dark) {
   document.body.classList.toggle('dark', dark)
   document.getElementById('theme-btn').textContent = dark ? 'Modo Claro' : 'Modo Oscuro'
   updateTileLayer()
-  if (_lastData) renderAllCharts(_lastData)
+  // Update ApexCharts theme in-place (no full re-render needed)
+  const c = themeColors()
+  const mode = dark ? 'dark' : 'light'
+  Object.values(_charts).forEach(ch => ch.updateOptions({
+    theme: { mode },
+    colors: c.palette,
+    tooltip: { theme: mode },
+    grid: { borderColor: c.grid },
+    xaxis: { labels: { style: { colors: c.tick } } },
+    yaxis: { labels: { style: { colors: c.tick } } },
+  }, false, false))
+  if (_geojson) renderMap(_geojson)   // refresh map colors only
 }
 function toggleTheme() {
   const dark = !isDark()
@@ -457,83 +468,99 @@ function toggleTheme() {
 // Init theme from localStorage
 if (localStorage.getItem('theme') === 'dark') applyTheme(true)
 
-// ── Chart.js defaults & theme colors ─────────────────────────────────────────
-const PALETTE = ['#1a3a5c','#2c5f8a','#4a7fb5','#7aa8d2','#ccdff2','#4a9b8c','#7a5c00','#5c1e7a']
+// ── ApexCharts ────────────────────────────────────────────────────────────────
+const COLORS_LIGHT = ['#1a3a5c','#2c5f8a','#4a7fb5','#7aa8d2','#4a9b8c','#7a5c00','#5c1e7a','#9b4a1a']
+const COLORS_DARK  = ['#4a8fc4','#6ab0dc','#8cccf0','#aaddf8','#5abfb0','#c4a84a','#9b6ac4','#c47a4a']
 
 function themeColors() {
   const d = isDark()
   return {
-    grid:  d ? '#2a2a2a' : '#e4e4e4',
-    tick:  d ? '#888'    : '#555',
+    grid:  d ? '#2a2a2a' : '#e8e8e8',
+    tick:  d ? '#888'    : '#666',
     navy:  d ? '#4a8fc4' : '#1a3a5c',
     navy2: d ? '#6ab0dc' : '#2c5f8a',
     navy3: d ? '#8cccf0' : '#4a7fb5',
+    palette: d ? COLORS_DARK : COLORS_LIGHT,
   }
 }
-function setChartDefaults() {
-  const c = themeColors()
-  Chart.defaults.color = c.tick
-  Chart.defaults.borderColor = c.grid
-  Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif'
-  Chart.defaults.font.size = 11
-  Chart.defaults.plugins.legend.display = false
-  Chart.defaults.plugins.tooltip.backgroundColor = isDark() ? '#2a2a2a' : '#111'
-  Chart.defaults.plugins.tooltip.padding = 8
-  Chart.defaults.plugins.tooltip.cornerRadius = 2
-}
 
-// ── Chart instances ───────────────────────────────────────────────────────────
 const _charts = {}
 
 function showChart(id) {
-  const sp = document.getElementById('spin-'+id)
-  const cv = document.getElementById('chart-'+id)
+  const sp = document.getElementById('spin-' + id)
   if (sp) sp.style.display = 'none'
-  if (cv) cv.removeAttribute('hidden')
 }
 
-function makeChart(id, type, labels, values, colors, horizontal) {
+function makeChart(id, labels, values, colors, horizontal) {
   if (_charts[id]) { _charts[id].destroy(); delete _charts[id] }
-  const el = document.getElementById('chart-'+id)
+  const el = document.getElementById('chart-' + id)
   if (!el) return
-  const parent = el.parentElement
-  el.style.height = Math.max(parent.clientHeight - 4, 60) + 'px'
+  const dark = isDark()
   const c = themeColors()
-  const isH = horizontal
-  _charts[id] = new Chart(el, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: colors,
-        borderWidth: 0,
-        barPercentage: 0.75,
-      }]
+  const colArr = Array.isArray(colors) ? colors : [colors]
+  const distributed = colArr.length > 1
+
+  const opts = {
+    chart: {
+      type: 'bar',
+      height: '100%',
+      toolbar: { show: false },
+      background: 'transparent',
+      animations: { enabled: true, speed: 380, animateGradually: { enabled: false } },
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     },
-    options: {
-      indexAxis: isH ? 'y' : 'x',
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          grid:   isH ? { color: c.grid } : { display: false },
-          border: { display: false },
-          ticks:  { callback: v => isH ? fmt(v) : v, color: c.tick }
-        },
-        y: {
-          grid:   isH ? { display: false } : { color: c.grid },
-          border: { display: false },
-          ticks:  { color: c.tick }
-        }
-      },
-      plugins: {
-        tooltip: {
-          callbacks: { label: ctx => '  ' + fmtFull(ctx.raw) }
-        }
+    theme: { mode: dark ? 'dark' : 'light' },
+    series: [{ name: 'Atenciones', data: values }],
+    colors: colArr,
+    plotOptions: {
+      bar: {
+        horizontal,
+        distributed,
+        barHeight: horizontal ? '62%' : undefined,
+        columnWidth: !horizontal ? '58%' : undefined,
+        borderRadius: 3,
+        borderRadiusApplication: 'end',
       }
-    }
-  })
+    },
+    xaxis: {
+      categories: labels,
+      labels: {
+        style: { colors: c.tick, fontSize: '10px' },
+        formatter: horizontal ? (v => fmt(v)) : undefined,
+        rotate: !horizontal && labels.length > 6 ? -35 : 0,
+        trim: true,
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: c.tick, fontSize: '10px' },
+        formatter: !horizontal ? (v => fmt(v)) : undefined,
+        maxWidth: horizontal ? 140 : 40,
+      },
+    },
+    dataLabels: { enabled: false },
+    tooltip: {
+      theme: dark ? 'dark' : 'light',
+      y: { formatter: v => fmtFull(v) + ' atenciones' },
+    },
+    grid: {
+      borderColor: c.grid,
+      strokeDashArray: 3,
+      xaxis: { lines: { show: horizontal } },
+      yaxis: { lines: { show: !horizontal } },
+      padding: { top: -10, right: 8, bottom: 0, left: 8 },
+    },
+    legend: { show: false },
+    states: {
+      hover: { filter: { type: 'lighten', value: 0.1 } },
+      active: { filter: { type: 'darken', value: 0.15 } },
+    },
+  }
+
+  _charts[id] = new ApexCharts(el, opts)
+  _charts[id].render()
   showChart(id)
 }
 
@@ -697,43 +724,42 @@ let _lastData = null
 let _geojson = null
 
 function renderAllCharts(data) {
-  setChartDefaults()
   const { anio, region, edad, sexo, servicios, nivel, plan } = data
+  const c = themeColors()
 
   if (anio.length)
-    makeChart('anio', 'bar', anio.map(d=>d.anio), anio.map(d=>Number(d.atenciones)),
-      themeColors().navy, false)
+    makeChart('anio', anio.map(d=>d.anio), anio.map(d=>Number(d.atenciones)),
+      c.navy, false)
   else showChart('anio')
 
   if (sexo.length)
-    makeChart('sexo', 'bar', sexo.map(d=>d.sexo), sexo.map(d=>Number(d.atenciones)),
-      [themeColors().navy, themeColors().navy3], true)
+    makeChart('sexo', sexo.map(d=>d.sexo), sexo.map(d=>Number(d.atenciones)),
+      [c.navy, c.navy3], true)
   else showChart('sexo')
 
   if (nivel.length)
-    makeChart('nivel', 'bar', nivel.map(d=>d.nivel||d.nivel_eess), nivel.map(d=>Number(d.atenciones)),
-      [themeColors().navy,themeColors().navy2,themeColors().navy3,themeColors().navy4], true)
+    makeChart('nivel', nivel.map(d=>d.nivel||d.nivel_eess), nivel.map(d=>Number(d.atenciones)),
+      [c.navy, c.navy2, c.navy3, c.palette[4]], true)
   else showChart('nivel')
 
   if (region.length)
-    makeChart('region', 'bar', region.slice(0,14).map(d=>d.region), region.slice(0,14).map(d=>Number(d.atenciones)),
-      themeColors().navy, true)
+    makeChart('region', region.slice(0,14).map(d=>d.region), region.slice(0,14).map(d=>Number(d.atenciones)),
+      c.navy, true)
   else showChart('region')
 
   if (servicios.length)
-    makeChart('servicios', 'bar', servicios.map(d=>trunc(d.servicio||d.cod_servicio,34)),
-      servicios.map(d=>Number(d.atenciones)), themeColors().navy2, true)
+    makeChart('servicios', servicios.map(d=>trunc(d.servicio||d.cod_servicio,32)),
+      servicios.map(d=>Number(d.atenciones)), c.navy2, true)
   else showChart('servicios')
 
   if (edad.length)
-    makeChart('edad', 'bar', edad.map(d=>d.grupo_edad), edad.map(d=>Number(d.atenciones)),
-      themeColors().navy3, true)
+    makeChart('edad', edad.map(d=>d.grupo_edad), edad.map(d=>Number(d.atenciones)),
+      c.navy3, true)
   else showChart('edad')
 
   if (plan.length)
-    makeChart('plan', 'bar', plan.map(d=>d.desc_plan_seguro||d.cod_plan_seguro),
-      plan.map(d=>Number(d.atenciones)),
-      PALETTE.map(c => isDark() ? c : c), true)
+    makeChart('plan', plan.map(d=>d.desc_plan_seguro||d.cod_plan_seguro),
+      plan.map(d=>Number(d.atenciones)), c.palette, true)
   else showChart('plan')
 
   // Map
