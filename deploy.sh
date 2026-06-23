@@ -3,7 +3,15 @@
 # El build de React ya lo hizo GitHub Actions antes de llamar este script.
 set -e
 
-log() { echo "[deploy] $*"; }
+log() { echo "[deploy $(date +%H:%M:%S)] $*"; }
+
+# ── Entorno Airflow ──────────────────────────────────────────────────────────
+export AIRFLOW_HOME=/home/ubuntu/datamart-sis/airflow
+export AIRFLOW__CORE__LOAD_EXAMPLES=False
+export AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+export AIRFLOW__WEBSERVER__SECRET_KEY=sis-datamart-2024
+export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////home/ubuntu/datamart-sis/airflow/airflow.db
+AIRFLOW_BIN=/home/ubuntu/airflow-venv/bin/airflow
 
 # ── 1. Servidor web (uvicorn) ────────────────────────────────────────────────
 log "Reiniciando uvicorn..."
@@ -16,58 +24,58 @@ PYTHONUNBUFFERED=1 nohup uvicorn app:app \
   >> /home/ubuntu/web.log 2>&1 &
 log "Uvicorn PID $!"
 
-# ── 2. Airflow (Docker standalone) ──────────────────────────────────────────
-log "Verificando Airflow..."
-if ! docker ps --format '{{.Names}}' | grep -q airflow-standalone; then
-  log "Iniciando Airflow standalone..."
-  docker start airflow-standalone 2>/dev/null || \
-  docker run -d \
-    --name airflow-standalone \
-    --restart unless-stopped \
-    -p 8082:8080 \
-    -e AIRFLOW__CORE__LOAD_EXAMPLES=False \
-    -e AIRFLOW__CORE__EXECUTOR=SequentialExecutor \
-    -e _AIRFLOW_DB_MIGRATE=true \
-    -e _AIRFLOW_WWW_USER_CREATE=true \
-    -e _AIRFLOW_WWW_USER_USERNAME=admin \
-    -e _AIRFLOW_WWW_USER_PASSWORD=admin2024 \
-    -e AIRFLOW__WEBSERVER__SECRET_KEY=sis-datamart-2024 \
-    -v /home/ubuntu/datamart-sis/airflow/dags:/opt/airflow/dags \
-    -v /home/ubuntu/datamart-sis/airflow/logs:/opt/airflow/logs \
-    -v /home/ubuntu/datamart-sis:/workspace:ro \
-    apache/airflow:2.10.3 standalone
-else
-  log "Airflow ya corre"
+# ── 2. Airflow — inicializar DB si es la primera vez ────────────────────────
+if [ ! -f "$AIRFLOW_HOME/airflow.db" ]; then
+  log "Primera ejecución: inicializando Airflow DB..."
+  $AIRFLOW_BIN db migrate >> /home/ubuntu/airflow-web.log 2>&1
+  $AIRFLOW_BIN users create \
+    --username admin --password admin2024 \
+    --firstname Admin --lastname SIS \
+    --role Admin --email alesuperbros23@gmail.com \
+    >> /home/ubuntu/airflow-web.log 2>&1
+  log "Airflow DB inicializada"
 fi
 
-# ── 3. Cloudflared — Dashboard (puerto 8080) ─────────────────────────────────
-log "Iniciando tunnel para Dashboard..."
+# ── 3. Airflow webserver + scheduler ────────────────────────────────────────
+log "Reiniciando Airflow..."
+pkill -f 'airflow webserver' || true
+pkill -f 'airflow scheduler' || true
+sleep 2
+nohup $AIRFLOW_BIN webserver --port 8082 >> /home/ubuntu/airflow-web.log 2>&1 &
+log "Airflow webserver PID $!"
+nohup $AIRFLOW_BIN scheduler >> /home/ubuntu/airflow-sched.log 2>&1 &
+log "Airflow scheduler PID $!"
+
+# ── 4. Cloudflared — Dashboard (8080) ───────────────────────────────────────
+log "Tunnel Dashboard..."
 pkill -f 'cloudflared.*8080' || true
 sleep 1
 rm -f /home/ubuntu/cloudflare.log
 nohup /home/ubuntu/cloudflared tunnel --url http://localhost:8080 \
   >> /home/ubuntu/cloudflare.log 2>&1 &
 
-# ── 4. Cloudflared — Airflow (puerto 8082) ───────────────────────────────────
-log "Iniciando tunnel para Airflow..."
+# ── 5. Cloudflared — Airflow (8082) ─────────────────────────────────────────
+log "Tunnel Airflow..."
 pkill -f 'cloudflared.*8082' || true
 sleep 1
 rm -f /home/ubuntu/cloudflare_airflow.log
 nohup /home/ubuntu/cloudflared tunnel --url http://localhost:8082 \
   >> /home/ubuntu/cloudflare_airflow.log 2>&1 &
 
-# ── 5. Capturar URLs (max 40s cada una) ──────────────────────────────────────
+# ── 6. Capturar ambas URLs (max 40s cada una) ────────────────────────────────
 for service in dashboard airflow; do
-  log_file="/home/ubuntu/cloudflare${service/dashboard/}.log"
-  [[ "$service" == "airflow" ]] && log_file="/home/ubuntu/cloudflare_airflow.log"
-  url_file="/home/ubuntu/${service/dashboard/public}_url.txt"
-  [[ "$service" == "dashboard" ]] && url_file="/home/ubuntu/public_url.txt"
-
+  if [ "$service" = "dashboard" ]; then
+    logf=/home/ubuntu/cloudflare.log
+    urlf=/home/ubuntu/public_url.txt
+  else
+    logf=/home/ubuntu/cloudflare_airflow.log
+    urlf=/home/ubuntu/airflow_url.txt
+  fi
   for i in $(seq 1 20); do
-    URL=$(grep -oP 'https://[a-z0-9\-]+\.trycloudflare\.com' "$log_file" 2>/dev/null | head -1)
+    URL=$(grep -oP 'https://[a-z0-9\-]+\.trycloudflare\.com' "$logf" 2>/dev/null | head -1)
     if [ -n "$URL" ]; then
-      echo "$URL" > "$url_file"
-      log "$service URL: $URL"
+      echo "$URL" > "$urlf"
+      log "$service → $URL"
       break
     fi
     sleep 2
