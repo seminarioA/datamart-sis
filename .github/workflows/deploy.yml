@@ -117,14 +117,19 @@ jobs:
         id: smoke
         run: |
           check_url() {
-            local url=$1 name=$2
-            if [ -z "$url" ]; then echo "$name: URL no capturada"; return; fi
-            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo "000")
-            echo "$name: $HTTP — $url"
+            local url=$1 name=$2 retries=${3:-3}
+            if [ -z "$url" ]; then echo "$name: URL no capturada"; echo "${name}_status=no-url" >> "$GITHUB_OUTPUT"; return; fi
+            for i in $(seq 1 $retries); do
+              HTTP=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 25 "$url" || echo "000")
+              echo "$name intento $i: $HTTP — $url"
+              if [ "$HTTP" = "200" ] || [ "$HTTP" = "302" ]; then break; fi
+              sleep 20
+            done
             echo "${name}_status=$HTTP" >> "$GITHUB_OUTPUT"
           }
-          check_url "$DASH_URL" "dashboard"
-          check_url "$AF_URL"   "airflow"
+          check_url "$DASH_URL" "dashboard" 2
+          # Airflow tarda ~2min en arrancar, se le dan más reintentos
+          check_url "$AF_URL"   "airflow" 5
 
       - name: Actualizar homepage del repo
         if: env.DASH_URL != ''
