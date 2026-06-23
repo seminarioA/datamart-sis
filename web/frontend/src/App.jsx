@@ -5,6 +5,7 @@ import MvBanner       from './components/MvBanner.jsx'
 import KPIStrip       from './components/KPIStrip.jsx'
 import ChartPanel     from './components/ChartPanel.jsx'
 import MapPanel       from './components/MapPanel.jsx'
+import Predicciones   from './components/Predicciones.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
 
 const COLORS_LIGHT = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
@@ -77,6 +78,9 @@ export default function App() {
   // ── Chart sets per module ──────────────────────────────────────────────────
   const moduleContent = () => {
     switch (module) {
+      case 'predicciones':
+        return <Predicciones dark={dark} />
+
       case 'map':
         return (
           <div style={{ flex: 1, padding: '12px 12px 12px', display: 'flex', flexDirection: 'column' }}>

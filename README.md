@@ -2,7 +2,19 @@
 
 DataMart dimensional construido sobre datos abiertos del Seguro Integral de Salud (SIS) del Perú, disponibles en la [Plataforma Nacional de Datos Abiertos](https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis).
 
-> **Dashboard:** desplegado en `http://170.9.4.149:8080` (VPS Oracle Cloud)
+> **Dashboard & Airflow:** URLs públicas disponibles en el último [GitHub Release](https://github.com/seminarioA/datamart-sis/releases/latest) — se actualizan automáticamente en cada deploy.
+
+## Infraestructura
+
+| Componente | Detalle |
+|------------|---------|
+| **Proveedor** | Oracle Cloud Infrastructure (OCI) — Always Free Tier |
+| **Instancia** | VM.Standard.E2.1.Micro |
+| **CPU** | 2 vCPU AMD EPYC 7J13 |
+| **RAM** | 1 GB DDR4 |
+| **Almacenamiento** | 50 GB Block Volume (SSD) |
+| **SO** | Ubuntu 24.04.4 LTS (x86_64) |
+| **Red** | Oracle VCN — acceso público via Cloudflare Tunnel (sin puertos abiertos) |
 
 ## Integrantes
 

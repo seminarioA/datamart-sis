@@ -4,6 +4,7 @@ Cache en 3 capas: JSON en disco → memoria → PostgreSQL MV.
 Reinicio = respuesta instantánea desde JSON (sin esperar re-build de MVs).
 """
 import json
+import math
 import threading
 import time
 from pathlib import Path
@@ -164,6 +165,13 @@ _MV_SQLS = {
         GROUP BY p.cod_plan_seguro, p.desc_plan_seguro, p.regimen_financiamiento
         ORDER BY atenciones DESC
     """,
+    "mv_por_mes": """
+        SELECT t.anio, t.mes,
+               SUM(f.cantidad_atenciones) AS atenciones
+        FROM datamart_sis.fact_atenciones_sis f
+        JOIN datamart_sis.dim_tiempo t ON t.id_tiempo = f.id_tiempo
+        GROUP BY t.anio, t.mes ORDER BY t.anio, t.mes
+    """,
 }
 
 _MV_READY: dict[str, bool] = {k: False for k in _MV_SQLS}
@@ -288,6 +296,114 @@ def por_nivel():
 @app.get("/api/por-plan")
 def por_plan():
     return _cached("por_plan", lambda: _qmv("mv_por_plan"))
+
+
+# ── Analítica predictiva ──────────────────────────────────────────────────────
+@app.get("/api/predicciones")
+def predicciones():
+    def _fetch():
+        try:
+            import numpy as np
+            from sklearn.linear_model import LinearRegression
+            from sklearn.metrics import r2_score, mean_squared_error
+            from sklearn.preprocessing import PolynomialFeatures
+            from sklearn.pipeline import make_pipeline
+        except ImportError:
+            return {"error": "numpy/sklearn no instalados"}
+
+        # ── 1. Forecast anual (Regresión Lineal OLS) ─────────────────────────
+        anio_data = _qmv("mv_por_anio")
+        if not anio_data:
+            return {"error": "Datos no disponibles aún"}
+
+        X = np.array([int(d["anio"]) for d in anio_data]).reshape(-1, 1)
+        y = np.array([float(d["atenciones"]) for d in anio_data])
+
+        # Regresión lineal simple (robusta con 9 puntos)
+        lin = LinearRegression().fit(X, y)
+        y_pred_hist = lin.predict(X)
+        r2   = r2_score(y, y_pred_hist)
+        rmse = math.sqrt(mean_squared_error(y, y_pred_hist))
+        std  = float(np.std(y - y_pred_hist))
+
+        max_anio = int(max(d["anio"] for d in anio_data))
+        future_years = list(range(max_anio + 1, max_anio + 4))
+        X_fut = np.array(future_years).reshape(-1, 1)
+        y_fut = lin.predict(X_fut)
+
+        historico = [
+            {"anio": int(d["anio"]), "atenciones": int(d["atenciones"]),
+             "tendencia": round(float(p)), "tipo": "real"}
+            for d, p in zip(anio_data, y_pred_hist)
+        ]
+        prediccion_anual = [
+            {"anio": yr, "atenciones": round(float(v)),
+             "lower": round(max(0.0, float(v) - 1.645 * std)),
+             "upper": round(float(v) + 1.645 * std),
+             "tipo": "prediccion"}
+            for yr, v in zip(future_years, y_fut)
+        ]
+
+        # ── 2. Estacionalidad mensual ─────────────────────────────────────────
+        mes_data = _qmv("mv_por_mes")
+        estacionalidad = []
+        if mes_data:
+            from collections import defaultdict
+            mes_sums: dict[int, list] = defaultdict(list)
+            for d in mes_data:
+                mes_sums[int(d["mes"])].append(float(d["atenciones"]))
+            promedios = {m: float(np.mean(vals)) for m, vals in mes_sums.items()}
+            media_global = float(np.mean(list(promedios.values()))) or 1.0
+            nombres = ["","Ene","Feb","Mar","Abr","May","Jun",
+                       "Jul","Ago","Sep","Oct","Nov","Dic"]
+            estacionalidad = [
+                {
+                    "mes": m, "nombre": nombres[m],
+                    "promedio": round(promedios[m]),
+                    "indice": round(promedios[m] / media_global * 100),
+                }
+                for m in sorted(promedios)
+            ]
+
+        # ── 3. Proyección regional (top 10) ──────────────────────────────────
+        region_data = _qmv("mv_por_region")
+        regiones_proy = []
+        if region_data:
+            total = sum(float(d["atenciones"]) for d in region_data) or 1
+            # Tasa de crecimiento anual compuesta del modelo global
+            cagr = float(lin.coef_[0]) / float(np.mean(y))
+            regiones_proy = [
+                {
+                    "region": d["region"],
+                    "atenciones": int(float(d["atenciones"])),
+                    "proyeccion_2026": round(float(d["atenciones"]) * (1 + cagr)),
+                    "crecimiento_pct": round(cagr * 100, 1),
+                    "share_pct": round(float(d["atenciones"]) / total * 100, 1),
+                }
+                for d in region_data[:10]
+            ]
+
+        # ── 4. Resumen del modelo ─────────────────────────────────────────────
+        slope = float(lin.coef_[0])
+        return {
+            "forecast_anual": {
+                "historico": historico,
+                "prediccion": prediccion_anual,
+                "modelo": "Regresion Lineal OLS",
+                "r2": round(r2, 3),
+                "rmse": round(rmse),
+                "pendiente_anual": round(slope),
+                "tendencia": "creciente" if slope > 0 else "decreciente",
+                "interpretacion": (
+                    f"El modelo explica el {round(r2*100,1)}% de la varianza histórica. "
+                    f"Se proyecta un {'aumento' if slope > 0 else 'descenso'} de "
+                    f"{abs(round(slope/1e6,2))}M atenciones por año."
+                ),
+            },
+            "estacionalidad": estacionalidad,
+            "regiones_proyeccion": regiones_proy,
+        }
+    return _cached("predicciones", _fetch)
 
 
 # ── SPA catch-all — serves React static files (logo, etc.) ──────────────────
