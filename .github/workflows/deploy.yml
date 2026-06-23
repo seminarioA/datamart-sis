@@ -68,6 +68,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
+          command_timeout: 6m
           script: |
             set -e
             cd /home/ubuntu/datamart-sis
@@ -76,26 +77,8 @@ jobs:
             pip install -r requirements.txt -q
             bash /home/ubuntu/datamart-sis/deploy.sh
 
-      # Esperar a que Airflow esté up en el VPS (localhost:8082) antes de leer URLs
-      - name: Wait for Airflow webserver on VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ubuntu
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          command_timeout: 3m
-          script: |
-            echo "Esperando Airflow webserver en localhost:8082..."
-            for i in $(seq 1 36); do
-              CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8082/ 2>/dev/null || echo 000)
-              [ "$CODE" = "302" ] || [ "$CODE" = "200" ] && echo "Airflow UP (HTTP $CODE)" && exit 0
-              echo "Wait $i/36 HTTP=$CODE"
-              sleep 5
-            done
-            echo "WARNING: Airflow no respondio en 3 minutos (continua de todas formas)"
-
       # Leer ambas URLs via SSH nativo (captura stdout directamente)
+      # deploy.sh ya espera internamente que Airflow esté UP antes de terminar
       - name: Read public URLs from VPS
         id: get_urls
         run: |
