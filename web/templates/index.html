@@ -4,47 +4,61 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DataMart SIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Signika:wght@300;400;500;600;700&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.0/dist/apexcharts.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Tokens ──────────────────────────────────────────────────────────────── */
+/* ── Tokens — Identidad SIS (Manual 2024) ────────────────────────────────── */
 :root {
-  --bg:      #efefef;
+  /* Fondos */
+  --bg:      #f0f2f8;
   --surface: #ffffff;
-  --border:  #cccccc;
-  --text:    #111111;
-  --muted:   #666666;
-  --accent:  #b91c1c;
-  --navy:    #1a3a5c;
-  --navy2:   #2c5f8a;
-  --navy3:   #4a7fb5;
-  --navy4:   #7aa8d2;
-  --map1:    #ccdff2;
-  --map2:    #7aadda;
-  --map3:    #3a7bbf;
-  --map4:    #1a5c90;
-  --map5:    #0d3357;
+  --border:  #d0d4e8;
+  --text:    #1a1c2e;
+  --muted:   #6b7190;
+  /* Marca SIS */
+  --navy:    #5b6fb3;   /* PANTONE 2726U — color principal */
+  --navy2:   #4a5fa0;
+  --navy3:   #7a8ed0;
+  --navy4:   #a8b5e8;
+  --accent:  #dc388d;   /* PANTONE MAGENTA — acento */
+  --green:   #afcc46;   /* PANTONE 375U */
+  --orange:  #f6a64a;   /* PANTONE 7411U */
+  --lblue:   #57c4f2;   /* PANTONE 2995U */
+  --gray:    #c5c8c7;   /* PANTONE GRAY */
+  /* Mapa coroplético en azul SIS */
+  --map1:    #dce3f6;
+  --map2:    #a8b5e8;
+  --map3:    #7a8ed0;
+  --map4:    #5b6fb3;
+  --map5:    #2a3a7c;
   --tile:    light;
 }
 body.dark {
-  --bg:      #0f0f0f;
-  --surface: #1a1a1a;
-  --border:  #2e2e2e;
-  --text:    #e0e0e0;
-  --muted:   #888888;
-  --accent:  #ef4444;
-  --navy:    #4a8fc4;
-  --navy2:   #6ab0dc;
-  --navy3:   #8cccf0;
-  --navy4:   #aaddf8;
-  --map1:    #1a2a3a;
-  --map2:    #1a4060;
-  --map3:    #1a5c88;
-  --map4:    #2278b0;
-  --map5:    #3a9ad8;
+  --bg:      #0d0f1c;
+  --surface: #14172a;
+  --border:  #252840;
+  --text:    #e0e4f5;
+  --muted:   #8890b8;
+  --navy:    #8a9fd8;
+  --navy2:   #a0b2e8;
+  --navy3:   #6a80c4;
+  --navy4:   #4a5fa0;
+  --accent:  #e85fa0;
+  --green:   #c4df6a;
+  --orange:  #f9b870;
+  --lblue:   #7ad5f5;
+  --gray:    #a0a5a8;
+  --map1:    #151d3a;
+  --map2:    #1e2d5c;
+  --map3:    #2a3e7a;
+  --map4:    #3a52a0;
+  --map5:    #5b6fb3;
   --tile:    dark;
 }
 
@@ -52,7 +66,7 @@ body.dark {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Signika', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -87,9 +101,11 @@ header {
 }
 header h1 {
   font-size: 16px; font-weight: 600; letter-spacing: .01em;
+  font-family: 'Montserrat', sans-serif;
 }
 header .sub {
-  color: #8fb3cc; font-size: 11px; margin-top: 1px;
+  color: rgba(255,255,255,.65); font-size: 11px; margin-top: 2px;
+  font-weight: 300; letter-spacing: .03em;
 }
 .header-right {
   margin-left: auto;
@@ -122,14 +138,15 @@ header .sub {
 }
 .kpi { background: var(--surface); padding: 12px 14px; text-align: center; }
 .kpi-label {
-  font-size: 10px; font-weight: 600;
-  color: var(--muted); text-transform: uppercase; letter-spacing: .06em;
+  font-size: 10px; font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .07em;
 }
 .kpi-value {
   font-size: 24px; font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--navy); line-height: 1.1; margin-top: 3px;
-  font-family: "SF Mono","Fira Code","Consolas",monospace;
+  font-family: 'Montserrat', "SF Mono", "Consolas", monospace;
   transition: color .2s;
 }
 .kpi-value.red { color: var(--accent); }
@@ -150,9 +167,11 @@ header .sub {
 .panel-header {
   padding: 8px 12px;
   font-size: 10px; font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
   text-transform: uppercase; letter-spacing: .07em;
-  color: var(--muted);
+  color: var(--navy);
   border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--navy);
   flex-shrink: 0;
 }
 .panel-body {
@@ -335,8 +354,8 @@ body.dark .leaflet-tile { filter: brightness(.8) invert(1) contrast(1.1) hue-rot
 
 <header>
   <div>
-    <h1>DataMart SIS &mdash; Atenciones de Salud</h1>
-    <div class="sub">Seguro Integral de Salud &nbsp;|&nbsp; Peru &nbsp;|&nbsp; Datos Abiertos MINSA</div>
+    <h1>SIS &mdash; Atenciones de Salud</h1>
+    <div class="sub">Seguro Integral de Salud &nbsp;&middot;&nbsp; Datos Abiertos MINSA &nbsp;&middot;&nbsp; Per&uacute;</div>
   </div>
   <div class="header-right">
     <div class="status-text" id="status">Cargando…</div>
@@ -469,17 +488,18 @@ function toggleTheme() {
 if (localStorage.getItem('theme') === 'dark') applyTheme(true)
 
 // ── ApexCharts ────────────────────────────────────────────────────────────────
-const COLORS_LIGHT = ['#1a3a5c','#2c5f8a','#4a7fb5','#7aa8d2','#4a9b8c','#7a5c00','#5c1e7a','#9b4a1a']
-const COLORS_DARK  = ['#4a8fc4','#6ab0dc','#8cccf0','#aaddf8','#5abfb0','#c4a84a','#9b6ac4','#c47a4a']
+/* Paleta SIS: azul principal + 4 complementarios del manual de identidad */
+const COLORS_LIGHT = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
+const COLORS_DARK  = ['#8a9fd8','#7ad5f5','#c4df6a','#f9b870','#e85fa0','#a0b2e8','#6a80c4','#5b6fb3']
 
 function themeColors() {
   const d = isDark()
   return {
-    grid:  d ? '#2a2a2a' : '#e8e8e8',
-    tick:  d ? '#888'    : '#666',
-    navy:  d ? '#4a8fc4' : '#1a3a5c',
-    navy2: d ? '#6ab0dc' : '#2c5f8a',
-    navy3: d ? '#8cccf0' : '#4a7fb5',
+    grid:    d ? '#252840' : '#d8dced',
+    tick:    d ? '#8890b8' : '#6b7190',
+    navy:    d ? '#8a9fd8' : '#5b6fb3',   /* SIS azul principal */
+    navy2:   d ? '#a0b2e8' : '#4a5fa0',
+    navy3:   d ? '#6a80c4' : '#7a8ed0',
     palette: d ? COLORS_DARK : COLORS_LIGHT,
   }
 }
@@ -507,7 +527,7 @@ function makeChart(id, labels, values, colors, horizontal) {
       toolbar: { show: false },
       background: 'transparent',
       animations: { enabled: true, speed: 380, animateGradually: { enabled: false } },
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: "'Signika', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     },
     theme: { mode: dark ? 'dark' : 'light' },
     series: [{ name: 'Atenciones', data: values }],
