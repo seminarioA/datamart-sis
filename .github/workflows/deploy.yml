@@ -5,11 +5,62 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
-    name: Deploy
+  # Build runs on GitHub Actions runner — NOT on the VPS
+  build-frontend:
+    name: Build React
     runs-on: ubuntu-latest
     steps:
-      - name: SSH into VPS and deploy
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        working-directory: web/frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: web/frontend
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: web/frontend/dist/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to VPS
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download built frontend
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: web/frontend/dist/
+
+      # SCP the compiled dist to VPS (built artifact, not source)
+      - name: Upload dist to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          source: "web/frontend/dist/"
+          target: "/home/ubuntu/datamart-sis/"
+          overwrite: true
+
+      # VPS only pulls Python/config changes and restarts
+      - name: Pull Python changes + restart
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
