@@ -132,23 +132,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Smoke test ambas URLs
+      # Quality gate: falla el job (y bloquea el Release) si cualquier servicio da 5xx
+      - name: Smoke test — quality gate
         id: smoke
         run: |
+          FAILED=0
+
           check_url() {
             local url=$1 name=$2 retries=${3:-3}
-            if [ -z "$url" ]; then echo "$name: URL no capturada"; echo "${name}_status=no-url" >> "$GITHUB_OUTPUT"; return; fi
+            if [ -z "$url" ]; then
+              echo "ERROR: URL de $name no capturada — fallo de deploy"
+              echo "${name}_status=no-url" >> "$GITHUB_OUTPUT"
+              FAILED=1
+              return
+            fi
+            local HTTP="000"
             for i in $(seq 1 $retries); do
               HTTP=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 25 "$url" || echo "000")
-              echo "$name intento $i: $HTTP — $url"
+              echo "$name intento $i/$retries: HTTP $HTTP — $url"
               if [ "$HTTP" = "200" ] || [ "$HTTP" = "302" ]; then break; fi
               sleep 20
             done
             echo "${name}_status=$HTTP" >> "$GITHUB_OUTPUT"
+            # Bloquear deploy si 5xx o no responde
+            if echo "$HTTP" | grep -qE '^5|^000'; then
+              echo "QUALITY GATE FAILED: $name retornó HTTP $HTTP"
+              FAILED=1
+            fi
           }
-          check_url "$DASH_URL" "dashboard" 2
-          # Airflow tarda ~2min en arrancar, se le dan más reintentos
-          check_url "$AF_URL"   "airflow" 5
+
+          check_url "$DASH_URL" "dashboard" 3
+          check_url "$AF_URL"   "airflow"   3
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "Al menos un servicio fallo el quality gate. Abortando Release."
+            exit 1
+          fi
+          echo "Quality gate OK — todos los servicios responden correctamente"
 
       - name: Actualizar homepage del repo
         if: env.DASH_URL != ''
