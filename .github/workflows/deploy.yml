@@ -5,15 +5,14 @@ on:
     branches: [main]
 
 jobs:
-  # Build runs on GitHub Actions runner — NOT on the VPS
+  # ── 1. Build React en el runner de GitHub (no en el VPS) ─────────────────
   build-frontend:
     name: Build React
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
@@ -34,10 +33,13 @@ jobs:
           path: web/frontend/dist/
           retention-days: 1
 
+  # ── 2. Desplegar al VPS ───────────────────────────────────────────────────
   deploy:
     name: Deploy to VPS
     needs: build-frontend
     runs-on: ubuntu-latest
+    outputs:
+      public_url: ${{ steps.get_url.outputs.public_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +49,7 @@ jobs:
           name: frontend-dist
           path: web/frontend/dist/
 
-      # SCP the compiled dist to VPS (built artifact, not source)
+      # SCP del dist compilado (artefacto reproducible, construido en Actions)
       - name: Upload dist to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -59,8 +61,8 @@ jobs:
           target: "/home/ubuntu/datamart-sis/"
           overwrite: true
 
-      # VPS only pulls Python/config changes and restarts
-      - name: Pull Python changes + restart
+      # Pull Python/config changes + restart uvicorn + restart cloudflared + capture URL
+      - name: Pull + restart + capture URL
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -74,3 +76,87 @@ jobs:
             source .venv/bin/activate
             pip install -r requirements.txt -q
             bash /home/ubuntu/datamart-sis/deploy.sh
+
+      # Leer URL del VPS usando SSH nativo (captura stdout directamente)
+      - name: Read public URL from VPS
+        id: get_url
+        run: |
+          echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key
+          chmod 600 /tmp/vps_key
+
+          # Reintentar hasta 5 veces (cloudflared tarda ~15s en registrar URL)
+          for i in 1 2 3 4 5; do
+            URL=$(ssh -i /tmp/vps_key \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=10 \
+              ubuntu@${{ secrets.VPS_HOST }} \
+              "cat /home/ubuntu/public_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
+            if [[ "$URL" == https://* ]]; then
+              echo "public_url=$URL" >> "$GITHUB_OUTPUT"
+              echo "URL encontrada: $URL"
+              break
+            fi
+            echo "Intento $i: URL no disponible aún, esperando 10s..."
+            sleep 10
+          done
+
+          rm -f /tmp/vps_key
+
+  # ── 3. Verificar URL + crear Release ─────────────────────────────────────
+  verify-and-release:
+    name: Verify URL + Create Release
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      PUBLIC_URL: ${{ needs.deploy.outputs.public_url }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Smoke test — verificar que la URL responde
+        id: smoke
+        run: |
+          if [ -z "$PUBLIC_URL" ]; then
+            echo "status=URL no disponible" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Verificando $PUBLIC_URL ..."
+          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$PUBLIC_URL" || echo "000")
+          echo "HTTP: $HTTP"
+
+          if [ "$HTTP" = "200" ]; then
+            echo "status=✅ $HTTP — OK" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=⚠️ $HTTP — revisar" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Actualizar homepage del repo con URL real
+        if: env.PUBLIC_URL != ''
+        run: |
+          gh api repos/${{ github.repository }} \
+            --method PATCH \
+            -f homepage="$PUBLIC_URL"
+          echo "Repo homepage → $PUBLIC_URL"
+
+      - name: Crear GitHub Release con URL del deploy
+        if: env.PUBLIC_URL != ''
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+          TAG="deploy-$(date -u '+%Y%m%d-%H%M')"
+
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Deploy $DATE" \
+            --notes "## Dashboard SIS
+
+**URL pública:** $PUBLIC_URL
+
+**Estado:** ${{ steps.smoke.outputs.status }}
+**Commit:** \`$SHORT_SHA\` — ${{ github.event.head_commit.message }}
+**Rama:** \`main\`" \
+            --latest \
+            || echo "Release ya existe, continuando..."
