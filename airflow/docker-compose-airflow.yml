@@ -1,66 +1,29 @@
-# Airflow standalone — se levanta aparte del docker-compose principal.
-# Usa la misma red que el contenedor de PostgreSQL.
+# NOTA: Airflow se ejecuta via pip (no Docker) en este VPS por limitaciones de RAM.
+# Para ambientes con >2GB RAM, puedes usar este compose con Docker.
+# Ver airflow/README.md para instrucciones de arranque.
 #
-# Uso:
+# Para correr con Docker en un servidor con más recursos:
 #   docker compose -f docker-compose-airflow.yml up -d
-#   # Crear usuario admin la primera vez:
-#   docker exec -it airflow-webserver airflow users create \
-#     --username admin --password admin \
-#     --firstname Alejandro --lastname Seminario \
-#     --role Admin --email alesuperbros23@gmail.com
-#
-# UI disponible en http://localhost:8082 (o via cloudflared)
 
 services:
-  airflow-db-init:
-    image: apache/airflow:2.9.3
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://datamart:FTNIdAQSBTZ5zloaSGl11L4@datamart-sis-postgres:5432/datamart_sis
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__SECRET_KEY: "sis-datamart-secret-2024"
-    entrypoint: airflow db migrate
-    networks: [sis-net]
-
   airflow-webserver:
     image: apache/airflow:2.9.3
     restart: unless-stopped
-    depends_on: [airflow-db-init]
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://datamart:FTNIdAQSBTZ5zloaSGl11L4@datamart-sis-postgres:5432/datamart_sis
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__SECRET_KEY: "sis-datamart-secret-2024"
-      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "sis-datamart-2024"
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin2024
     volumes:
       - ./dags:/opt/airflow/dags
-      - airflow-logs:/opt/airflow/logs
-      - /home/ubuntu/datamart-sis:/home/ubuntu/datamart-sis:ro
+      - airflow-data:/opt/airflow
     ports:
       - "8082:8080"
-    command: webserver
-    networks: [sis-net]
-
-  airflow-scheduler:
-    image: apache/airflow:2.9.3
-    restart: unless-stopped
-    depends_on: [airflow-db-init]
-    environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://datamart:FTNIdAQSBTZ5zloaSGl11L4@datamart-sis-postgres:5432/datamart_sis
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      AIRFLOW__WEBSERVER__SECRET_KEY: "sis-datamart-secret-2024"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - airflow-logs:/opt/airflow/logs
-      - /home/ubuntu/datamart-sis:/home/ubuntu/datamart-sis
-    command: scheduler
-    networks: [sis-net]
+    command: standalone
 
 volumes:
-  airflow-logs:
-
-networks:
-  sis-net:
-    external: true
-    name: docker_sis-net   # misma red que el postgres principal
+  airflow-data:
