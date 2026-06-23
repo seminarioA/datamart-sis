@@ -39,7 +39,8 @@ jobs:
     needs: build-frontend
     runs-on: ubuntu-latest
     outputs:
-      public_url: ${{ steps.get_url.outputs.public_url }}
+      dashboard_url: ${{ steps.get_urls.outputs.dashboard_url }}
+      airflow_url:   ${{ steps.get_urls.outputs.airflow_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,7 +50,6 @@ jobs:
           name: frontend-dist
           path: web/frontend/dist/
 
-      # SCP del dist compilado (artefacto reproducible, construido en Actions)
       - name: Upload dist to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -61,8 +61,7 @@ jobs:
           target: "/home/ubuntu/datamart-sis/"
           overwrite: true
 
-      # Pull Python/config changes + restart uvicorn + restart cloudflared + capture URL
-      - name: Pull + restart + capture URL
+      - name: Pull + restart all services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -77,83 +76,77 @@ jobs:
             pip install -r requirements.txt -q
             bash /home/ubuntu/datamart-sis/deploy.sh
 
-      # Leer URL del VPS usando SSH nativo (captura stdout directamente)
-      - name: Read public URL from VPS
-        id: get_url
+      # Leer ambas URLs via SSH nativo (captura stdout directamente)
+      - name: Read public URLs from VPS
+        id: get_urls
         run: |
           echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key
           chmod 600 /tmp/vps_key
+          SSH="ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@${{ secrets.VPS_HOST }}"
 
-          # Reintentar hasta 5 veces (cloudflared tarda ~15s en registrar URL)
           for i in 1 2 3 4 5; do
-            URL=$(ssh -i /tmp/vps_key \
-              -o StrictHostKeyChecking=no \
-              -o ConnectTimeout=10 \
-              ubuntu@${{ secrets.VPS_HOST }} \
-              "cat /home/ubuntu/public_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
-            if [[ "$URL" == https://* ]]; then
-              echo "public_url=$URL" >> "$GITHUB_OUTPUT"
-              echo "URL encontrada: $URL"
+            DASH=$($SSH "cat /home/ubuntu/public_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
+            AF=$($SSH "cat /home/ubuntu/airflow_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
+            if [[ "$DASH" == https://* ]] && [[ "$AF" == https://* ]]; then
+              echo "dashboard_url=$DASH" >> "$GITHUB_OUTPUT"
+              echo "airflow_url=$AF"     >> "$GITHUB_OUTPUT"
+              echo "Dashboard: $DASH"
+              echo "Airflow:   $AF"
               break
             fi
-            echo "Intento $i: URL no disponible aún, esperando 10s..."
-            sleep 10
+            echo "Intento $i — esperando URLs... (dash=$DASH, airflow=$AF)"
+            sleep 12
           done
-
           rm -f /tmp/vps_key
 
-  # ── 3. Verificar URL + crear Release ─────────────────────────────────────
+  # ── 3. Verificar + crear Release ─────────────────────────────────────────
   verify-and-release:
-    name: Verify URL + Create Release
+    name: Verify URLs + Create Release
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      PUBLIC_URL: ${{ needs.deploy.outputs.public_url }}
-      # GH_PAT (PAT con scope repo) para actualizar homepage y crear releases
+      DASH_URL: ${{ needs.deploy.outputs.dashboard_url }}
+      AF_URL:   ${{ needs.deploy.outputs.airflow_url }}
       GH_TOKEN: ${{ secrets.GH_PAT }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Smoke test — verificar que la URL responde
+      - name: Smoke test ambas URLs
         id: smoke
         run: |
-          if [ -z "$PUBLIC_URL" ]; then
-            echo "status=URL no disponible" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          check_url() {
+            local url=$1 name=$2
+            if [ -z "$url" ]; then echo "$name: URL no capturada"; return; fi
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$url" || echo "000")
+            echo "$name: $HTTP — $url"
+            echo "${name}_status=$HTTP" >> "$GITHUB_OUTPUT"
+          }
+          check_url "$DASH_URL" "dashboard"
+          check_url "$AF_URL"   "airflow"
 
-          echo "Verificando $PUBLIC_URL ..."
-          HTTP=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$PUBLIC_URL" || echo "000")
-          echo "HTTP: $HTTP"
-
-          if [ "$HTTP" = "200" ]; then
-            echo "status=✅ $HTTP — OK" >> "$GITHUB_OUTPUT"
-          else
-            echo "status=⚠️ $HTTP — revisar" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Actualizar homepage del repo con URL real
-        if: env.PUBLIC_URL != ''
+      - name: Actualizar homepage del repo
+        if: env.DASH_URL != ''
         run: |
           gh api repos/${{ github.repository }} \
             --method PATCH \
-            -f homepage="$PUBLIC_URL"
-          echo "Repo homepage → $PUBLIC_URL"
+            -f homepage="$DASH_URL"
 
-      - name: Crear GitHub Release con URL del deploy
-        if: env.PUBLIC_URL != ''
+      - name: Crear GitHub Release con ambas URLs
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           TAG="deploy-$(date -u '+%Y%m%d-%H%M')"
-          STATUS="${{ steps.smoke.outputs.status }}"
-          MSG="${{ github.event.head_commit.message }}"
 
-          # Escribir notas usando printf (evita heredoc << que confunde al parser YAML)
-          printf 'Dashboard SIS\n\nURL publica: %s\nEstado: %s\nCommit: %s - %s\nRama: main\n' \
-            "$PUBLIC_URL" "$STATUS" "$SHORT_SHA" "$MSG" > /tmp/release_notes.md
+          printf 'DataMart SIS - Deploy %s\n\nDashboard: %s (HTTP %s)\nAirflow:   %s (HTTP %s)\n\nCommit: %s\n%s\n' \
+            "$DATE" \
+            "$DASH_URL" "${{ steps.smoke.outputs.dashboard_status }}" \
+            "$AF_URL"   "${{ steps.smoke.outputs.airflow_status }}" \
+            "$SHORT_SHA" "${{ github.event.head_commit.message }}" \
+            > /tmp/release_notes.md
+
+          cat /tmp/release_notes.md
 
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
