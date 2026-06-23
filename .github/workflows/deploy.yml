@@ -147,16 +147,16 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           TAG="deploy-$(date -u '+%Y%m%d-%H%M')"
+          STATUS="${{ steps.smoke.outputs.status }}"
+          MSG="${{ github.event.head_commit.message }}"
+
+          # Escribir notas usando printf (evita heredoc << que confunde al parser YAML)
+          printf 'Dashboard SIS\n\nURL publica: %s\nEstado: %s\nCommit: %s - %s\nRama: main\n' \
+            "$PUBLIC_URL" "$STATUS" "$SHORT_SHA" "$MSG" > /tmp/release_notes.md
 
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
             --title "Deploy $DATE" \
-            --notes "## Dashboard SIS
-
-**URL pública:** $PUBLIC_URL
-
-**Estado:** ${{ steps.smoke.outputs.status }}
-**Commit:** \`$SHORT_SHA\` — ${{ github.event.head_commit.message }}
-**Rama:** \`main\`" \
+            --notes-file /tmp/release_notes.md \
             --latest \
             || echo "Release ya existe, continuando..."
