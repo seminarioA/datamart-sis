@@ -1,16 +1,17 @@
 import React from 'react'
 import {
   LayoutDashboard, Map, Users, Building2,
-  Stethoscope, CalendarDays, ExternalLink, ChevronLeft, ChevronRight,
+  Stethoscope, CalendarDays, TrendingUp, ExternalLink, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 
 export const MODULES = [
-  { id: 'overview',      icon: LayoutDashboard, label: 'Resumen',    desc: 'Vista general del dashboard' },
-  { id: 'map',           icon: Map,             label: 'Mapa',       desc: 'Distribución geográfica' },
-  { id: 'demographics',  icon: Users,           label: 'Demografía', desc: 'Por sexo y grupo de edad' },
-  { id: 'geography',     icon: Building2,       label: 'Geografía',  desc: 'Por región, nivel y departamento' },
-  { id: 'services',      icon: Stethoscope,     label: 'Servicios',  desc: 'Top servicios y planes de seguro' },
-  { id: 'trends',        icon: CalendarDays,    label: 'Tendencia',  desc: 'Evolución anual de atenciones' },
+  { id: 'overview',      icon: LayoutDashboard, label: 'Resumen',       desc: 'Vista general del dashboard' },
+  { id: 'map',           icon: Map,             label: 'Mapa',          desc: 'Distribución geográfica' },
+  { id: 'demographics',  icon: Users,           label: 'Demografía',    desc: 'Por sexo y grupo de edad' },
+  { id: 'geography',     icon: Building2,       label: 'Geografía',     desc: 'Por región, nivel y departamento' },
+  { id: 'services',      icon: Stethoscope,     label: 'Servicios',     desc: 'Top servicios y planes de seguro' },
+  { id: 'trends',        icon: CalendarDays,    label: 'Tendencia',     desc: 'Evolución anual de atenciones' },
+  { id: 'predicciones',  icon: TrendingUp,      label: 'Predicciones',  desc: 'Analítica predictiva — forecasting y proyecciones' },
 ]
 
 export default function Sidebar({ active, onModule, collapsed, onToggle, airflowUrl }) {
