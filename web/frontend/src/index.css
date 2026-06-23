@@ -1,0 +1,78 @@
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Tokens — Identidad SIS (Manual 2024) ────────────────────────────────── */
+:root {
+  --bg:      #f0f2f8;
+  --surface: #ffffff;
+  --border:  #d0d4e8;
+  --text:    #1a1c2e;
+  --muted:   #6b7190;
+  --navy:    #5b6fb3;
+  --navy2:   #4a5fa0;
+  --navy3:   #7a8ed0;
+  --navy4:   #a8b5e8;
+  --accent:  #dc388d;
+  --green:   #afcc46;
+  --orange:  #f6a64a;
+  --lblue:   #57c4f2;
+  --gray-sis:#c5c8c7;
+  --map1:    #dce3f6;
+  --map2:    #a8b5e8;
+  --map3:    #7a8ed0;
+  --map4:    #5b6fb3;
+  --map5:    #2a3a7c;
+  --navbar-h: 60px;
+}
+
+.dark {
+  --bg:      #0d0f1c;
+  --surface: #14172a;
+  --border:  #252840;
+  --text:    #e0e4f5;
+  --muted:   #8890b8;
+  --navy:    #8a9fd8;
+  --navy2:   #a0b2e8;
+  --navy3:   #6a80c4;
+  --navy4:   #4a5fa0;
+  --accent:  #e85fa0;
+  --green:   #c4df6a;
+  --orange:  #f9b870;
+  --lblue:   #7ad5f5;
+  --gray-sis:#a0a5a8;
+  --map1:    #151d3a;
+  --map2:    #1e2d5c;
+  --map3:    #2a3e7a;
+  --map4:    #3a52a0;
+  --map5:    #5b6fb3;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Signika', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Leaflet dark mode ─────────────────────────────────────────────────────── */
+.dark .leaflet-tile {
+  filter: brightness(.8) invert(1) contrast(1.1) hue-rotate(200deg);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2);
+  font-size: 12px;
+  font-family: 'Signika', sans-serif;
+  background: var(--surface);
+  color: var(--text);
+}
+.leaflet-popup-tip { display: none; }
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

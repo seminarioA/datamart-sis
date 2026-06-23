@@ -10,15 +10,18 @@ import psycopg2
 import psycopg2.extras
 import psycopg2.pool
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 DATABASE_URL = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/datamart_sis"
-TEMPLATES = Path(__file__).parent / "templates"
-STATIC = Path(__file__).parent / "static"
+STATIC       = Path(__file__).parent / "static"
+FRONTEND     = Path(__file__).parent / "frontend" / "dist"
 
 app = FastAPI(title="DataMart SIS")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
+# Vite build assets (hashed filenames)
+if (FRONTEND / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND / "assets")), name="assets")
 
 # ── Connection pool (max 5 para no saturar PG con max_connections=30) ──────────
 _pool = psycopg2.pool.ThreadedConnectionPool(1, 5, DATABASE_URL)
@@ -163,9 +166,12 @@ threading.Thread(target=_build_mvs, kwargs={"refresh": False}, daemon=True).star
 
 
 # ── Routes ──────────────────────────────────────────────────────────────────────
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=FileResponse)
 def index():
-    return (TEMPLATES / "index.html").read_text()
+    idx = FRONTEND / "index.html"
+    if idx.exists():
+        return FileResponse(str(idx))
+    return FileResponse(str(Path(__file__).parent / "templates" / "index.html"))
 
 
 @app.get("/api/status")
@@ -230,3 +236,15 @@ def por_nivel():
 @app.get("/api/por-plan")
 def por_plan():
     return _cached("por_plan", lambda: _qmv("mv_por_plan"))
+
+
+# ── SPA catch-all — serves React static files (logo, etc.) ──────────────────
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_catch(full_path: str):
+    target = FRONTEND / full_path
+    if target.is_file():
+        return FileResponse(str(target))
+    idx = FRONTEND / "index.html"
+    if idx.exists():
+        return FileResponse(str(idx))
+    return HTMLResponse("<h1>Frontend not built</h1>", status_code=503)
