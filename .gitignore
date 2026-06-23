@@ -6,3 +6,8 @@ data/
 sql_temp/
 *.log
 *.pid
+
+# Runtime cache
+cache/*.json
+web/frontend/dist/
+web/frontend/node_modules/

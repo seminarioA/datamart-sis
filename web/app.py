@@ -1,7 +1,9 @@
 """
 DataMart SIS — Dashboard API
-Vistas materializadas + connection pool + HTTP cache headers.
+Cache en 3 capas: JSON en disco → memoria → PostgreSQL MV.
+Reinicio = respuesta instantánea desde JSON (sin esperar re-build de MVs).
 """
+import json
 import threading
 import time
 from pathlib import Path
@@ -16,28 +18,67 @@ from fastapi.staticfiles import StaticFiles
 DATABASE_URL = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/datamart_sis"
 STATIC       = Path(__file__).parent / "static"
 FRONTEND     = Path(__file__).parent / "frontend" / "dist"
+CACHE_DIR    = Path(__file__).parent.parent / "cache"
+CACHE_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(title="DataMart SIS")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
-# Vite build assets (hashed filenames)
 if (FRONTEND / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND / "assets")), name="assets")
 
-# ── Connection pool (max 5 para no saturar PG con max_connections=30) ──────────
+# ── Connection pool ──────────────────────────────────────────────────────────────
 _pool = psycopg2.pool.ThreadedConnectionPool(1, 5, DATABASE_URL)
 
-# ── Cache in-memory (15 min TTL) ───────────────────────────────────────────────
-_cache: dict = {}
-CACHE_TTL = 900
+# ── Cache en 3 capas ────────────────────────────────────────────────────────────
+# L1: dict en memoria (sub-ms)
+# L2: archivo JSON en disco (persiste entre reinicios, ms)
+# L3: PostgreSQL MV (fuente de verdad, segundos)
+_mem: dict = {}
+MEM_TTL  = 900   # 15 min en memoria
+DISK_TTL = 3600  # 1 h en disco
+
+
+def _disk_read(key: str):
+    p = CACHE_DIR / f"{key}.json"
+    if not p.exists():
+        return None
+    if time.time() - p.stat().st_mtime > DISK_TTL:
+        return None
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return None
+
+
+def _disk_write(key: str, data):
+    try:
+        (CACHE_DIR / f"{key}.json").write_text(
+            json.dumps(data, ensure_ascii=False, default=str)
+        )
+    except Exception:
+        pass
 
 
 def _cached(key: str, fn):
     now = time.time()
-    if key in _cache and now - _cache[key]["ts"] < CACHE_TTL:
-        return _cache[key]["data"]
+    # L1 — memoria
+    if key in _mem and now - _mem[key]["ts"] < MEM_TTL:
+        return _mem[key]["data"]
+    # L2 — disco
+    disk = _disk_read(key)
+    if disk is not None:
+        _mem[key] = {"ts": now, "data": disk}
+        return disk
+    # L3 — base de datos
     result = fn()
-    _cache[key] = {"ts": now, "data": result}
+    _mem[key] = {"ts": now, "data": result}
+    _disk_write(key, result)
     return result
+
+
+def _invalidate(key: str):
+    _mem.pop(key, None)
+    (CACHE_DIR / f"{key}.json").unlink(missing_ok=True)
 
 
 def _q(sql: str, params=None) -> list[dict]:
@@ -140,12 +181,23 @@ def _build_mvs(refresh: bool = False):
                 try:
                     if refresh:
                         cur.execute(f"REFRESH MATERIALIZED VIEW datamart_sis.{name}")
+                        _MV_READY[name] = True
+                        cache_key = name[3:]  # "mv_kpis" → "kpis"
+                        _invalidate(cache_key)
                     else:
+                        # Si la MV ya existe (reinicios) → marcarla lista al instante
                         cur.execute(
-                            f"CREATE MATERIALIZED VIEW IF NOT EXISTS datamart_sis.{name} AS {sql}"
+                            "SELECT EXISTS(SELECT FROM pg_matviews "
+                            "WHERE schemaname='datamart_sis' AND matviewname=%s)",
+                            (name,)
                         )
-                    _MV_READY[name] = True
-                    _cache.pop(name[3:], None)  # invalidate cache on refresh
+                        if cur.fetchone()[0]:
+                            _MV_READY[name] = True  # ya estaba, respuesta inmediata
+                        else:
+                            cur.execute(
+                                f"CREATE MATERIALIZED VIEW IF NOT EXISTS datamart_sis.{name} AS {sql}"
+                            )
+                            _MV_READY[name] = True
                 except Exception:
                     pass
         c.close()

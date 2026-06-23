@@ -2,12 +2,13 @@
 
 DataMart dimensional construido sobre datos abiertos del Seguro Integral de Salud (SIS) del Perú, disponibles en la [Plataforma Nacional de Datos Abiertos](https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis).
 
+> **Dashboard:** desplegado en `http://170.9.4.149:8080` (VPS Oracle Cloud)
+
 ## Integrantes
 
 | Nombre | Código |
 |--------|--------|
 | Seminario Medina, Alejandro Valentino | U22247454 |
-| Araujo Rojas, Carlos Alfonso | U22329650 |
 | Ortega Vilela, Sigidiego | U22323434 |
 
 **Docente:** Balcazar Chumacero, Oscar Eduardo  
@@ -26,10 +27,12 @@ DataMart dimensional construido sobre datos abiertos del Seguro Integral de Salu
 
 | Capa | Herramienta |
 |------|-------------|
-| Base de datos | PostgreSQL (Supabase) |
-| ETL | Python 3.11 — pandas, SQLAlchemy, psycopg2 |
-| Orquestación | Script CLI con logging estructurado |
-| Validación | SQL de calidad de datos |
+| Base de datos | PostgreSQL 16 (Docker) |
+| ELT | Python 3.11 — psycopg2, COPY batches de 500K filas |
+| Orquestación | Apache Airflow 2.9 (DAGs en `airflow/dags/`) |
+| API | FastAPI — cache 3 capas (mem → JSON disco → MV PG) |
+| Frontend | React 18 + Vite + ApexCharts + Leaflet |
+| Infraestructura | Oracle VPS Ubuntu 24.04 — CI/CD via GitHub Actions |
 
 ## Estructura del proyecto
 
