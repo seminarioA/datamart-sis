@@ -19,7 +19,7 @@ from airflow.utils.trigger_rule import TriggerRule
 
 DATAMART_DIR = "/home/ubuntu/datamart-sis"
 VENV_PY    = f"{DATAMART_DIR}/.venv/bin/python"
-DB_URL     = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/datamart_sis"
+DB_URL     = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis"
 AF_START   = "/home/ubuntu/start_airflow.sh"
 
 # Nombres exactos de los archivos en data/raw/
