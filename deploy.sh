@@ -5,6 +5,18 @@ set -e
 
 log() { echo "[deploy $(date +%H:%M:%S)] $*"; }
 
+# ── 0. Setup anti-OOM: swap + swappiness (idempotente) ──────────────────────
+if [ ! -f /swapfile ]; then
+  log "Creando swapfile de 4GB..."
+  sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile \
+    && sudo mkswap /swapfile && sudo swapon /swapfile \
+    && echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  log "Swap 4GB activado"
+elif ! swapon --show | grep -q '/swapfile'; then
+  sudo swapon /swapfile && log "Swap reactivado"
+fi
+sudo sysctl -w vm.swappiness=10 2>/dev/null || true
+
 AIRFLOW_HOME=/home/ubuntu/datamart-sis/airflow
 AIRFLOW_BIN=/home/ubuntu/airflow-venv/bin/airflow
 AIRFLOW_ENV="AIRFLOW_HOME=$AIRFLOW_HOME AIRFLOW__CORE__LOAD_EXAMPLES=False AIRFLOW__CORE__EXECUTOR=LocalExecutor AIRFLOW__WEBSERVER__SECRET_KEY=sis-datamart-2024 AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/airflow_db AIRFLOW__WEBSERVER__WORKERS=1 AIRFLOW__WEBSERVER__WORKER_CLASS=sync AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT=120 PATH=/home/ubuntu/airflow-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
