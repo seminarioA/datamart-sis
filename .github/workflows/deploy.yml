@@ -72,7 +72,8 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/datamart-sis
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             source .venv/bin/activate
             pip install -r requirements.txt -q
             bash /home/ubuntu/datamart-sis/deploy.sh
