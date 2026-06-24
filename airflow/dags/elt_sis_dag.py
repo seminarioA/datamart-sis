@@ -99,7 +99,7 @@ with DAG(
                 f"{VENV_PY} elt_load.py --file {zip_file}"
             ),
             env={"DATABASE_URL": DB_URL},
-            execution_timeout=timedelta(hours=4),
+            execution_timeout=timedelta(hours=8),
         )
         prev >> task
         prev = task
