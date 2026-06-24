@@ -7,7 +7,7 @@ log() { echo "[deploy $(date +%H:%M:%S)] $*"; }
 
 AIRFLOW_HOME=/home/ubuntu/datamart-sis/airflow
 AIRFLOW_BIN=/home/ubuntu/airflow-venv/bin/airflow
-AIRFLOW_ENV="AIRFLOW_HOME=$AIRFLOW_HOME AIRFLOW__CORE__LOAD_EXAMPLES=False AIRFLOW__CORE__EXECUTOR=SequentialExecutor AIRFLOW__WEBSERVER__SECRET_KEY=sis-datamart-2024 AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////home/ubuntu/datamart-sis/airflow/airflow.db AIRFLOW__WEBSERVER__WORKERS=1 AIRFLOW__WEBSERVER__WORKER_CLASS=sync AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT=300"
+AIRFLOW_ENV="AIRFLOW_HOME=$AIRFLOW_HOME AIRFLOW__CORE__LOAD_EXAMPLES=False AIRFLOW__CORE__EXECUTOR=LocalExecutor AIRFLOW__WEBSERVER__SECRET_KEY=sis-datamart-2024 AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/airflow_db AIRFLOW__WEBSERVER__WORKERS=1 AIRFLOW__WEBSERVER__WORKER_CLASS=sync AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT=120 PATH=/home/ubuntu/airflow-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # ── 1. Servidor web (uvicorn) ────────────────────────────────────────────────
 log "Reiniciando uvicorn..."
@@ -21,7 +21,9 @@ PYTHONUNBUFFERED=1 nohup uvicorn app:app \
 log "Uvicorn PID $!"
 
 # ── 2. Airflow — inicializar DB si es la primera vez ────────────────────────
-if [ ! -f "$AIRFLOW_HOME/airflow.db" ]; then
+# Usar PostgreSQL como metadata DB — verificar si las tablas ya existen
+AF_TABLES=$(docker exec datamart-sis-postgres psql -U datamart -d airflow_db -tc 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='"'"'public'"'"';' 2>/dev/null | tr -d ' \n')
+if [ "${AF_TABLES:-0}" -lt 5 ]; then
   log "Primera ejecucion: inicializando Airflow DB..."
   env $AIRFLOW_ENV $AIRFLOW_BIN db migrate >> /home/ubuntu/airflow-web.log 2>&1
   env $AIRFLOW_ENV $AIRFLOW_BIN users create \
