@@ -1,8 +1,8 @@
-# NOTA: Airflow se ejecuta via pip (no Docker) en este VPS por limitaciones de RAM.
-# Para ambientes con >2GB RAM, puedes usar este compose con Docker.
-# Ver airflow/README.md para instrucciones de arranque.
+# Airflow se ejecuta via pip (no Docker) en este VPS.
+# Metadata DB: PostgreSQL (airflow_db en el mismo contenedor que el datamart).
+# Executor: LocalExecutor (permite paralelismo, requiere PostgreSQL).
 #
-# Para correr con Docker en un servidor con más recursos:
+# Para levantar en servidores con más recursos via Docker:
 #   docker compose -f docker-compose-airflow.yml up -d
 
 services:
@@ -10,20 +10,36 @@ services:
     image: apache/airflow:2.9.3
     restart: unless-stopped
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://datamart:${AIRFLOW_DB_PASSWORD}@postgres:5432/airflow_db
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__WEBSERVER__SECRET_KEY: "sis-datamart-2024"
+      AIRFLOW__WEBSERVER__WORKERS: "2"
       _AIRFLOW_DB_MIGRATE: "true"
       _AIRFLOW_WWW_USER_CREATE: "true"
       _AIRFLOW_WWW_USER_USERNAME: admin
       _AIRFLOW_WWW_USER_PASSWORD: admin2024
     volumes:
       - ./dags:/opt/airflow/dags
-      - airflow-data:/opt/airflow
+      - airflow-logs:/opt/airflow/logs
     ports:
       - "8082:8080"
-    command: standalone
+    command: webserver
+    depends_on:
+      - airflow-scheduler
+
+  airflow-scheduler:
+    image: apache/airflow:2.9.3
+    restart: unless-stopped
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://datamart:${AIRFLOW_DB_PASSWORD}@postgres:5432/airflow_db
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: "sis-datamart-2024"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - airflow-logs:/opt/airflow/logs
+    command: scheduler
 
 volumes:
-  airflow-data:
+  airflow-logs:

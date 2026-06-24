@@ -4,6 +4,7 @@ Procesa cada CSV en lotes de 50K filas. Hace COMMIT después de cada lote,
 así los datos son visibles progresivamente en la DB.
 """
 
+import argparse
 import csv
 import io
 import os
@@ -105,19 +106,47 @@ def load_file(conn, csv_path: Path, fuente: str) -> int:
     return total
 
 
+def already_loaded(conn, zip_name: str) -> bool:
+    """Devuelve True si el archivo ya fue cargado (tiene filas en la fact table)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) FROM datamart_sis.fact_atenciones_sis WHERE fuente_archivo = %s",
+            (zip_name,)
+        )
+        return cur.fetchone()[0] > 0
+
+
 def main():
+    parser = argparse.ArgumentParser(description="ELT carga DataMart SIS")
+    parser.add_argument("--file", type=str, default=None,
+                        help="Nombre del ZIP a procesar (ej: OPENDATA_DS_01_2019_ATENCIONES_0.zip). "
+                             "Sin este argumento procesa todos los ZIPs en data/raw/.")
+    parser.add_argument("--force", action="store_true",
+                        help="Forzar recarga aunque el archivo ya esté cargado.")
+    args = parser.parse_args()
+
     if not DATABASE_URL:
         log.error("DATABASE_URL no definida (revisa .env)")
         sys.exit(1)
 
-    zips = sorted(RAW_DIR.glob("OPENDATA_DS_01_*.zip"))
-    if not zips:
-        log.error(f"No hay ZIPs en {RAW_DIR}")
-        sys.exit(1)
+    if args.file:
+        zp = RAW_DIR / args.file
+        if not zp.exists():
+            log.error(f"Archivo no encontrado: {zp}")
+            sys.exit(1)
+        zips = [zp]
+    else:
+        zips = sorted(RAW_DIR.glob("OPENDATA_DS_01_*.zip"))
+        if not zips:
+            log.error(f"No hay ZIPs en {RAW_DIR}")
+            sys.exit(1)
 
     conn = psycopg2.connect(DATABASE_URL)
     try:
         for zp in zips:
+            if not args.force and already_loaded(conn, zp.name):
+                log.info(f"{zp.name}: ya cargado — omitiendo (usa --force para recargar)")
+                continue
             log.info(f"=== Procesando {zp.name} ===")
             csv_path = extract_csv(zp, TMP_DIR)
             try:
