@@ -25,8 +25,8 @@ function buildOpts(labels, values, colors, horizontal, dark) {
       bar: {
         horizontal,
         distributed: colArr.length > 1,
-        barHeight: horizontal ? '62%' : undefined,
-        columnWidth: !horizontal ? '58%' : undefined,
+        barHeight: horizontal ? '45%' : undefined,
+        columnWidth: !horizontal ? '55%' : undefined,
         borderRadius: 3,
         borderRadiusApplication: 'end',
       },
@@ -34,19 +34,20 @@ function buildOpts(labels, values, colors, horizontal, dark) {
     xaxis: {
       categories: labels,
       labels: {
-        style: { colors: tick, fontSize: '10px' },
+        style: { colors: tick, fontSize: '11px' },
         formatter: horizontal ? (v => fmt(v)) : undefined,
         rotate: !horizontal && labels.length > 6 ? -35 : 0,
         trim: true,
+        hideOverlappingLabels: true,
       },
       axisBorder: { show: false },
       axisTicks: { show: false },
     },
     yaxis: {
       labels: {
-        style: { colors: tick, fontSize: '10px' },
+        style: { colors: tick, fontSize: '11px' },
         formatter: !horizontal ? (v => fmt(v)) : undefined,
-        maxWidth: horizontal ? 140 : 40,
+        maxWidth: horizontal ? 150 : 40,
       },
     },
     dataLabels: { enabled: false },
@@ -58,7 +59,7 @@ function buildOpts(labels, values, colors, horizontal, dark) {
       borderColor: grid, strokeDashArray: 3,
       xaxis: { lines: { show: horizontal } },
       yaxis: { lines: { show: !horizontal } },
-      padding: { top: -10, right: 8, bottom: 0, left: 8 },
+      padding: { top: 4, right: 8, bottom: 4, left: 8 },
     },
     legend: { show: false },
     states: {
