@@ -302,6 +302,80 @@ def por_plan():
     return _cached("por_plan", lambda: _qmv("mv_por_plan"))
 
 
+# ── Endpoint bundled: devuelve todo en 1 llamada (evita 8 round-trips por cloudflared) ──
+@app.get("/api/dashboard")
+def dashboard():
+    """Todos los datos del dashboard en una sola respuesta."""
+    def _fetch():
+        fact = _qmv("mv_kpis")
+        dim = _q("""
+            SELECT
+                (SELECT COUNT(DISTINCT cod_region) FROM datamart_sis.dim_ubicacion) AS regiones,
+                (SELECT COUNT(*) FROM datamart_sis.dim_ipress)                      AS ipress,
+                (SELECT COUNT(*) FROM datamart_sis.dim_servicio)                    AS servicios,
+                (SELECT COUNT(*) FROM datamart_sis.dim_plan_seguro)                 AS planes,
+                (SELECT MIN(anio) FROM datamart_sis.dim_tiempo)                     AS anio_inicio,
+                (SELECT MAX(anio) FROM datamart_sis.dim_tiempo)                     AS anio_fin
+        """)
+        return {
+            "kpis":       {**(fact[0] if fact else {}), **(dim[0] if dim else {})},
+            "anio":       _qmv("mv_por_anio"),
+            "region":     _qmv("mv_por_region"),
+            "edad":       _qmv("mv_por_edad"),
+            "sexo":       _qmv("mv_por_sexo"),
+            "servicios":  _qmv("mv_top_servicios"),
+            "nivel":      _qmv("mv_por_nivel"),
+            "plan":       _qmv("mv_por_plan"),
+        }
+    return _cached("dashboard", _fetch)
+
+
+# ── Pre-calentar cache al inicio (en background, después de que las MVs estén listas) ──
+def _warm_cache():
+    """Ejecuta todas las queries una vez para poblar L1+L2 cache."""
+    import time
+    # Esperar hasta que las MVs estén listas
+    for _ in range(60):
+        if all(_MV_READY.values()):
+            break
+        time.sleep(10)
+    if not any(_MV_READY.values()):
+        return
+    try:
+        # Llamar al endpoint bundled para poblar todo el cache de una vez
+        fact = _qmv("mv_kpis")
+        dim = _q("""SELECT
+            (SELECT COUNT(DISTINCT cod_region) FROM datamart_sis.dim_ubicacion) AS regiones,
+            (SELECT COUNT(*) FROM datamart_sis.dim_ipress) AS ipress,
+            (SELECT COUNT(*) FROM datamart_sis.dim_servicio) AS servicios,
+            (SELECT COUNT(*) FROM datamart_sis.dim_plan_seguro) AS planes,
+            (SELECT MIN(anio) FROM datamart_sis.dim_tiempo) AS anio_inicio,
+            (SELECT MAX(anio) FROM datamart_sis.dim_tiempo) AS anio_fin""")
+        _cached("kpis",        lambda: {**(fact[0] if fact else {}), **(dim[0] if dim else {})})
+        _cached("por_anio",    lambda: _qmv("mv_por_anio"))
+        _cached("por_region",  lambda: _qmv("mv_por_region"))
+        _cached("por_edad",    lambda: _qmv("mv_por_edad"))
+        _cached("por_sexo",    lambda: _qmv("mv_por_sexo"))
+        _cached("top_servicios", lambda: _qmv("mv_top_servicios"))
+        _cached("por_nivel",   lambda: _qmv("mv_por_nivel"))
+        _cached("por_plan",    lambda: _qmv("mv_por_plan"))
+        # Bundle también
+        _cached("dashboard", lambda: {
+            "kpis": _cached("kpis", lambda: None),
+            "anio": _cached("por_anio", lambda: None),
+            "region": _cached("por_region", lambda: None),
+            "edad": _cached("por_edad", lambda: None),
+            "sexo": _cached("por_sexo", lambda: None),
+            "servicios": _cached("top_servicios", lambda: None),
+            "nivel": _cached("por_nivel", lambda: None),
+            "plan": _cached("por_plan", lambda: None),
+        })
+    except Exception:
+        pass
+
+threading.Thread(target=_warm_cache, daemon=True).start()
+
+
 # ── Analítica predictiva ──────────────────────────────────────────────────────
 @app.get("/api/predicciones")
 def predicciones():

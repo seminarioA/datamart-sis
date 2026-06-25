@@ -44,17 +44,27 @@ export default function App() {
     } catch { setStatus('Error al cargar') }
   }, [])
 
+  // 1 sola llamada en vez de 8 — reduce round-trips por cloudflared de ~8×600ms a 1×800ms
   const fetchCharts = useCallback(async () => {
-    const [anio, region, edad, sexo, servicios, nivel, plan] = await Promise.all([
-      fetch('/api/por-anio').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/por-region').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/por-edad').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/por-sexo').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/top-servicios').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/por-nivel').then(r=>r.json()).catch(()=>[]),
-      fetch('/api/por-plan').then(r=>r.json()).catch(()=>[]),
-    ])
-    setCharts({ anio, region, edad, sexo, servicios, nivel, plan })
+    try {
+      const d = await fetch('/api/dashboard').then(r => r.json())
+      const { kpis: kpisData, anio, region, edad, sexo, servicios, nivel, plan } = d
+      // Si el endpoint devuelve los KPIs también, los actualizamos
+      if (kpisData && kpisData.total_atenciones != null) setKpis(kpisData)
+      setCharts({ anio: anio||[], region: region||[], edad: edad||[], sexo: sexo||[], servicios: servicios||[], nivel: nivel||[], plan: plan||[] })
+    } catch {
+      // Fallback a llamadas individuales si /api/dashboard falla
+      const [anio, region, edad, sexo, servicios, nivel, plan] = await Promise.all([
+        fetch('/api/por-anio').then(r=>r.json()).catch(()=>[]),
+        fetch('/api/por-region').then(r=>r.json()).catch(()=>[]),
+        fetch('/api/por-edad').then(r=>r.json()).catch(()=>[]),
+        fetch('/api/por-sexo').then(r=>r.json()).catch(()=>[]),
+        fetch('/api/top-servicios').then(r=>r.json()).catch(()=>[]),
+        fetch('/api/por-nivel').then(r=>r.json()).catch(()=>[]),
+        fetch('/api/por-plan').then(r=>r.json()).catch(()=>[]),
+      ])
+      setCharts({ anio, region, edad, sexo, servicios, nivel, plan })
+    }
   }, [])
 
   useEffect(() => {
