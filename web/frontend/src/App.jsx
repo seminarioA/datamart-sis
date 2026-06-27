@@ -90,8 +90,8 @@ export default function App() {
       case 'map':
         return (
           <div style={{ flex:1, padding:'12px', overflow:'hidden' }}>
-            {/* height calc() garantiza px concretos para Leaflet — flex puro da h=0 */}
-            <div style={{ height:'calc(100vh - 175px)', position:'relative' }}>
+            {/* display:flex+flexDirection:column es CRÍTICO: sin esto flex:1 de MapPanel da h=0 */}
+            <div style={{ height:'calc(100vh - 175px)', display:'flex', flexDirection:'column' }}>
               <MapPanel regionData={charts?.region} dark={dark} />
             </div>
           </div>
