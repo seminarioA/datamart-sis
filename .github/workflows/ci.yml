@@ -7,14 +7,14 @@ on:
     branches: [main]
 
 jobs:
+  # ── Build del frontend ───────────────────────────────────────────────────────
   build-frontend:
     name: Build React
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
@@ -34,3 +34,48 @@ jobs:
           name: frontend-dist
           path: web/frontend/dist/
           retention-days: 1
+
+  # ── Tests de módulos del dashboard contra producción ─────────────────────────
+  test-modules:
+    name: Test Dashboard Modules
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements-test.txt
+
+      - name: Get production URL from latest GitHub Release
+        id: get_url
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          URL=$(gh release view --repo ${{ github.repository }} \
+            --json body --jq '.body' 2>/dev/null \
+            | grep -oP 'Dashboard: https://[^\s]+' | head -1 \
+            | awk '{print $2}')
+          if [ -z "$URL" ]; then
+            echo "No production URL found in latest release — skipping live tests"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dashboard_url=$URL" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Testing against: $URL"
+          fi
+
+      - name: Run module tests against production
+        if: steps.get_url.outputs.skip == 'false'
+        env:
+          DASHBOARD_URL: ${{ steps.get_url.outputs.dashboard_url }}
+        run: |
+          pytest tests/test_dashboard_modules.py \
+            --base-url "$DASHBOARD_URL" \
+            -v \
+            --tb=short \
+            --timeout=30 \
+            -x
