@@ -93,8 +93,9 @@ export default function App() {
 
       case 'map':
         return (
-          <div style={{ flex: 1, padding: '12px 12px 12px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, minHeight: 0 }}>
+          // height: calc(100vh - navbar(60) - kpi(73) - padding) garantiza px concretos para Leaflet
+          <div style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flex: 1, position: 'relative', minHeight: 400 }}>
               <MapPanel regionData={charts?.region} dark={dark} />
             </div>
           </div>
@@ -184,7 +185,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Sidebar */}
       <Sidebar
         active={module}
@@ -195,7 +196,7 @@ export default function App() {
       />
 
       {/* Main content */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Navbar dark={dark} onToggleTheme={() => setDark(d => !d)} status={status} />
         <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
         <KPIStrip data={kpis} rawData={charts} />
