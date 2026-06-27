@@ -1,5 +1,5 @@
 import React from 'react'
-import {
+import { Info,
   LayoutDashboard, Map, Users, Building2,
   Stethoscope, CalendarDays, TrendingUp, ExternalLink, ChevronLeft, ChevronRight,
 } from 'lucide-react'
@@ -12,6 +12,7 @@ export const MODULES = [
   { id: 'services',      icon: Stethoscope,     label: 'Servicios',     desc: 'Top servicios y planes de seguro' },
   { id: 'trends',        icon: CalendarDays,    label: 'Tendencia',     desc: 'Evolución anual de atenciones' },
   { id: 'predicciones',  icon: TrendingUp,      label: 'Predicciones',  desc: 'Analítica predictiva — forecasting y proyecciones' },
+  { id: 'acerca',        icon: Info,            label: 'Acerca de',     desc: 'Autores, stack tecnológico y fuente de datos' },
 ]
 
 export default function Sidebar({ active, onModule, collapsed, onToggle, airflowUrl }) {
