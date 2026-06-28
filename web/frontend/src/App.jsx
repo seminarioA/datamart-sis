@@ -9,6 +9,7 @@ import MapPanel     from './components/MapPanel.jsx'
 import Predicciones from './components/Predicciones.jsx'
 import Acerca       from './components/Acerca.jsx'
 import Glosario     from './components/Glosario.jsx'
+import Acciones    from './components/Acciones.jsx'
 import Onboarding   from './components/Onboarding.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
 import { SlidersHorizontal, X } from 'lucide-react'
@@ -164,6 +165,7 @@ export default function App() {
     switch (module) {
       case 'acerca':       return <Acerca dark={dark} />
       case 'glosario':     return <Glosario />
+      case 'acciones':     return <Acciones dark={dark} />
       case 'predicciones': return <Predicciones dark={dark} />
 
       case 'map':
@@ -276,6 +278,22 @@ export default function App() {
             <div style={{ display:'flex', gap:8, height:480, padding:'6px 12px' }} className="main-row">
               <div style={{ flex:'0 0 56%', minHeight:0 }}>
                 <MapPanel regionData={charts?.region} dark={dark} />
+                {/* Print-only: tabla de top regiones (reemplaza mapa en PDF) */}
+                <div className="print-map-replacement" style={{ display:'none', height:'100%', background:'var(--surface)', border:'1px solid var(--border)' }}>
+                  <div style={{ padding:'8px 12px', fontSize:10, fontWeight:700, fontFamily:"'Montserrat',sans-serif", textTransform:'uppercase', letterSpacing:'.07em', color:'var(--navy)', borderBottom:'1px solid var(--border)', borderLeft:'3px solid var(--navy)' }}>Atenciones por Departamento</div>
+                  <table style={{ width:'100%', borderCollapse:'collapse', fontSize:10 }}>
+                    <thead><tr style={{ background:'#f0f2f8' }}><th style={{ padding:'4px 8px', textAlign:'left', fontWeight:700 }}>Región</th><th style={{ padding:'4px 8px', textAlign:'right', fontWeight:700 }}>Atenciones</th><th style={{ padding:'4px 8px', textAlign:'right', fontWeight:700 }}>%</th></tr></thead>
+                    <tbody>
+                      {(()=>{ const total=(charts?.region||[]).reduce((s,r)=>s+Number(r.atenciones),0); return (charts?.region||[]).slice(0,14).map((r,i)=>(
+                        <tr key={i} style={{ borderBottom:'1px solid #eee' }}>
+                          <td style={{ padding:'3px 8px', color:'#333' }}>{r.region}</td>
+                          <td style={{ padding:'3px 8px', textAlign:'right', fontVariantNumeric:'tabular-nums' }}>{Number(r.atenciones).toLocaleString('es-PE')}</td>
+                          <td style={{ padding:'3px 8px', textAlign:'right', color:'#666' }}>{(Number(r.atenciones)/total*100).toFixed(1)}%</td>
+                        </tr>
+                      ))})()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6, minHeight:0 }}>
                 <div style={{ flex:'0 0 52%', minHeight:0 }}>
@@ -353,16 +371,36 @@ export default function App() {
         @media (max-width:860px){ .main-row{ flex-direction:column!important; height:auto!important; } .main-row>div:first-child{ flex:none!important; height:340px; } }
         @keyframes spin{ to{ transform:rotate(360deg); } }
         @media print {
-          @page { size:A4 landscape; margin:1cm 1.2cm 2.5cm 1.2cm; }
+          @page { size:A4 landscape; margin:1cm 1.2cm 2.8cm 1.2cm; }
           aside, .no-print, nav, button { display:none !important; }
           body, html { height:auto !important; overflow:visible !important; background:#fff !important; }
           * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
           #root > div { overflow:visible !important; height:auto !important; }
-          .main-row { height:340px !important; page-break-inside:avoid; }
-          .main-row > div:first-child { flex: 0 0 48% !important; }
+
+          /* Layout main-row A4 optimizado */
+          .main-row { height:320px !important; page-break-inside:avoid; }
+          .main-row > div:first-child { flex: 0 0 45% !important; position:relative; }
+
+          /* Mapa: ocultar canvas, mostrar tabla de regiones */
           .leaflet-container { display:none !important; }
-          .print-map-img { display:block !important; }
-          .print-footer-citation { display:block !important; position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1.5px solid #1a3a5c; padding:6px 12px; font-size:8.5px; color:#333; font-family:'Signika',sans-serif; line-height:1.5; }
+          .print-map-img { display:none !important; }
+          .print-map-replacement { display:flex !important; flex-direction:column; height:320px !important; overflow:hidden; }
+
+          /* Reducir altura de bottom charts para evitar corte de página */
+          div[style*="height: 320px"], div[style*="height:320px"] { height:280px !important; }
+          div[style*="height: 240px"], div[style*="height:240px"] { height:200px !important; }
+
+          /* Ocultar spinners en print */
+          div[style*="border-radius: 50%"][style*="animation"] { display:none !important; }
+
+          /* Footer de citas */
+          .print-footer-citation {
+            display:block !important;
+            position:fixed; bottom:0; left:0; right:0;
+            background:#fff; border-top:2px solid #1a3a5c;
+            padding:5px 14px; font-size:8px; color:#333;
+            font-family:'Signika',sans-serif; line-height:1.6;
+          }
         }
       `}</style>
     </div>

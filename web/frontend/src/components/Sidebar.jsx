@@ -2,19 +2,20 @@ import React from 'react'
 import {
   LayoutDashboard, Map, Users, Building2,
   Stethoscope, CalendarDays, TrendingUp,
-  BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight,
+  BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight, Target,
 } from 'lucide-react'
 
 // Módulos principales (en nav)
 export const MODULES = [
-  { id:'overview',     icon:LayoutDashboard, label:'Resumen',      desc:'Vista general del dashboard' },
-  { id:'map',          icon:Map,             label:'Mapa',         desc:'Distribución geográfica' },
-  { id:'demographics', icon:Users,           label:'Demografía',   desc:'Por sexo y grupo de edad' },
-  { id:'geography',    icon:Building2,       label:'Geografía',    desc:'Por región y nivel EESS' },
-  { id:'services',     icon:Stethoscope,     label:'Servicios',    desc:'Top servicios y planes' },
-  { id:'trends',       icon:CalendarDays,    label:'Tendencia',    desc:'Evolución anual' },
-  { id:'predicciones', icon:TrendingUp,      label:'Predicciones', desc:'Forecasting OLS 2026-2028' },
-  { id:'glosario',     icon:BookOpen,        label:'Glosario',     desc:'Términos y definiciones' },
+  { id:'overview',     icon:LayoutDashboard, label:'Resumen',           desc:'Vista general del dashboard' },
+  { id:'map',          icon:Map,             label:'Mapa',              desc:'Distribución geográfica' },
+  { id:'demographics', icon:Users,           label:'Demografía',        desc:'Por sexo y grupo de edad' },
+  { id:'geography',    icon:Building2,       label:'Geografía',         desc:'Por región y nivel EESS' },
+  { id:'services',     icon:Stethoscope,     label:'Servicios',         desc:'Top servicios y planes' },
+  { id:'trends',       icon:CalendarDays,    label:'Tendencia',         desc:'Evolución anual' },
+  { id:'predicciones', icon:TrendingUp,      label:'Predicciones',      desc:'Forecasting OLS 2026-2028' },
+  { id:'acciones',     icon:Target,          label:'Acciones',          desc:'Recomendaciones para partes interesadas' },
+  { id:'glosario',     icon:BookOpen,        label:'Glosario',          desc:'Términos y definiciones' },
 ]
 
 function NavItem({ m, active, onModule, collapsed }) {
