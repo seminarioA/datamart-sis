@@ -4,12 +4,14 @@ import Navbar       from './components/Navbar.jsx'
 import MvBanner     from './components/MvBanner.jsx'
 import KPIStrip     from './components/KPIStrip.jsx'
 import ChartPanel   from './components/ChartPanel.jsx'
+import ChartModal   from './components/ChartModal.jsx'
 import MapPanel     from './components/MapPanel.jsx'
 import Predicciones from './components/Predicciones.jsx'
 import Acerca       from './components/Acerca.jsx'
 import Glosario     from './components/Glosario.jsx'
 import Onboarding   from './components/Onboarding.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
+import { SlidersHorizontal, X } from 'lucide-react'
 
 const CL = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
 const CD = ['#8a9fd8','#7ad5f5','#c4df6a','#f9b870','#e85fa0','#a0b2e8','#6a80c4','#5b6fb3']
@@ -24,49 +26,42 @@ export default function App() {
   const [mvStatus, setMvStatus]    = useState({ ready:0, total:8 })
   const [status, setStatus]        = useState('Cargando…')
   const [showOnboarding, setOnboarding] = useState(() => !localStorage.getItem('visited_v1'))
+  // Chart expansion (Progressive Disclosure — UCD Ch.7)
+  const [expandedChart, setExpandedChart] = useState(null)
+  // Filters (Hick's Law: keep choices simple)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterTopN, setFilterTopN]   = useState(12)  // número de items en rankings
+  const [filterYears, setFilterYears] = useState([])  // [] = todos
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark)
     localStorage.setItem('theme', dark?'dark':'light')
   }, [dark])
 
-  const closeOnboarding = () => {
-    localStorage.setItem('visited_v1', '1')
-    setOnboarding(false)
-  }
+  const closeOnboarding = () => { localStorage.setItem('visited_v1','1'); setOnboarding(false) }
 
-  // Captura el mapa Leaflet como imagen antes de imprimir para que aparezca en el PDF
+  // Captura mapa Leaflet antes de imprimir
   const handlePrint = async () => {
     const mapEl = document.querySelector('.leaflet-container')
     if (mapEl) {
       try {
-        // Combinar todos los canvas de Leaflet en uno solo
         const canvases = mapEl.querySelectorAll('canvas')
         if (canvases.length > 0) {
           const merged = document.createElement('canvas')
-          merged.width  = mapEl.offsetWidth
-          merged.height = mapEl.offsetHeight
+          merged.width = mapEl.offsetWidth; merged.height = mapEl.offsetHeight
           const ctx = merged.getContext('2d')
-          ctx.fillStyle = '#e8e8e8'
-          ctx.fillRect(0, 0, merged.width, merged.height)
-          canvases.forEach(c => {
-            try { ctx.drawImage(c, 0, 0) } catch(_) {}
-          })
-          // Capturar también SVG overlays (popups, marcadores)
-          const mapImg = document.getElementById('map-print-img') || document.createElement('img')
-          mapImg.id  = 'map-print-img'
-          mapImg.src = merged.toDataURL('image/png')
-          mapImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:none;position:absolute;inset:0;z-index:9999'
-          mapEl.parentElement.appendChild(mapImg)
-          mapImg.classList.add('print-map-img')
+          ctx.fillStyle='#e8e8e8'; ctx.fillRect(0,0,merged.width,merged.height)
+          canvases.forEach(c => { try { ctx.drawImage(c,0,0) } catch(_){} })
+          const img = document.createElement('img')
+          img.id='map-print-img'; img.src=merged.toDataURL('image/png')
+          img.style.cssText='width:100%;height:100%;object-fit:cover;display:none;position:absolute;inset:0;z-index:9999'
+          img.classList.add('print-map-img')
+          mapEl.parentElement.appendChild(img)
         }
       } catch(_) {}
     }
     window.print()
-    // Limpiar imagen temporal después de imprimir
-    setTimeout(() => {
-      document.querySelectorAll('.print-map-img').forEach(el => el.remove())
-    }, 1000)
+    setTimeout(() => document.querySelectorAll('.print-map-img').forEach(el=>el.remove()), 1000)
   }
 
   const fetchKPIs = useCallback(async () => {
@@ -74,7 +69,7 @@ export default function App() {
       const d = await fetch('/api/kpis').then(r=>r.json())
       setKpis(d)
       setStatus(`${fmtFull(d.total_registros)} registros · ${new Date().toLocaleTimeString('es-PE')}`)
-    } catch { setStatus('Error al cargar') }
+    } catch { setStatus('Error') }
   }, [])
 
   const fetchCharts = useCallback(async () => {
@@ -114,17 +109,66 @@ export default function App() {
   const c = dark ? CD : CL
   const loading = !charts
 
+  // Helper: apply year filter client-side (filtra si hay años seleccionados)
+  const applyYearFilter = (data, yearKey='anio') =>
+    filterYears.length === 0 ? data : (data||[]).filter(d => filterYears.includes(String(d[yearKey])))
+
+  // Expand helper — Progressive Disclosure (show full detail on demand)
+  const expand = (title, type, labels, values, colors) =>
+    setExpandedChart({ title, type, labels, values, colors })
+
+  // Filter bar — Hick's Law: pocas opciones, simples (UCD Ch.7 Hick's Law)
+  const availableYears = [...new Set((charts?.anio||[]).map(d=>String(d.anio)))].sort()
+  const FilterBar = () => !showFilters ? null : (
+    <div style={{ background:'var(--surface)', borderBottom:'2px solid var(--navy)', padding:'10px 14px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }} className="no-print">
+      {/* Top N filter */}
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <span style={{ fontSize:11, color:'var(--muted)', fontWeight:600, whiteSpace:'nowrap' }}>Top N rankings:</span>
+        {[5, 10, 12, 26].map(n => (
+          <button key={n} onClick={()=>setFilterTopN(n)}
+            style={{ padding:'3px 10px', border:'1px solid', borderRadius:3, cursor:'pointer', fontSize:11, fontWeight:600,
+              background: filterTopN===n ? 'var(--navy)' : 'transparent',
+              borderColor: filterTopN===n ? 'var(--navy)' : 'var(--border)',
+              color: filterTopN===n ? '#fff' : 'var(--text)',
+            }}>
+            {n===26?'Todos':n}
+          </button>
+        ))}
+      </div>
+      {/* Year filter (only if multiple years available) */}
+      {availableYears.length > 1 && (
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:11, color:'var(--muted)', fontWeight:600, whiteSpace:'nowrap' }}>Años:</span>
+          {availableYears.map(yr => (
+            <button key={yr}
+              onClick={() => setFilterYears(p => p.includes(yr) ? p.filter(y=>y!==yr) : [...p, yr])}
+              style={{ padding:'3px 10px', border:'1px solid', borderRadius:3, cursor:'pointer', fontSize:11, fontWeight:600,
+                background: filterYears.includes(yr) ? 'var(--navy)' : 'transparent',
+                borderColor: filterYears.includes(yr) ? 'var(--navy)' : 'var(--border)',
+                color: filterYears.includes(yr) ? '#fff' : 'var(--text)',
+              }}>
+              {yr}
+            </button>
+          ))}
+          {filterYears.length > 0 && (
+            <button onClick={()=>setFilterYears([])} style={{ padding:'3px 8px', border:'1px solid var(--accent)', borderRadius:3, cursor:'pointer', fontSize:10, color:'var(--accent)', background:'transparent', display:'flex', alignItems:'center', gap:3 }}>
+              <X size={10}/> Limpiar
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
   const moduleContent = () => {
     switch (module) {
-
-      case 'acerca':     return <Acerca dark={dark} />
-      case 'glosario':   return <Glosario />
+      case 'acerca':       return <Acerca dark={dark} />
+      case 'glosario':     return <Glosario />
       case 'predicciones': return <Predicciones dark={dark} />
 
       case 'map':
         return (
           <div style={{ flex:1, padding:'12px', overflow:'hidden' }}>
-            {/* display:flex+flexDirection:column es CRÍTICO: sin esto flex:1 de MapPanel da h=0 */}
             <div style={{ height:'calc(100vh - 175px)', display:'flex', flexDirection:'column' }}>
               <MapPanel regionData={charts?.region} dark={dark} />
             </div>
@@ -133,75 +177,102 @@ export default function App() {
 
       case 'demographics':
         return (
-          <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
-            <div style={{ height:340 }}>
-              <ChartPanel type="donut" title="Atenciones por Sexo"
-                labels={charts?.sexo?.map(d=>d.sexo)??[]} values={charts?.sexo?.map(d=>Number(d.atenciones))??[]}
-                colors={[c[0],c[4]]} dark={dark} loading={loading||!charts?.sexo?.length} />
-            </div>
-            <div style={{ height:340 }}>
-              <ChartPanel type="hbar" title="Por Grupo de Edad"
-                labels={charts?.edad?.map(d=>d.grupo_edad)??[]} values={charts?.edad?.map(d=>Number(d.atenciones))??[]}
-                colors={c[2]} dark={dark} loading={loading||!charts?.edad?.length} />
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <FilterBar />
+            <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
+              <div style={{ height:340 }}>
+                <ChartPanel type="donut" title="Atenciones por Sexo"
+                  labels={charts?.sexo?.map(d=>d.sexo)??[]} values={charts?.sexo?.map(d=>Number(d.atenciones))??[]}
+                  colors={[c[0],c[4]]} dark={dark} loading={loading||!charts?.sexo?.length}
+                  onExpand={()=>expand('Atenciones por Sexo','donut',charts?.sexo?.map(d=>d.sexo),charts?.sexo?.map(d=>Number(d.atenciones)),[c[0],c[4]])} />
+              </div>
+              <div style={{ height:340 }}>
+                <ChartPanel type="hbar" title="Por Grupo de Edad"
+                  labels={charts?.edad?.map(d=>d.grupo_edad)??[]} values={charts?.edad?.map(d=>Number(d.atenciones))??[]}
+                  colors={c[2]} dark={dark} loading={loading||!charts?.edad?.length}
+                  onExpand={()=>expand('Por Grupo de Edad','hbar',charts?.edad?.map(d=>d.grupo_edad),charts?.edad?.map(d=>Number(d.atenciones)),c[2])} />
+              </div>
             </div>
           </div>
         )
 
       case 'geography':
         return (
-          <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
-            <div style={{ height:380 }}>
-              <ChartPanel type="hbar" title="Top Regiones"
-                labels={charts?.region?.slice(0,14).map(d=>d.region)??[]} values={charts?.region?.slice(0,14).map(d=>Number(d.atenciones))??[]}
-                colors={c[0]} dark={dark} loading={loading||!charts?.region?.length} />
-            </div>
-            <div style={{ height:380 }}>
-              <ChartPanel type="hbar" title="Por Nivel EESS"
-                labels={charts?.nivel?.map(d=>d.nivel||d.nivel_eess)??[]} values={charts?.nivel?.map(d=>Number(d.atenciones))??[]}
-                colors={[c[0],c[1],c[2],c[4]]} dark={dark} loading={loading||!charts?.nivel?.length} />
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <FilterBar />
+            <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
+              <div style={{ height:380 }}>
+                <ChartPanel type="hbar" title={`Top ${filterTopN} Regiones`}
+                  labels={charts?.region?.slice(0,filterTopN).map(d=>d.region)??[]} values={charts?.region?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[]}
+                  colors={c[0]} dark={dark} loading={loading||!charts?.region?.length}
+                  onExpand={()=>expand(`Top ${filterTopN} Regiones`,'hbar',charts?.region?.slice(0,filterTopN).map(d=>d.region),charts?.region?.slice(0,filterTopN).map(d=>Number(d.atenciones)),c[0])} />
+              </div>
+              <div style={{ height:380 }}>
+                <ChartPanel type="hbar" title="Por Nivel EESS"
+                  labels={charts?.nivel?.map(d=>d.nivel||d.nivel_eess)??[]} values={charts?.nivel?.map(d=>Number(d.atenciones))??[]}
+                  colors={[c[0],c[1],c[2],c[4]]} dark={dark} loading={loading||!charts?.nivel?.length}
+                  onExpand={()=>expand('Por Nivel EESS','hbar',charts?.nivel?.map(d=>d.nivel||d.nivel_eess),charts?.nivel?.map(d=>Number(d.atenciones)),[c[0],c[1],c[2],c[4]])} />
+              </div>
             </div>
           </div>
         )
 
       case 'services':
         return (
-          <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
-            <div style={{ height:380 }}>
-              <ChartPanel type="hbar" title="Top 15 Servicios"
-                labels={charts?.servicios?.map(d=>trunc(d.servicio||d.cod_servicio,30))??[]} values={charts?.servicios?.map(d=>Number(d.atenciones))??[]}
-                colors={c[1]} dark={dark} loading={loading||!charts?.servicios?.length} />
-            </div>
-            <div style={{ height:380 }}>
-              <ChartPanel type="donut" title="Por Plan de Seguro"
-                labels={charts?.plan?.map(d=>d.desc_plan_seguro||d.cod_plan_seguro)??[]} values={charts?.plan?.map(d=>Number(d.atenciones))??[]}
-                colors={c} dark={dark} loading={loading||!charts?.plan?.length} />
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <FilterBar />
+            <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
+              <div style={{ height:380 }}>
+                <ChartPanel type="hbar" title={`Top ${filterTopN} Servicios`}
+                  labels={charts?.servicios?.slice(0,filterTopN).map(d=>trunc(d.servicio||d.cod_servicio,30))??[]} values={charts?.servicios?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[]}
+                  colors={c[1]} dark={dark} loading={loading||!charts?.servicios?.length}
+                  onExpand={()=>expand(`Top ${filterTopN} Servicios`,'hbar',charts?.servicios?.slice(0,filterTopN).map(d=>trunc(d.servicio||d.cod_servicio,40)),charts?.servicios?.slice(0,filterTopN).map(d=>Number(d.atenciones)),c[1])} />
+              </div>
+              <div style={{ height:380 }}>
+                <ChartPanel type="donut" title="Por Plan de Seguro"
+                  labels={charts?.plan?.map(d=>d.desc_plan_seguro||d.cod_plan_seguro)??[]} values={charts?.plan?.map(d=>Number(d.atenciones))??[]}
+                  colors={c} dark={dark} loading={loading||!charts?.plan?.length}
+                  onExpand={()=>expand('Por Plan de Seguro','donut',charts?.plan?.map(d=>d.desc_plan_seguro||d.cod_plan_seguro),charts?.plan?.map(d=>Number(d.atenciones)),c)} />
+              </div>
             </div>
           </div>
         )
 
-      case 'trends':
+      case 'trends': {
+        const anioData = applyYearFilter(charts?.anio)
         return (
-          <div style={{ flex:1, padding:'12px', overflowY:'auto' }}>
-            <div style={{ height:400 }}>
-              <ChartPanel type="line" title="Evolución de Atenciones por Año"
-                labels={charts?.anio?.map(d=>String(d.anio))??[]} values={charts?.anio?.map(d=>Number(d.atenciones))??[]}
-                colors={[c[0]]} dark={dark} loading={loading||!charts?.anio?.length} />
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <FilterBar />
+            <div style={{ flex:1, padding:'12px', overflowY:'auto' }}>
+              <div style={{ height:400 }}>
+                <ChartPanel type="line" title="Evolución de Atenciones por Año"
+                  labels={anioData?.map(d=>String(d.anio))??[]} values={anioData?.map(d=>Number(d.atenciones))??[]}
+                  colors={[c[0]]} dark={dark} loading={loading||!charts?.anio?.length}
+                  onExpand={()=>expand('Evolución por Año','line',anioData?.map(d=>String(d.anio)),anioData?.map(d=>Number(d.atenciones)),[c[0]])} />
+              </div>
             </div>
           </div>
         )
+      }
 
       default: // overview
         return (
           <div style={{ flex:1, display:'flex', flexDirection:'column', overflowY:'auto' }}>
-            {/* Botón PDF */}
-            <div style={{ padding:'6px 12px 0', display:'flex', justifyContent:'flex-end' }} className="no-print">
+            {/* Toolbar: filtros + PDF */}
+            <div style={{ padding:'6px 12px 0', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8 }} className="no-print">
+              <button onClick={()=>setShowFilters(v=>!v)}
+                style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color: showFilters?'#fff':'var(--navy)', background: showFilters?'var(--navy)':'var(--bg)', border:'1px solid', borderColor: showFilters?'var(--navy)':'var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
+                <SlidersHorizontal size={12}/> Filtros{filterYears.length>0||filterTopN!==12 ? ` (${filterYears.length>0?'Años ':''}${filterTopN!==12?'Top '+filterTopN:''})` : ''}
+              </button>
               <button onClick={handlePrint}
                 style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
-                ⬇ Descargar PDF
+                ⬇ PDF
               </button>
             </div>
 
-            {/* Fila 1: Mapa + columna derecha */}
+            <FilterBar />
+
+            {/* Main row */}
             <div style={{ display:'flex', gap:8, height:480, padding:'6px 12px' }} className="main-row">
               <div style={{ flex:'0 0 56%', minHeight:0 }}>
                 <MapPanel regionData={charts?.region} dark={dark} />
@@ -209,40 +280,46 @@ export default function App() {
               <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6, minHeight:0 }}>
                 <div style={{ flex:'0 0 52%', minHeight:0 }}>
                   <ChartPanel type="line" title="Atenciones por Año"
-                    labels={charts?.anio?.map(d=>String(d.anio))??[]} values={charts?.anio?.map(d=>Number(d.atenciones))??[]}
-                    colors={[c[0]]} dark={dark} loading={loading||!charts?.anio?.length} />
+                    labels={applyYearFilter(charts?.anio)?.map(d=>String(d.anio))??[]}
+                    values={applyYearFilter(charts?.anio)?.map(d=>Number(d.atenciones))??[]}
+                    colors={[c[0]]} dark={dark} loading={loading||!charts?.anio?.length}
+                    onExpand={()=>expand('Atenciones por Año','line',applyYearFilter(charts?.anio)?.map(d=>String(d.anio)),applyYearFilter(charts?.anio)?.map(d=>Number(d.atenciones)),[c[0]])} />
                 </div>
                 <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, minHeight:0 }}>
                   <ChartPanel type="donut" title="Por Sexo"
                     labels={charts?.sexo?.map(d=>d.sexo)??[]} values={charts?.sexo?.map(d=>Number(d.atenciones))??[]}
-                    colors={[c[0],c[4]]} dark={dark} loading={loading||!charts?.sexo?.length} />
+                    colors={[c[0],c[4]]} dark={dark} loading={loading||!charts?.sexo?.length}
+                    onExpand={()=>expand('Por Sexo','donut',charts?.sexo?.map(d=>d.sexo),charts?.sexo?.map(d=>Number(d.atenciones)),[c[0],c[4]])} />
                   <ChartPanel type="hbar" title="Por Nivel EESS"
                     labels={charts?.nivel?.map(d=>d.nivel||d.nivel_eess)??[]} values={charts?.nivel?.map(d=>Number(d.atenciones))??[]}
-                    colors={[c[0],c[1],c[2],c[4]]} dark={dark} loading={loading||!charts?.nivel?.length} />
+                    colors={[c[0],c[1],c[2],c[4]]} dark={dark} loading={loading||!charts?.nivel?.length}
+                    onExpand={()=>expand('Por Nivel EESS','hbar',charts?.nivel?.map(d=>d.nivel||d.nivel_eess),charts?.nivel?.map(d=>Number(d.atenciones)),[c[0],c[1],c[2],c[4]])} />
                 </div>
               </div>
             </div>
 
-            {/* Fila 2: 3 columnas */}
+            {/* Bottom 3 charts */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, padding:'0 12px 8px' }}>
               {[
-                { title:'Top Regiones',     labels:charts?.region?.slice(0,12).map(d=>d.region)??[],               values:charts?.region?.slice(0,12).map(d=>Number(d.atenciones))??[],  colors:c[0] },
-                { title:'Top Servicios',    labels:charts?.servicios?.map(d=>trunc(d.servicio||d.cod_servicio,26))??[], values:charts?.servicios?.map(d=>Number(d.atenciones))??[],       colors:c[1] },
-                { title:'Por Grupo de Edad',labels:charts?.edad?.map(d=>d.grupo_edad)??[],                           values:charts?.edad?.map(d=>Number(d.atenciones))??[],              colors:c[2] },
+                { title:`Top ${filterTopN} Regiones`,  labels:charts?.region?.slice(0,filterTopN).map(d=>d.region)??[],              values:charts?.region?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[],  colors:c[0] },
+                { title:`Top ${filterTopN} Servicios`, labels:charts?.servicios?.slice(0,filterTopN).map(d=>trunc(d.servicio||d.cod_servicio,26))??[], values:charts?.servicios?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[], colors:c[1] },
+                { title:'Por Grupo de Edad',           labels:charts?.edad?.map(d=>d.grupo_edad)??[],                                values:charts?.edad?.map(d=>Number(d.atenciones))??[],                          colors:c[2] },
               ].map(p => (
                 <div key={p.title} style={{ height:H_BOT }}>
-                  <ChartPanel type="hbar" {...p} dark={dark} loading={loading||!p.labels.length} />
+                  <ChartPanel type="hbar" {...p} dark={dark} loading={loading||!p.labels.length}
+                    onExpand={()=>expand(p.title,'hbar',p.labels,p.values,p.colors)} />
                 </div>
               ))}
             </div>
 
-            {/* Fila 3: Plan de seguro (ancho completo) */}
+            {/* Plan de seguro */}
             <div style={{ padding:'0 12px 12px' }}>
               <div style={{ height:240 }}>
                 <ChartPanel type="donut" title="Por Plan de Seguro"
                   labels={charts?.plan?.map(d=>d.desc_plan_seguro||d.cod_plan_seguro)??[]}
                   values={charts?.plan?.map(d=>Number(d.atenciones))??[]}
-                  colors={c} dark={dark} loading={loading||!charts?.plan?.length} />
+                  colors={c} dark={dark} loading={loading||!charts?.plan?.length}
+                  onExpand={()=>expand('Por Plan de Seguro','donut',charts?.plan?.map(d=>d.desc_plan_seguro||d.cod_plan_seguro),charts?.plan?.map(d=>Number(d.atenciones)),c)} />
               </div>
             </div>
           </div>
@@ -252,11 +329,11 @@ export default function App() {
 
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'var(--bg)' }}>
-      {/* Onboarding primera visita */}
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
+      {/* Modal de expansión de gráfico (Visual prominence — UCD Ch.7) */}
+      {expandedChart && <ChartModal chart={expandedChart} dark={dark} onClose={()=>setExpandedChart(null)} />}
 
       <Sidebar active={module} onModule={setModule} collapsed={collapsed} onToggle={()=>setCollapsed(v=>!v)} airflowUrl={null} />
-
       <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden' }}>
         <Navbar dark={dark} onToggleTheme={()=>setDark(d=>!d)} status={status} />
         <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
@@ -264,71 +341,28 @@ export default function App() {
         {moduleContent()}
       </div>
 
-      {/* Footer de citas — solo visible en print */}
+      {/* Footer de citas (solo en print) */}
       <div className="print-footer-citation" style={{ display:'none' }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:20 }}>
-          <div>
-            <strong>Autores:</strong> Alejandro Seminario Medina · Sigidiego Ortega Vilela · Sergio Mena Delgado<br/>
-            <strong>Docente:</strong> Balcazar Chumacero, Oscar Eduardo &nbsp;|&nbsp; <strong>Curso:</strong> Inteligencia de Negocios &nbsp;|&nbsp; <strong>Universidad:</strong> UTP — 2025–2026
-          </div>
-          <div style={{ textAlign:'right' }}>
-            <strong>Fuente de datos:</strong> Seguro Integral de Salud (SIS) — MINSA<br/>
-            datosabiertos.gob.pe · Licencia ODC-By &nbsp;|&nbsp; github.com/seminarioA/datamart-sis
-          </div>
+        <div style={{ display:'flex', justifyContent:'space-between' }}>
+          <div><strong>Autores:</strong> Alejandro Seminario Medina · Sigidiego Ortega Vilela · Sergio Mena Delgado<br/><strong>Docente:</strong> Balcazar Chumacero, Oscar Eduardo | <strong>Curso:</strong> Inteligencia de Negocios | Universidad Tecnológica del Perú — 2025–2026</div>
+          <div style={{ textAlign:'right' }}><strong>Fuente:</strong> SIS — MINSA · datosabiertos.gob.pe · ODC-By<br/>github.com/seminarioA/datamart-sis</div>
         </div>
       </div>
 
       <style>{`
         @media (max-width:860px){ .main-row{ flex-direction:column!important; height:auto!important; } .main-row>div:first-child{ flex:none!important; height:340px; } }
         @keyframes spin{ to{ transform:rotate(360deg); } }
-
-        /* ── Print / PDF ──────────────────────────────────────────────────────── */
         @media print {
           @page { size:A4 landscape; margin:1cm 1.2cm 2.5cm 1.2cm; }
-
-          /* Ocultar sidebar, botones, nav */
           aside, .no-print, nav, button { display:none !important; }
           body, html { height:auto !important; overflow:visible !important; background:#fff !important; }
-
-          /* Colores reales en PDF */
           * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-
-          /* Quitar overflow hidden para que se vea todo */
           #root > div { overflow:visible !important; height:auto !important; }
-          #root > div > div:last-of-type { overflow:visible !important; }
-
-          /* Main row con tamaño fijo A4 */
           .main-row { height:340px !important; page-break-inside:avoid; }
           .main-row > div:first-child { flex: 0 0 48% !important; }
-
-          /* El mapa: mostrar imagen capturada, ocultar el canvas interactivo */
           .leaflet-container { display:none !important; }
           .print-map-img { display:block !important; }
-
-          /* Ocultar spinners, mostrar placeholder text */
-          div[style*="border-radius: 50%"][style*="animation"],
-          div[style*="border-radius:50%"][style*="animation"] { display:none !important; }
-
-          /* Forzar fondo blanco en panels */
-          div[style*="var(--surface)"] { background:#fff !important; border-color:#ddd !important; }
-          div[style*="var(--bg)"] { background:#f8f8f8 !important; }
-          div[style*="var(--navy)"] { color:#1a3a5c !important; }
-
-          /* Footer de citas */
-          .print-footer-citation {
-            display:block !important;
-            position:fixed; bottom:0; left:0; right:0;
-            background:#fff; border-top:1.5px solid #1a3a5c;
-            padding:6px 12px; font-size:8.5px; color:#333;
-            font-family:'Signika',sans-serif; line-height:1.5;
-          }
-
-          /* Evitar cortes de página dentro de paneles */
-          div[style*="border: 1px solid"] { page-break-inside:avoid; }
-
-          /* Reducir padding para aprovechar el A4 */
-          div[style*="padding: 6px 12px"] { padding:4px 6px !important; }
-          div[style*="padding:6px 12px"] { padding:4px 6px !important; }
+          .print-footer-citation { display:block !important; position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1.5px solid #1a3a5c; padding:6px 12px; font-size:8.5px; color:#333; font-family:'Signika',sans-serif; line-height:1.5; }
         }
       `}</style>
     </div>
