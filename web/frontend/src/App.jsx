@@ -35,6 +35,40 @@ export default function App() {
     setOnboarding(false)
   }
 
+  // Captura el mapa Leaflet como imagen antes de imprimir para que aparezca en el PDF
+  const handlePrint = async () => {
+    const mapEl = document.querySelector('.leaflet-container')
+    if (mapEl) {
+      try {
+        // Combinar todos los canvas de Leaflet en uno solo
+        const canvases = mapEl.querySelectorAll('canvas')
+        if (canvases.length > 0) {
+          const merged = document.createElement('canvas')
+          merged.width  = mapEl.offsetWidth
+          merged.height = mapEl.offsetHeight
+          const ctx = merged.getContext('2d')
+          ctx.fillStyle = '#e8e8e8'
+          ctx.fillRect(0, 0, merged.width, merged.height)
+          canvases.forEach(c => {
+            try { ctx.drawImage(c, 0, 0) } catch(_) {}
+          })
+          // Capturar también SVG overlays (popups, marcadores)
+          const mapImg = document.getElementById('map-print-img') || document.createElement('img')
+          mapImg.id  = 'map-print-img'
+          mapImg.src = merged.toDataURL('image/png')
+          mapImg.style.cssText = 'width:100%;height:100%;object-fit:cover;display:none;position:absolute;inset:0;z-index:9999'
+          mapEl.parentElement.appendChild(mapImg)
+          mapImg.classList.add('print-map-img')
+        }
+      } catch(_) {}
+    }
+    window.print()
+    // Limpiar imagen temporal después de imprimir
+    setTimeout(() => {
+      document.querySelectorAll('.print-map-img').forEach(el => el.remove())
+    }, 1000)
+  }
+
   const fetchKPIs = useCallback(async () => {
     try {
       const d = await fetch('/api/kpis').then(r=>r.json())
@@ -161,7 +195,7 @@ export default function App() {
           <div style={{ flex:1, display:'flex', flexDirection:'column', overflowY:'auto' }}>
             {/* Botón PDF */}
             <div style={{ padding:'6px 12px 0', display:'flex', justifyContent:'flex-end' }} className="no-print">
-              <button onClick={()=>window.print()}
+              <button onClick={handlePrint}
                 style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
                 ⬇ Descargar PDF
               </button>
@@ -230,23 +264,71 @@ export default function App() {
         {moduleContent()}
       </div>
 
+      {/* Footer de citas — solo visible en print */}
+      <div className="print-footer-citation" style={{ display:'none' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:20 }}>
+          <div>
+            <strong>Autores:</strong> Alejandro Seminario Medina · Sigidiego Ortega Vilela · Sergio Mena Delgado<br/>
+            <strong>Docente:</strong> Balcazar Chumacero, Oscar Eduardo &nbsp;|&nbsp; <strong>Curso:</strong> Inteligencia de Negocios &nbsp;|&nbsp; <strong>Universidad:</strong> UTP — 2025–2026
+          </div>
+          <div style={{ textAlign:'right' }}>
+            <strong>Fuente de datos:</strong> Seguro Integral de Salud (SIS) — MINSA<br/>
+            datosabiertos.gob.pe · Licencia ODC-By &nbsp;|&nbsp; github.com/seminarioA/datamart-sis
+          </div>
+        </div>
+      </div>
+
       <style>{`
         @media (max-width:860px){ .main-row{ flex-direction:column!important; height:auto!important; } .main-row>div:first-child{ flex:none!important; height:340px; } }
         @keyframes spin{ to{ transform:rotate(360deg); } }
 
         /* ── Print / PDF ──────────────────────────────────────────────────────── */
         @media print {
-          @page { size:A4 landscape; margin:1.2cm; }
-          aside, .no-print, nav { display:none !important; }
-          body, html { height:auto !important; overflow:visible !important; }
-          .main-row { height:420px !important; }
-          /* Gráficos usan 100% del ancho disponible */
-          .main-row > div:first-child { flex: 0 0 52% !important; }
-          * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-          /* Forzar colores de fondo en PDF */
-          body { background:#fff !important; color:#000 !important; }
-          [style*="var(--surface)"] { background:#fff !important; }
-          [style*="var(--bg)"] { background:#f5f5f5 !important; }
+          @page { size:A4 landscape; margin:1cm 1.2cm 2.5cm 1.2cm; }
+
+          /* Ocultar sidebar, botones, nav */
+          aside, .no-print, nav, button { display:none !important; }
+          body, html { height:auto !important; overflow:visible !important; background:#fff !important; }
+
+          /* Colores reales en PDF */
+          * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+
+          /* Quitar overflow hidden para que se vea todo */
+          #root > div { overflow:visible !important; height:auto !important; }
+          #root > div > div:last-of-type { overflow:visible !important; }
+
+          /* Main row con tamaño fijo A4 */
+          .main-row { height:340px !important; page-break-inside:avoid; }
+          .main-row > div:first-child { flex: 0 0 48% !important; }
+
+          /* El mapa: mostrar imagen capturada, ocultar el canvas interactivo */
+          .leaflet-container { display:none !important; }
+          .print-map-img { display:block !important; }
+
+          /* Ocultar spinners, mostrar placeholder text */
+          div[style*="border-radius: 50%"][style*="animation"],
+          div[style*="border-radius:50%"][style*="animation"] { display:none !important; }
+
+          /* Forzar fondo blanco en panels */
+          div[style*="var(--surface)"] { background:#fff !important; border-color:#ddd !important; }
+          div[style*="var(--bg)"] { background:#f8f8f8 !important; }
+          div[style*="var(--navy)"] { color:#1a3a5c !important; }
+
+          /* Footer de citas */
+          .print-footer-citation {
+            display:block !important;
+            position:fixed; bottom:0; left:0; right:0;
+            background:#fff; border-top:1.5px solid #1a3a5c;
+            padding:6px 12px; font-size:8.5px; color:#333;
+            font-family:'Signika',sans-serif; line-height:1.5;
+          }
+
+          /* Evitar cortes de página dentro de paneles */
+          div[style*="border: 1px solid"] { page-break-inside:avoid; }
+
+          /* Reducir padding para aprovechar el A4 */
+          div[style*="padding: 6px 12px"] { padding:4px 6px !important; }
+          div[style*="padding:6px 12px"] { padding:4px 6px !important; }
         }
       `}</style>
     </div>
