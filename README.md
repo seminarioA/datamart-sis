@@ -93,38 +93,99 @@ datamart-sis/
 
 ## Instalación y uso
 
-### 1. Clonar el repositorio
+Hay dos métodos dependiendo de tu objetivo:
+
+---
+
+### 🐳 Método A — Contenedores (recomendado para producción/demo rápida)
+
+> Solo necesitas Docker. Sin clonar código, sin instalar Python.
+> Las imágenes se publican automáticamente en [GHCR](https://ghcr.io/seminarioa/datamart-sis) en cada push a `main`.
+
+**1. Copiar el compose y el env de ejemplo**
+
+```bash
+curl -O https://raw.githubusercontent.com/seminarioA/datamart-sis/main/docker-compose.simple.yml
+curl -O https://raw.githubusercontent.com/seminarioA/datamart-sis/main/.env.example
+cp .env.example .env
+# Editar .env si quieres cambiar la contraseña de PostgreSQL
+```
+
+**2. Levantar todo**
+
+```bash
+docker compose -f docker-compose.simple.yml up -d
+```
+
+Esto descarga e inicia:
+- `postgres:16-alpine` — base de datos
+- `ghcr.io/seminarioa/datamart-sis/api:latest` — FastAPI backend
+
+**3. Abrir el dashboard**
+
+```
+http://localhost:8080
+```
+
+**4. Bajar todo**
+
+```bash
+docker compose -f docker-compose.simple.yml down          # conserva datos
+docker compose -f docker-compose.simple.yml down -v       # elimina datos también
+```
+
+---
+
+### 💻 Método B — Clonar repositorio (para desarrollo)
+
+**1. Clonar el repositorio**
 
 ```bash
 git clone https://github.com/seminarioA/datamart-sis.git
 cd datamart-sis
 ```
 
-### 2. Instalar dependencias
+**2. Levantar PostgreSQL**
 
 ```bash
+cd docker && docker compose up -d
+cd ..
+```
+
+**3. Crear entorno virtual e instalar dependencias**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Configurar variables de entorno
+**4. Configurar variables de entorno**
 
 ```bash
 cp .env.example .env
-# Editar .env con tu connection string de Supabase
+# Editar .env — DATABASE_URL apunta a localhost:5433 por defecto
 ```
 
-### 4. Ejecutar el pipeline ETL completo
+**5. Levantar el servidor de desarrollo**
 
 ```bash
-python etl/main.py --years 2017 2018 2019 2020 2021 2022 2023 2024 2025
+cd web
+DATABASE_URL=postgresql://datamart:datamart2024@localhost:5433/datamart_sis \
+  uvicorn app:app --reload --port 8080
 ```
 
-### 5. Ejecutar solo una etapa
+**6. (Opcional) Ejecutar el pipeline ELT**
 
 ```bash
-python etl/main.py --step extract --years 2023 2024
-python etl/main.py --step transform
-python etl/main.py --step load
+# Descargar datos desde el portal SIS
+python download_sis_data.py
+
+# Cargar un archivo específico (idempotente)
+DATABASE_URL=... python elt_load.py --file OPENDATA_DS_01_2019_ATENCIONES_0.zip
+
+# O vía Airflow (interfaz visual en http://localhost:8082)
+# Ver docs/ELT.md para instrucciones completas
 ```
 
 ## Archivos disponibles en el portal SIS
