@@ -128,6 +128,7 @@ function KPI({ meta, value, onClick }) {
       onClick={onClick}
       style={{
         background: 'var(--surface)', padding: '12px 14px', textAlign: 'center',
+      className: 'kpi-cell',
         cursor: onClick && !isLoading ? 'pointer' : 'default',
         transition: 'background .12s', userSelect: 'none',
       }}
