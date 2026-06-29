@@ -74,19 +74,22 @@ datamart-sis/
 
 ## Modelo dimensional (Star Schema)
 
-```
-                    DIM_TIEMPO
-                        |
-DIM_UBICACION ——— FACT_ATENCIONES_SIS ——— DIM_SERVICIO
-                        |
-        DIM_PLAN_SEGURO | DIM_NIVEL_IPRESS
-                        |
-              DIM_SEXO  |  DIM_GRUPO_EDAD
-```
+![Star Schema — DataMart SIS](docs/star_schema.png)
 
 **Tabla de hechos:** `FACT_ATENCIONES_SIS`  
 **Medidas:** `CANTIDAD_ATENCIONES` (suma de atenciones)  
 **Granularidad:** Una fila = combinación única de (año, mes, región, provincia, distrito, IPRESS, nivel, plan seguro, servicio, sexo, grupo edad)
+
+| Dimensión | PK | Descripción |
+|-----------|-----|-------------|
+| `DIM_TIEMPO` | `id_tiempo` | Año, mes, trimestre, semestre |
+| `DIM_UBICACION` | `cod_ubigeo` | Región, provincia, distrito (ubigeo 6 dígitos) |
+| `DIM_IPRESS` | `cod_ipress` | Establecimiento de salud y unidad ejecutora |
+| `DIM_NIVEL_IPRESS` | `nivel_eess` | Nivel I / II / III de complejidad |
+| `DIM_PLAN_SEGURO` | `cod_plan_seguro` | SIS Gratuito, Independiente, Emprendedor… |
+| `DIM_SERVICIO` | `cod_servicio` | Tipo de atención (Consulta Externa, CRED…) |
+| `DIM_SEXO` | `sexo` | MASCULINO / FEMENINO |
+| `DIM_GRUPO_EDAD` | `grupo_edad` | 00-04, 05-11, 12-17, 18-29, 30-59, 60+…|
 
 ## Instalación y uso
 
