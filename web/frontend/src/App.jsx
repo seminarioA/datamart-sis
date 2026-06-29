@@ -41,28 +41,26 @@ export default function App() {
 
   const closeOnboarding = () => { localStorage.setItem('visited_v1','1'); setOnboarding(false) }
 
-  // Captura mapa Leaflet antes de imprimir
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  // PDF server-side via ReportLab+matplotlib — gráficos reales sin problemas de canvas
   const handlePrint = async () => {
-    const mapEl = document.querySelector('.leaflet-container')
-    if (mapEl) {
-      try {
-        const canvases = mapEl.querySelectorAll('canvas')
-        if (canvases.length > 0) {
-          const merged = document.createElement('canvas')
-          merged.width = mapEl.offsetWidth; merged.height = mapEl.offsetHeight
-          const ctx = merged.getContext('2d')
-          ctx.fillStyle='#e8e8e8'; ctx.fillRect(0,0,merged.width,merged.height)
-          canvases.forEach(c => { try { ctx.drawImage(c,0,0) } catch(_){} })
-          const img = document.createElement('img')
-          img.id='map-print-img'; img.src=merged.toDataURL('image/png')
-          img.style.cssText='width:100%;height:100%;object-fit:cover;display:none;position:absolute;inset:0;z-index:9999'
-          img.classList.add('print-map-img')
-          mapEl.parentElement.appendChild(img)
-        }
-      } catch(_) {}
+    setPdfLoading(true)
+    try {
+      const resp = await fetch('/api/pdf')
+      if (!resp.ok) throw new Error(`Error ${resp.status}`)
+      const blob = await resp.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `DataMart_SIS_${new Date().toISOString().slice(0,10)}.pdf`
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch(e) {
+      alert('Error generando PDF: ' + e.message)
+    } finally {
+      setPdfLoading(false)
     }
-    window.print()
-    setTimeout(() => document.querySelectorAll('.print-map-img').forEach(el=>el.remove()), 1000)
   }
 
   const fetchKPIs = useCallback(async () => {
@@ -266,9 +264,9 @@ export default function App() {
                 style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color: showFilters?'#fff':'var(--navy)', background: showFilters?'var(--navy)':'var(--bg)', border:'1px solid', borderColor: showFilters?'var(--navy)':'var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
                 <SlidersHorizontal size={12}/> Filtros{filterYears.length>0||filterTopN!==12 ? ` (${filterYears.length>0?'Años ':''}${filterTopN!==12?'Top '+filterTopN:''})` : ''}
               </button>
-              <button onClick={handlePrint}
-                style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
-                ⬇ PDF
+              <button onClick={handlePrint} disabled={pdfLoading}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color: pdfLoading?'var(--muted)':'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 12px', cursor: pdfLoading?'wait':'pointer', fontFamily:"'Signika',sans-serif", opacity: pdfLoading?0.7:1 }}>
+                {pdfLoading ? '⏳ Generando PDF (~40s)…' : '⬇ Descargar PDF'}
               </button>
             </div>
 
