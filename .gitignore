@@ -11,3 +11,4 @@ sql_temp/
 cache/*.json
 web/frontend/dist/
 web/frontend/node_modules/
+# 1782696418

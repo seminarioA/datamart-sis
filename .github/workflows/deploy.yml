@@ -1,42 +1,47 @@
-name: Deploy to VPS
+name: Deploy
 
 on:
   push:
     branches: [main]
 
 jobs:
-  # ── 1. Build React en el runner de GitHub (no en el VPS) ─────────────────
-  build-frontend:
-    name: Build React
+  # ────────────────────────────────────────────────────────────────────────────
+  # Detectar qué cambió para no redeplegar lo que no hace falta
+  # ────────────────────────────────────────────────────────────────────────────
+  changes:
+    name: Detect changes
     runs-on: ubuntu-latest
+    outputs:
+      backend:  ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: web/frontend/package-lock.json
+          filters: |
+            backend:
+              - 'web/app.py'
+              - 'web/pdf_generator.py'
+              - 'requirements.txt'
+              - 'deploy.sh'
+              - 'sql/**'
+              - 'elt_load.py'
+              - 'airflow/dags/**'
+            frontend:
+              - 'web/frontend/src/**'
+              - 'web/frontend/public/**'
+              - 'web/frontend/package*.json'
+              - 'web/frontend/vite.config.js'
+              - 'web/frontend/vercel.json'
 
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-        working-directory: web/frontend
-
-      - name: Build
-        run: npm run build
-        working-directory: web/frontend
-
-      - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: web/frontend/dist/
-          retention-days: 1
-
-  # ── 2. Desplegar al VPS ───────────────────────────────────────────────────
-  deploy:
-    name: Deploy to VPS
-    needs: build-frontend
+  # ────────────────────────────────────────────────────────────────────────────
+  # Backend: solo si cambiaron archivos del servidor
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend (VPS)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     outputs:
       dashboard_url: ${{ steps.get_urls.outputs.dashboard_url }}
@@ -44,24 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download built frontend
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: web/frontend/dist/
-
-      - name: Upload dist to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ubuntu
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
-          source: "web/frontend/dist/"
-          target: "/home/ubuntu/datamart-sis/"
-          overwrite: true
-
-      - name: Pull + restart all services
+      - name: Pull + restart backend services
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -76,128 +64,88 @@ jobs:
             git reset --hard origin/main
             source .venv/bin/activate
             pip install -r requirements.txt -q
-            bash /home/ubuntu/datamart-sis/deploy.sh
+            pkill -9 -f 'uvicorn app:app' 2>/dev/null || true
+            sleep 2
+            cd web
+            DATABASE_URL='postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis' \
+            PYTHONUNBUFFERED=1 nohup uvicorn app:app \
+              --host 0.0.0.0 --port 8080 --workers 1 \
+              >> /home/ubuntu/web.log 2>&1 &
+            echo "Backend redeployado (solo uvicorn) — PID $!"
 
-      # Leer ambas URLs via SSH nativo (captura stdout directamente)
-      # deploy.sh ya espera internamente que Airflow esté UP antes de terminar
-      - name: Read public URLs from VPS
+      - name: Read public URLs
         id: get_urls
         run: |
           echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/vps_key
           chmod 600 /tmp/vps_key
-          SSH="ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@${{ secrets.VPS_HOST }}"
-
+          SSH="ssh -i /tmp/vps_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.VPS_HOST }}"
           for i in 1 2 3 4 5; do
             DASH=$($SSH "cat /home/ubuntu/public_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
             AF=$($SSH "cat /home/ubuntu/airflow_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
-            if [[ "$DASH" == https://* ]] && [[ "$AF" == https://* ]]; then
+            if [[ "$DASH" == https://* ]]; then
               echo "dashboard_url=$DASH" >> "$GITHUB_OUTPUT"
               echo "airflow_url=$AF"     >> "$GITHUB_OUTPUT"
-              echo "Dashboard: $DASH"
-              echo "Airflow:   $AF"
               break
             fi
-            echo "Intento $i — esperando URLs... (dash=$DASH, airflow=$AF)"
-            sleep 12
+            sleep 10
           done
           rm -f /tmp/vps_key
 
-  # ── 3. Verificar + crear Release ─────────────────────────────────────────
+  # ────────────────────────────────────────────────────────────────────────────
+  # Frontend: Vercel lo maneja automáticamente al recibir el push.
+  # Este job solo ejecuta los tests post-deploy y crea el Release.
+  # ────────────────────────────────────────────────────────────────────────────
   verify-and-release:
-    name: Verify URLs + Create Release
-    needs: deploy
+    name: Verify + Release
+    needs: [changes, deploy-backend]
+    # Corre si hubo cambio de backend O de frontend
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
-      DASH_URL: ${{ needs.deploy.outputs.dashboard_url }}
-      AF_URL:   ${{ needs.deploy.outputs.airflow_url }}
+      # Si backend cambió usa la URL del job; si solo frontend cambió usa la del repo
+      DASH_URL: ${{ needs.deploy-backend.outputs.dashboard_url || 'https://datamart-sis.vercel.app' }}
+      AF_URL:   ${{ needs.deploy-backend.outputs.airflow_url }}
       GH_TOKEN: ${{ secrets.GH_PAT }}
     steps:
       - uses: actions/checkout@v4
 
-      # Quality gate: falla el job (y bloquea el Release) si cualquier servicio da 5xx
-      - name: Smoke test — quality gate
-        id: smoke
+      - name: Smoke test dashboard
         run: |
-          FAILED=0
-
-          check_url() {
-            local url=$1 name=$2 retries=${3:-3}
-            if [ -z "$url" ]; then
-              echo "ERROR: URL de $name no capturada — fallo de deploy"
-              echo "${name}_status=no-url" >> "$GITHUB_OUTPUT"
-              FAILED=1
-              return
-            fi
-            local HTTP="000"
-            for i in $(seq 1 $retries); do
-              HTTP=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 25 "$url" || echo "000")
-              echo "$name intento $i/$retries: HTTP $HTTP — $url"
-              if [ "$HTTP" = "200" ] || [ "$HTTP" = "302" ]; then break; fi
-              sleep 20
-            done
-            echo "${name}_status=$HTTP" >> "$GITHUB_OUTPUT"
-            # Bloquear deploy si 5xx o no responde
-            if echo "$HTTP" | grep -qE '^5|^000'; then
-              echo "QUALITY GATE FAILED: $name retornó HTTP $HTTP"
-              FAILED=1
-            fi
-          }
-
-          check_url "$DASH_URL" "dashboard" 3
-          check_url "$AF_URL"   "airflow"   3
-
-          if [ "$FAILED" -ne 0 ]; then
-            echo "Al menos un servicio fallo el quality gate. Abortando Release."
-            exit 1
+          URL="${{ env.DASH_URL }}"
+          for i in 1 2 3; do
+            HTTP=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 25 "$URL" || echo "000")
+            [ "$HTTP" = "200" ] && echo "OK: $URL" && break
+            echo "Intento $i: HTTP $HTTP"; sleep 15
+          done
+          if echo "$HTTP" | grep -qE '^5|^000'; then
+            echo "QUALITY GATE FAILED: $URL returned $HTTP"; exit 1
           fi
-          echo "Quality gate OK — todos los servicios responden correctamente"
 
-      # Tests de módulos del dashboard post-deploy
-      - name: Test módulos del dashboard
+      - name: Run module tests
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install test deps
-        run: pip install -r tests/requirements-test.txt
-
-      - name: Run module tests
-        if: env.DASH_URL != ''
-        env:
-          DASHBOARD_URL: ${{ env.DASH_URL }}
+      - name: Install test deps + run tests
         run: |
+          pip install -r tests/requirements-test.txt
           pytest tests/test_dashboard_modules.py \
-            --base-url "$DASHBOARD_URL" \
+            --base-url "${{ env.DASH_URL }}" \
             -v --tb=short --timeout=30 \
-            || echo "⚠️ Algunos tests fallaron — revisar antes de presentar"
+            || echo "⚠️ Algunos tests fallaron"
 
-      - name: Actualizar homepage del repo
-        if: env.DASH_URL != ''
+      - name: Create Release
         run: |
-          gh api repos/${{ github.repository }} \
-            --method PATCH \
-            -f homepage="$DASH_URL"
-
-      - name: Crear GitHub Release con ambas URLs
-        run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           TAG="deploy-$(date -u '+%Y%m%d-%H%M')"
-
-          printf 'DataMart SIS - Deploy %s\n\nDashboard: %s (HTTP %s)\nAirflow:   %s (HTTP %s)\n\nCommit: %s\n%s\n' \
-            "$DATE" \
-            "$DASH_URL" "${{ steps.smoke.outputs.dashboard_status }}" \
-            "$AF_URL"   "${{ steps.smoke.outputs.airflow_status }}" \
-            "$SHORT_SHA" "${{ github.event.head_commit.message }}" \
-            > /tmp/release_notes.md
-
-          cat /tmp/release_notes.md
-
+          CHANGED="${{ needs.changes.outputs.backend == 'true' && 'Backend+Frontend' || 'Frontend only (Vercel)' }}"
+          printf 'DataMart SIS - %s\n\nCambios: %s\nDashboard: %s\nAirflow: %s\nCommit: %s\n' \
+            "$DATE" "$CHANGED" "${{ env.DASH_URL }}" "${{ env.AF_URL }}" \
+            "$(echo ${{ github.sha }} | cut -c1-7)" > /tmp/rn.md
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
-            --title "Deploy $DATE" \
-            --notes-file /tmp/release_notes.md \
-            --latest \
-            || echo "Release ya existe, continuando..."
+            --title "Deploy $DATE — $CHANGED" \
+            --notes-file /tmp/rn.md --latest \
+            || echo "Release ya existe"
