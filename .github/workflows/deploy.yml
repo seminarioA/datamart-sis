@@ -136,6 +136,20 @@ jobs:
             -v --tb=short --timeout=30 \
             || echo "⚠️ Algunos tests fallaron"
 
+
+      - name: Deploy to Vercel (frontend)
+        if: needs.changes.outputs.frontend == 'true' && env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel@latest --quiet
+          cd web/frontend
+          npm ci --legacy-peer-deps --quiet
+          npm run build
+          vercel --prod --yes --token "$VERCEL_TOKEN" 2>&1 | tail -5
+
       - name: Create Release
         run: |
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
