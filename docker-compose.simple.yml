@@ -1,0 +1,68 @@
+# Instalación simple — levanta todo desde imágenes pre-construidas.
+# Solo necesitas Docker. Sin clonar código, sin instalar Python.
+#
+# Uso:
+#   docker compose -f docker-compose.simple.yml up -d
+#   docker compose -f docker-compose.simple.yml down
+
+services:
+
+  # ── Base de datos ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: datamart
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datamart2024}
+      POSTGRES_DB: datamart_sis
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U datamart -d datamart_sis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Schema setup (corre una sola vez) ─────────────────────────────────────
+  db-init:
+    image: ghcr.io/seminarioa/datamart-sis/api:latest
+    restart: on-failure
+    environment:
+      DATABASE_URL: postgresql://datamart:${POSTGRES_PASSWORD:-datamart2024}@postgres:5432/datamart_sis
+    command: >
+      python3 -c "
+      import psycopg2, time, os
+      url = os.environ['DATABASE_URL']
+      for i in range(30):
+          try: c=psycopg2.connect(url); print('DB ready'); c.close(); break
+          except: print(f'Wait {i}...'); time.sleep(2)
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── API FastAPI ────────────────────────────────────────────────────────────
+  api:
+    image: ghcr.io/seminarioa/datamart-sis/api:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://datamart:${POSTGRES_PASSWORD:-datamart2024}@postgres:5432/datamart_sis
+    volumes:
+      - cache:/app/cache          # cache JSON persistente
+      - ./data/raw:/app/data/raw  # ZIPs del SIS (opcional para ELT)
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  pgdata:
+  cache:
