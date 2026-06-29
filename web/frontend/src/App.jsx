@@ -275,7 +275,7 @@ export default function App() {
 
             {/* Main row */}
             <div style={{ display:'flex', gap:8, height:480, padding:'6px 12px' }} className="main-row">
-              <div style={{ flex:'0 0 56%', minHeight:0 }}>
+              <div style={{ flex:'0 0 56%', minHeight:0, display:'flex', flexDirection:'column' }}>
                 <MapPanel regionData={charts?.region} dark={dark} />
                 {/* Print-only: tabla de top regiones (reemplaza mapa en PDF) */}
                 <div className="print-map-replacement" style={{ display:'none', height:'100%', background:'var(--surface)', border:'1px solid var(--border)' }}>
