@@ -93,50 +93,67 @@ datamart-sis/
 
 ## Instalación y uso
 
-Hay dos métodos dependiendo de tu objetivo:
+Ambos métodos parten del mismo `git clone`. La diferencia es qué se levanta después:
+
+| | Método A — Docker | Método B — Desarrollo local |
+|---|---|---|
+| Requiere | Docker | Python 3.12, Docker |
+| Usa | Imagen pre-construida de GHCR | Código fuente directamente |
+| Ideal para | Demo, producción, onboarding | Contribuir, modificar el código |
+
+> **¿Cómo llega la imagen a GHCR?** El workflow `.github/workflows/docker-publish.yml` la construye y publica automáticamente en cada push a `main` que modifique el backend. No hay que hacer nada manual.
 
 ---
 
-### 🐳 Método A — Contenedores (recomendado para producción/demo rápida)
+### 🐳 Método A — Contenedores desde GHCR
 
-> Solo necesitas Docker. Sin clonar código, sin instalar Python.
-> Las imágenes se publican automáticamente en [GHCR](https://ghcr.io/seminarioa/datamart-sis) en cada push a `main`.
-
-**1. Copiar el compose y el env de ejemplo**
+**1. Clonar el repositorio**
 
 ```bash
-curl -O https://raw.githubusercontent.com/seminarioA/datamart-sis/main/docker-compose.simple.yml
-curl -O https://raw.githubusercontent.com/seminarioA/datamart-sis/main/.env.example
-cp .env.example .env
-# Editar .env si quieres cambiar la contraseña de PostgreSQL
+git clone https://github.com/seminarioA/datamart-sis.git
+cd datamart-sis
 ```
 
-**2. Levantar todo**
+**2. Configurar variables de entorno**
+
+```bash
+cp .env.example .env
+# Opcional: editar .env para cambiar la contraseña de PostgreSQL
+```
+
+**3. Levantar todo con Docker**
 
 ```bash
 docker compose -f docker-compose.simple.yml up -d
 ```
 
-Esto descarga e inicia:
+Docker descarga automáticamente desde GHCR:
+- `ghcr.io/seminarioa/datamart-sis/api:latest` — FastAPI + uvicorn
 - `postgres:16-alpine` — base de datos
-- `ghcr.io/seminarioa/datamart-sis/api:latest` — FastAPI backend
 
-**3. Abrir el dashboard**
+**4. Abrir el dashboard**
 
 ```
 http://localhost:8080
 ```
 
-**4. Bajar todo**
+**5. Actualizar a la última versión**
 
 ```bash
-docker compose -f docker-compose.simple.yml down          # conserva datos
-docker compose -f docker-compose.simple.yml down -v       # elimina datos también
+docker compose -f docker-compose.simple.yml pull   # descarga imagen más reciente
+docker compose -f docker-compose.simple.yml up -d  # reinicia con la nueva imagen
+```
+
+**6. Bajar los servicios**
+
+```bash
+docker compose -f docker-compose.simple.yml down      # conserva datos
+docker compose -f docker-compose.simple.yml down -v   # elimina datos
 ```
 
 ---
 
-### 💻 Método B — Clonar repositorio (para desarrollo)
+### 💻 Método B — Desarrollo local
 
 **1. Clonar el repositorio**
 
