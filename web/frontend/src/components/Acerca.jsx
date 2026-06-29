@@ -55,27 +55,29 @@ export default function Acerca({ dark }) {
       {/* Autores */}
       <div style={card}>
         <div style={h2}>Autores</div>
-        <div style={{ display:'grid', gap:10 }}>
+        {/* Autores en fila horizontal — 3 columnas */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
           {AUTHORS.map(a => (
-            <div key={a.name} style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:36, height:36, borderRadius:'50%', background:'var(--navy)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <Users size={16} color="#fff" />
+            <div key={a.name} style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', background:'var(--bg)', borderRadius:8, padding:'16px 12px', border:'1px solid var(--border)', gap:8 }}>
+              {/* Avatar */}
+              <div style={{ width:48, height:48, borderRadius:'50%', background:'var(--navy)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 2px 8px rgba(91,111,179,.25)' }}>
+                <Users size={20} color="#fff" />
               </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:13, fontWeight:600, color:'var(--text)' }}>{a.name}</div>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:2 }}>
-                  <span style={{ fontSize:11, color:'var(--muted)' }}>Código: {a.code}</span>
-                  {a.linkedin && (
-                    <a href={a.linkedin} target="_blank" rel="noopener noreferrer"
-                      style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:'#0077b5', textDecoration:'none', fontWeight:600, transition:'opacity .15s' }}
-                      onMouseEnter={e=>e.currentTarget.style.opacity='.7'}
-                      onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#0077b5"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-                      LinkedIn
-                    </a>
-                  )}
-                </div>
+              {/* Info */}
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', lineHeight:1.3 }}>{a.name}</div>
+                <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>Código: {a.code}</div>
               </div>
+              {/* LinkedIn button */}
+              {a.linkedin && (
+                <a href={a.linkedin} target="_blank" rel="noopener noreferrer"
+                  style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, color:'#fff', textDecoration:'none', fontWeight:600, background:'#0077b5', borderRadius:4, padding:'5px 12px', transition:'opacity .15s', marginTop:'auto' }}
+                  onMouseEnter={e=>e.currentTarget.style.opacity='.85'}
+                  onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                  LinkedIn
+                </a>
+              )}
             </div>
           ))}
           <div style={{ marginTop:6, fontSize:12, color:'var(--muted)', background:'var(--bg)', padding:'8px 12px', borderRadius:4 }}>
