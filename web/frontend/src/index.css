@@ -76,3 +76,94 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Animaciones globales ─────────────────────────────────────────────────── */
+
+/* Entrada principal de módulo */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Entrada de panel individual */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0)  scale(1); }
+}
+
+/* Contador numérico */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Shimmer de skeleton loading */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* Slide down para filtros */
+@keyframes slideDown {
+  from { max-height: 0; opacity: 0; transform: translateY(-6px); }
+  to   { max-height: 200px; opacity: 1; transform: translateY(0); }
+}
+
+/* Pulse ring para botón de expand */
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 rgba(91,111,179,.4); }
+  70%  { box-shadow: 0 0 0 6px rgba(91,111,179,0); }
+  100% { box-shadow: 0 0 0 0 rgba(91,111,179,0); }
+}
+
+/* Clases de animación reutilizables */
+.anim-module {
+  animation: fadeSlideUp .28s cubic-bezier(.22,.68,0,1.2) both;
+}
+.anim-panel {
+  animation: fadeIn .25s ease both;
+}
+.filter-bar-anim {
+  animation: slideDown .22s ease both;
+  overflow: hidden;
+}
+
+/* KPI hover lift */
+.kpi-cell:hover {
+  background: var(--bg) !important;
+  box-shadow: 0 4px 16px rgba(91,111,179,.12);
+  transform: translateY(-2px);
+  transition: all .2s ease;
+  cursor: default;
+}
+.kpi-cell {
+  transition: all .2s ease;
+}
+
+/* Chart panel hover */
+.chart-panel-wrap {
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+.chart-panel-wrap:hover {
+  box-shadow: 0 6px 24px rgba(0,0,0,.08);
+  transform: translateY(-1px);
+}
+
+/* Sidebar item slide-in accent */
+.sidebar-item-active {
+  position: relative;
+  overflow: hidden;
+}
+.sidebar-item-active::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  animation: fadeIn .2s ease;
+}
+
+/* Botón expand — pulse on first appear */
+.expand-btn-new {
+  animation: pulseRing 1.5s ease 0.5s 2;
+}

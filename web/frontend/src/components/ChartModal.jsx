@@ -14,11 +14,11 @@ export default function ChartModal({ chart, dark, onClose }) {
 
   return (
     <div
-      style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,.75)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,.75)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'fadeIn .18s ease' }}
       onClick={onClose}
     >
       <div
-        style={{ width:'92vw', height:'88vh', display:'flex', flexDirection:'column', borderRadius:6, overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,.4)' }}
+        style={{ width:'92vw', height:'88vh', display:'flex', flexDirection:'column', borderRadius:6, overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,.4)', animation:'fadeSlideUp .22s cubic-bezier(.22,.68,0,1.2)' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Close bar */}

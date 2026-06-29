@@ -22,6 +22,7 @@ export default function App() {
   const [dark, setDark]            = useState(() => localStorage.getItem('theme')==='dark')
   const [collapsed, setCollapsed]  = useState(false)
   const [module, setModule]        = useState('overview')
+  const [moduleKey, setModuleKey]  = useState(0)  // triggers re-animation on switch
   const [kpis, setKpis]            = useState(null)
   const [charts, setCharts]        = useState(null)
   const [mvStatus, setMvStatus]    = useState({ ready:0, total:8 })
@@ -119,7 +120,7 @@ export default function App() {
   // Filter bar — Hick's Law: pocas opciones, simples (UCD Ch.7 Hick's Law)
   const availableYears = [...new Set((charts?.anio||[]).map(d=>String(d.anio)))].sort()
   const FilterBar = () => !showFilters ? null : (
-    <div style={{ background:'var(--surface)', borderBottom:'2px solid var(--navy)', padding:'10px 14px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }} className="no-print">
+    <div style={{ background:'var(--surface)', borderBottom:'2px solid var(--navy)', padding:'10px 14px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }} className="no-print filter-bar-anim">
       {/* Top N filter */}
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
         <span style={{ fontSize:11, color:'var(--muted)', fontWeight:600, whiteSpace:'nowrap' }}>Top N rankings:</span>
@@ -320,8 +321,8 @@ export default function App() {
                 { title:`Top ${filterTopN} Regiones`,  labels:charts?.region?.slice(0,filterTopN).map(d=>d.region)??[],              values:charts?.region?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[],  colors:c[0] },
                 { title:`Top ${filterTopN} Servicios`, labels:charts?.servicios?.slice(0,filterTopN).map(d=>trunc(d.servicio||d.cod_servicio,26))??[], values:charts?.servicios?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[], colors:c[1] },
                 { title:'Por Grupo de Edad',           labels:charts?.edad?.map(d=>d.grupo_edad)??[],                                values:charts?.edad?.map(d=>Number(d.atenciones))??[],                          colors:c[2] },
-              ].map(p => (
-                <div key={p.title} style={{ height:H_BOT }}>
+              ].map((p, i) => (
+                <div key={p.title} style={{ height:H_BOT, animationDelay:`${i*60}ms` }}>
                   <ChartPanel type="hbar" {...p} dark={dark} loading={loading||!p.labels.length}
                     onExpand={()=>expand(p.title,'hbar',p.labels,p.values,p.colors)} />
                 </div>
@@ -349,12 +350,16 @@ export default function App() {
       {/* Modal de expansión de gráfico (Visual prominence — UCD Ch.7) */}
       {expandedChart && <ChartModal chart={expandedChart} dark={dark} onClose={()=>setExpandedChart(null)} />}
 
-      <Sidebar active={module} onModule={setModule} collapsed={collapsed} onToggle={()=>setCollapsed(v=>!v)} airflowUrl={null} />
+      <Sidebar active={module}
+        onModule={m => { setModule(m); setModuleKey(k => k+1) }}
+        collapsed={collapsed} onToggle={()=>setCollapsed(v=>!v)} airflowUrl={null} />
       <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', overflow:'hidden' }}>
         <Navbar dark={dark} onToggleTheme={()=>setDark(d=>!d)} status={status} />
         <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
         <KPIStrip data={kpis} rawData={charts} />
-        {moduleContent()}
+        <div key={moduleKey} className="anim-module" style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minHeight:0 }}>
+          {moduleContent()}
+        </div>
       </div>
 
       {/* Footer de citas (solo en print) */}

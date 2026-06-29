@@ -95,7 +95,7 @@ export default function ChartPanel({ title, type='hbar', labels, values, colors,
   useEffect(() => () => { chartRef.current?.destroy() }, [])
 
   return (
-    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', display:'flex', flexDirection:'column', minHeight:0, height:'100%' }}>
+    <div className="chart-panel-wrap" style={{ background:'var(--surface)', border:'1px solid var(--border)', display:'flex', flexDirection:'column', minHeight:0, height:'100%', animation:'fadeIn .3s ease both' }}>
       {/* Header con botón de expansión (Affordance clara — libro Ch.7) */}
       <div style={{ padding:'8px 10px', fontSize:10, fontWeight:700, fontFamily:"'Montserrat',sans-serif", textTransform:'uppercase', letterSpacing:'.07em', color:'var(--navy)', borderBottom:'1px solid var(--border)', borderLeft:'3px solid var(--navy)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <span>{title}</span>
@@ -103,7 +103,7 @@ export default function ChartPanel({ title, type='hbar', labels, values, colors,
           <button
             onClick={onExpand}
             title="Expandir gráfico"
-            style={{ background:'none', border:'1px solid var(--border)', borderRadius:3, cursor:'pointer', color:'var(--muted)', padding:'2px 5px', display:'flex', alignItems:'center', lineHeight:1, transition:'all .15s' }}
+            className="expand-btn-new" style={{ background:'none', border:'1px solid var(--border)', borderRadius:3, cursor:'pointer', color:'var(--muted)', padding:'2px 5px', display:'flex', alignItems:'center', lineHeight:1, transition:'all .15s' }}
             onMouseEnter={e=>{ e.currentTarget.style.background='var(--navy)'; e.currentTarget.style.color='#fff'; e.currentTarget.style.borderColor='var(--navy)' }}
             onMouseLeave={e=>{ e.currentTarget.style.background='none'; e.currentTarget.style.color='var(--muted)'; e.currentTarget.style.borderColor='var(--border)' }}
           >
