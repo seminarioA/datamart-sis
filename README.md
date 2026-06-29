@@ -1,20 +1,9 @@
-# DataMart de Atenciones de Salud — SIS
+# DataMart SIS — Atenciones de Salud
 
-DataMart dimensional construido sobre datos abiertos del Seguro Integral de Salud (SIS) del Perú, disponibles en la [Plataforma Nacional de Datos Abiertos](https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis).
+Sistema de inteligencia de negocios sobre datos abiertos del Seguro Integral de Salud (SIS) del Perú.
+Dashboard interactivo disponible en **[datamart-sis.vercel.app](https://datamart-sis.vercel.app)**.
 
-> **Dashboard & Airflow:** URLs públicas disponibles en el último [GitHub Release](https://github.com/seminarioA/datamart-sis/releases/latest) — se actualizan automáticamente en cada deploy.
-
-## Infraestructura
-
-| Componente | Detalle |
-|------------|---------|
-| **Proveedor** | Oracle Cloud Infrastructure (OCI) — Always Free Tier |
-| **Instancia** | VM.Standard.E2.1.Micro |
-| **CPU** | 2 vCPU AMD EPYC 7J13 |
-| **RAM** | 1 GB DDR4 |
-| **Almacenamiento** | 50 GB Block Volume (SSD) |
-| **SO** | Ubuntu 24.04.4 LTS (x86_64) |
-| **Red** | Oracle VCN — acceso público via Cloudflare Tunnel (sin puertos abiertos) |
+> URLs de Airflow y estado del deploy en el último [GitHub Release](https://github.com/seminarioA/datamart-sis/releases/latest).
 
 ## Integrantes
 
@@ -22,129 +11,156 @@ DataMart dimensional construido sobre datos abiertos del Seguro Integral de Salu
 |--------|--------|
 | Seminario Medina, Alejandro Valentino | U22247454 |
 | Ortega Vilela, Sigidiego | U22323434 |
+| Mena Delgado, Sergio | U22323434 |
 
-**Docente:** Balcazar Chumacero, Oscar Eduardo  
-**Curso:** Inteligencia de Negocios  
-**Universidad:** UTP — Ingeniería de Sistemas e Informática  
+**Docente:** Balcazar Chumacero, Oscar Eduardo
+**Curso:** Inteligencia de Negocios
+**Universidad:** UTP — Ingeniería de Sistemas e Informática
 **Periodo:** 2025 — 2026
+
+## Arquitectura
+
+```
+Browser
+  |
+  +-- https://datamart-sis.vercel.app   (Vercel CDN — React SPA)
+  |         |
+  |    /api/* rewrites
+  |         |
+  +-- http://192.9.159.35:8080          (Oracle VPS — FastAPI + Airflow)
+            |
+      PostgreSQL 16 (Docker)
+            host: 170.9.4.149:5433
+            db: datamart_sis / airflow_db
+```
+
+| Componente | Detalle |
+|------------|---------|
+| Frontend | React 18 + Vite — Vercel (URL fija: datamart-sis.vercel.app) |
+| Backend API | FastAPI + uvicorn — Oracle VPS 192.9.159.35:8080 |
+| Base de datos | PostgreSQL 16 (Docker) — Oracle VPS 170.9.4.149:5433 |
+| Orquestación | Apache Airflow 2.9 — pip install, LocalExecutor |
+| Acceso público | Cloudflare Tunnel (cloudflared) — URLs en cada Release |
+| CI/CD | GitHub Actions — smart deploy (backend solo si cambia backend) |
+| Imagen Docker | ghcr.io/seminarioa/datamart-sis/api:latest — publicada en GHCR |
+
+### VPS
+
+| VPS | IP | Rol | RAM |
+|-----|-----|-----|-----|
+| App | 192.9.159.35 | FastAPI + Airflow + Cloudflared | 1 GB |
+| DB  | 170.9.4.149  | PostgreSQL 16 (Docker)          | 1 GB |
 
 ## Fuente de datos
 
 - **Entidad:** Seguro Integral de Salud (SIS) — Ministerio de Salud del Perú
 - **Portal:** https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis
 - **Licencia:** Open Data Commons Attribution License (ODC-By)
-- **Cobertura:** 2017 — 2025 (archivos anuales/semestrales en formato CSV comprimido ZIP)
+- **Cobertura:** 2017 — 2025 (archivos anuales/semestrales, ZIP/CSV)
 
-## Tecnologías utilizadas
+## Tecnologías
 
 | Capa | Herramienta |
 |------|-------------|
 | Base de datos | PostgreSQL 16 (Docker) |
-| ELT | Python 3.11 — psycopg2, COPY batches de 500K filas |
+| ELT | Python 3.12 — psycopg2, COPY batches 500K filas, idempotente |
 | Orquestación | Apache Airflow 2.9 (DAGs en `airflow/dags/`) |
-| API | FastAPI — cache 3 capas (mem → JSON disco → MV PG) |
+| API | FastAPI — cache 3 capas (memoria → JSON disco → MV PostgreSQL) |
+| PDF server-side | ReportLab + matplotlib (`/api/pdf`) |
 | Frontend | React 18 + Vite + ApexCharts + Leaflet |
-| Infraestructura | Oracle VPS Ubuntu 24.04 — CI/CD via GitHub Actions |
+| CI/CD | GitHub Actions — smart deploy por paths |
+| Contenedores | Docker + GHCR (github.com/seminarioA/datamart-sis/pkgs/container) |
 
 ## Estructura del proyecto
 
 ```
 datamart-sis/
-├── etl/
-│   ├── extract.py          # Descarga y extracción de ZIPs desde datosabiertos.gob.pe
-│   ├── transform.py        # Limpieza, normalización y construcción de dimensiones
-│   ├── load.py             # Carga batch a PostgreSQL (Supabase)
-│   └── main.py             # Orquestador principal del pipeline ETL
+├── web/
+│   ├── app.py               # FastAPI backend (cache 3 capas, MVs, PDF)
+│   ├── pdf_generator.py     # Generador PDF server-side (ReportLab)
+│   ├── frontend/            # React SPA (Vite, ApexCharts, Leaflet)
+│   └── static/              # GeoJSON Peru, logo SIS
+├── airflow/
+│   └── dags/
+│       ├── elt_sis_dag.py         # Carga incremental de ZIPs SIS
+│       └── refresh_mvs_dag.py     # Refresco hourly de vistas materializadas
 ├── sql/
-│   ├── 01_create_schema.sql    # Creación del esquema datamart_sis
-│   ├── 02_create_tables.sql    # DDL de tablas de hechos y dimensiones
-│   ├── 03_indexes.sql          # Índices para optimización de consultas
-│   └── 04_validaciones.sql     # Script de validación y pruebas de calidad
-├── tests/
-│   └── test_transform.py   # Pruebas unitarias de transformaciones
+│   ├── 01_create_schema.sql
+│   ├── 02_create_tables.sql
+│   ├── 03_indexes.sql
+│   ├── 05_staging_and_elt.sql     # fn_load_staging con COALESCE fixes
+│   └── 06_seed_dims.sql
+├── docker/
+│   └── docker-compose.yml         # PostgreSQL para desarrollo local
 ├── docs/
-│   └── modelo_estrella.md  # Documentación del modelo dimensional
-├── data/
-│   ├── raw/                # CSVs originales descargados (no versionados)
-│   └── processed/          # Datos transformados listos para carga
-├── .env.example            # Plantilla de variables de entorno
-├── requirements.txt        # Dependencias Python
-└── README.md
+│   ├── star_schema.png
+│   ├── ARQUITECTURA.md
+│   ├── CACHE.md
+│   ├── ELT.md
+│   └── CICD.md
+├── tests/
+│   └── test_dashboard_modules.py  # 24 tests de integración (pytest)
+├── Dockerfile                     # Imagen API para GHCR
+├── docker-compose.simple.yml      # Instalacion via contenedores
+├── deploy.sh                      # Script de deploy en VPS
+├── elt_load.py                    # ELT incremental por batches
+├── download_sis_data.py           # Descarga ZIPs desde portal SIS
+├── requirements.txt
+└── .env.example
 ```
 
 ## Modelo dimensional (Star Schema)
 
 ![Star Schema — DataMart SIS](docs/star_schema.png)
 
-**Tabla de hechos:** `FACT_ATENCIONES_SIS`  
-**Medidas:** `CANTIDAD_ATENCIONES` (suma de atenciones)  
-**Granularidad:** Una fila = combinación única de (año, mes, región, provincia, distrito, IPRESS, nivel, plan seguro, servicio, sexo, grupo edad)
+**Tabla de hechos:** `FACT_ATENCIONES_SIS`
+**Medida:** `CANTIDAD_ATENCIONES` — suma de atenciones por combinación dimensional
+**Granularidad:** Una fila = (año, mes, región, provincia, distrito, IPRESS, nivel, plan, servicio, sexo, grupo edad)
 
 | Dimensión | PK | Descripción |
 |-----------|-----|-------------|
 | `DIM_TIEMPO` | `id_tiempo` | Año, mes, trimestre, semestre |
 | `DIM_UBICACION` | `cod_ubigeo` | Región, provincia, distrito (ubigeo 6 dígitos) |
 | `DIM_IPRESS` | `cod_ipress` | Establecimiento de salud y unidad ejecutora |
-| `DIM_NIVEL_IPRESS` | `nivel_eess` | Nivel I / II / III de complejidad |
-| `DIM_PLAN_SEGURO` | `cod_plan_seguro` | SIS Gratuito, Independiente, Emprendedor… |
-| `DIM_SERVICIO` | `cod_servicio` | Tipo de atención (Consulta Externa, CRED…) |
+| `DIM_NIVEL_IPRESS` | `nivel_eess` | Nivel I / II / III de complejidad EESS |
+| `DIM_PLAN_SEGURO` | `cod_plan_seguro` | SIS Gratuito, Independiente, Emprendedor, Microempresa |
+| `DIM_SERVICIO` | `cod_servicio` | Tipo de atención (Consulta Externa, CRED, etc.) |
 | `DIM_SEXO` | `sexo` | MASCULINO / FEMENINO |
-| `DIM_GRUPO_EDAD` | `grupo_edad` | 00-04, 05-11, 12-17, 18-29, 30-59, 60+…|
+| `DIM_GRUPO_EDAD` | `grupo_edad` | 00-04, 05-11, 12-17, 18-29, 30-59, 60+ |
 
 ## Instalación y uso
 
-Ambos métodos parten del mismo `git clone`. La diferencia es qué se levanta después:
+Ambos métodos parten de `git clone`. La diferencia es qué se levanta después.
 
-| | Método A — Docker | Método B — Desarrollo local |
+| | Metodo A — Contenedores | Metodo B — Desarrollo local |
 |---|---|---|
 | Requiere | Docker | Python 3.12, Docker |
 | Usa | Imagen pre-construida de GHCR | Código fuente directamente |
-| Ideal para | Demo, producción, onboarding | Contribuir, modificar el código |
+| Ideal para | Demo, producción, onboarding | Contribuir, modificar código |
 
-> **¿Cómo llega la imagen a GHCR?** El workflow `.github/workflows/docker-publish.yml` la construye y publica automáticamente en cada push a `main` que modifique el backend. No hay que hacer nada manual.
+La imagen se publica automáticamente en GHCR en cada push a `main` que modifique el backend (`.github/workflows/docker-publish.yml`). No hay nada que hacer manualmente.
 
 ---
 
-### 🐳 Método A — Contenedores desde GHCR
-
-**1. Clonar el repositorio**
+### Metodo A — Contenedores desde GHCR
 
 ```bash
 git clone https://github.com/seminarioA/datamart-sis.git
 cd datamart-sis
-```
-
-**2. Configurar variables de entorno**
-
-```bash
 cp .env.example .env
-# Opcional: editar .env para cambiar la contraseña de PostgreSQL
-```
-
-**3. Levantar todo con Docker**
-
-```bash
 docker compose -f docker-compose.simple.yml up -d
 ```
 
-Docker descarga automáticamente desde GHCR:
-- `ghcr.io/seminarioa/datamart-sis/api:latest` — FastAPI + uvicorn
-- `postgres:16-alpine` — base de datos
+Abrir en `http://localhost:8080`.
 
-**4. Abrir el dashboard**
-
-```
-http://localhost:8080
-```
-
-**5. Actualizar a la última versión**
+Actualizar a la ultima version:
 
 ```bash
-docker compose -f docker-compose.simple.yml pull   # descarga imagen más reciente
-docker compose -f docker-compose.simple.yml up -d  # reinicia con la nueva imagen
+docker compose -f docker-compose.simple.yml pull
+docker compose -f docker-compose.simple.yml up -d
 ```
 
-**6. Bajar los servicios**
+Bajar los servicios:
 
 ```bash
 docker compose -f docker-compose.simple.yml down      # conserva datos
@@ -153,70 +169,52 @@ docker compose -f docker-compose.simple.yml down -v   # elimina datos
 
 ---
 
-### 💻 Método B — Desarrollo local
-
-**1. Clonar el repositorio**
+### Metodo B — Desarrollo local
 
 ```bash
 git clone https://github.com/seminarioA/datamart-sis.git
 cd datamart-sis
-```
 
-**2. Levantar PostgreSQL**
+# Base de datos
+cd docker && docker compose up -d && cd ..
 
-```bash
-cd docker && docker compose up -d
-cd ..
-```
-
-**3. Crear entorno virtual e instalar dependencias**
-
-```bash
+# Entorno Python
 python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-**4. Configurar variables de entorno**
-
-```bash
+# Variables de entorno
 cp .env.example .env
-# Editar .env — DATABASE_URL apunta a localhost:5433 por defecto
-```
 
-**5. Levantar el servidor de desarrollo**
-
-```bash
+# Servidor de desarrollo
 cd web
 DATABASE_URL=postgresql://datamart:datamart2024@localhost:5433/datamart_sis \
   uvicorn app:app --reload --port 8080
 ```
 
-**6. (Opcional) Ejecutar el pipeline ELT**
+Pipeline ELT (opcional):
 
 ```bash
-# Descargar datos desde el portal SIS
-python download_sis_data.py
-
-# Cargar un archivo específico (idempotente)
+python download_sis_data.py                                             # descarga ZIPs
 DATABASE_URL=... python elt_load.py --file OPENDATA_DS_01_2019_ATENCIONES_0.zip
-
-# O vía Airflow (interfaz visual en http://localhost:8082)
-# Ver docs/ELT.md para instrucciones completas
+# O via Airflow en http://localhost:8082 — ver docs/ELT.md
 ```
 
 ## Archivos disponibles en el portal SIS
 
-| Archivo | Periodo | Tamaño aprox. |
-|---------|---------|---------------|
-| OPENDATA_DS_01_2017_ATENCIONES_0.zip | Ene–Dic 2017 | 92 MB |
-| OPENDATA_DS_01_2018_ATENCIONES_0.zip | Ene–Dic 2018 | 94 MB |
-| OPENDATA_DS_01_2019_ATENCIONES_0.zip | Ene–Dic 2019 | 97 MB |
-| OPENDATA_DS_01_2020_ATENCIONES_0.zip | Ene–Dic 2020 | 55 MB |
-| OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip | Ene–Jun 2021 | ~70 MB |
-| OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip | Jul–Dic 2021 | ~70 MB |
-| OPENDATA_DS_01_2022_01_06_ATENCIONES_0.zip | Ene–Jun 2022 | ~80 MB |
-| OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip | Jul–Dic 2022 | ~80 MB |
-| OPENDATA_DS_01_2023_ATENCIONES.zip | Ene–Dic 2023 | ~7 MB |
-| OPENDATA_DS_01_2024_ATENCIONES.zip | Ene–Dic 2024 | ~7 MB |
-| OPENDATA_DS_01_2025_07_12_ATENCIONES.zip | Jul–Dic 2025 | ~7 MB |
+| Archivo | Periodo | Tamano ZIP |
+|---------|---------|-----------|
+| OPENDATA_DS_01_2017_ATENCIONES_0.zip | Ene–Dic 2017 | 93 MB |
+| OPENDATA_DS_01_2018_ATENCIONES_0.zip | Ene–Dic 2018 | 11 MB |
+| OPENDATA_DS_01_2019_ATENCIONES_0.zip | Ene–Dic 2019 | 98 MB |
+| OPENDATA_DS_01_2020_ATENCIONES_0.zip | Ene–Dic 2020 | 56 MB |
+| OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip | Ene–Jun 2021 | 34 MB |
+| OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip | Jul–Dic 2021 | 51 MB |
+| OPENDATA_DS_01_2022_01_06_ATENCIONES_0.zip | Ene–Jun 2022 | 126 MB |
+| OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip | Jul–Dic 2022 | 131 MB |
+| OPENDATA_DS_01_2023_01_06_ATENCIONES_0.zip | Ene–Jun 2023 | 148 MB |
+| OPENDATA_DS_01_2023_07_12_ATENCIONES_0.zip | Jul–Dic 2023 | 148 MB |
+| OPENDATA_DS_01_2024_01_06_ATENCIONES.zip | Ene–Jun 2024 | 158 MB |
+| OPENDATA_DS_01_2024_07_12_ATENCIONES.zip | Jul–Dic 2024 | 157 MB |
+| OPENDATA_DS_01_2025_01_06_ATENCIONES.zip | Ene–Jun 2025 | 168 MB |
+| OPENDATA_DS_01_2025_07_12_ATENCIONES.zip | Jul–Dic 2025 | 165 MB |
