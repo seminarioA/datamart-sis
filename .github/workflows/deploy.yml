@@ -149,6 +149,22 @@ jobs:
           npm ci --legacy-peer-deps --quiet
           npm run build
           vercel --prod --yes --token "$VERCEL_TOKEN" 2>&1 | tail -5
+          # Reasignar alias de produccion al nuevo deployment
+          TEAM="$VERCEL_ORG_ID"
+          PROJ="$VERCEL_PROJECT_ID"
+          DEPLOY_ID=$(curl -s \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=${PROJ}&teamId=${TEAM}&limit=1&target=production" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['deployments'][0]['uid'])")
+          echo "Asignando aliases a $DEPLOY_ID"
+          for ALIAS in datamart-sis.vercel.app datamart-sis-peru.vercel.app; do
+            curl -s -X POST \
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"alias\":\"${ALIAS}\"}" \
+              "https://api.vercel.com/v2/deployments/${DEPLOY_ID}/aliases?teamId=${TEAM}" \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print('  ->', d.get('alias','?'), d.get('error','OK'))"
+          done
 
       - name: Create Release
         run: |
