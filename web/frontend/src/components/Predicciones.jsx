@@ -101,8 +101,10 @@ function ForecastChart({ historico, prediccion, dark }) {
       },
       markers: { size: [4, 0, 5], strokeWidth: 0 },
       tooltip: {
+        shared: true,
         theme: dark ? 'dark' : 'light',
-        y: { formatter: v => fmtFull(v) + ' atenciones' },
+        x: { formatter: v => `Año ${v}` },
+        y: { formatter: v => v != null ? fmtFull(v) + ' atenciones' : '—' },
       },
       legend: {
         show: true, position: 'top', horizontalAlign: 'left',
@@ -207,7 +209,7 @@ export default function Predicciones({ dark }) {
       <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '8px 12px', fontSize: 11, color: 'var(--muted)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         <Info size={13} style={{ flexShrink: 0, marginTop: 1 }} />
         <span>
-          Modelo: <strong>Regresión Lineal OLS</strong> sobre datos anuales 2017–{Math.max(...fa.historico.map(d => d.anio))}. 
+          Modelo: <strong>Regresión Lineal OLS</strong> sobre datos anuales {Math.min(...fa.historico.map(d => d.anio))}–{Math.max(...fa.historico.map(d => d.anio))}.
           Las proyecciones asumen continuidad de la tendencia histórica y no incorporan cambios de política sanitaria ni eventos externos.
           IC 90%: ±1.645σ de los residuos históricos.
         </span>

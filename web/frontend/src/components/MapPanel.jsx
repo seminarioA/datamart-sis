@@ -72,7 +72,8 @@ export default function MapPanel({ regionData, dark }) {
   // Init map once — invalidateSize after 300ms so DOM has settled
   useEffect(() => {
     if (leafletRef.current || !mapRef.current) return
-    leafletRef.current = L.map(mapRef.current, { zoomControl:true, scrollWheelZoom:false })
+    leafletRef.current = L.map(mapRef.current, { zoomControl:false, scrollWheelZoom:false })
+    L.control.zoom({ position:'bottomleft' }).addTo(leafletRef.current)
     leafletRef.current.setView([-9.2, -75.0], 5)
     // Force size recalculation after mount
     setTimeout(() => leafletRef.current?.invalidateSize(), 300)
