@@ -4,28 +4,28 @@ import { fmt, fmtFull } from '../lib/format.js'
 
 const KPI_META = {
   'kpi-atenciones': {
-    label: 'Total Atenciones', accent: true,
-    tip: 'Suma de todas las prestaciones de salud registradas en el datamart. Incluye consultas, procedimientos, hospitalizaciones y emergencias de asegurados SIS.',
+    label: 'Total Atenciones', accent: true, showEvolution: true,
+    tip: 'Suma de todas las prestaciones de salud registradas en el datamart. Incluye consultas externas, procedimientos, hospitalizaciones y emergencias de asegurados SIS en todos los años cargados.',
   },
   'kpi-periodo': {
-    label: 'Periodo',
-    tip: 'Rango de años cubiertos por los datos cargados. El SIS publica datos anuales y semestrales en la Plataforma Nacional de Datos Abiertos del Perú.',
+    label: 'Periodo', showEvolution: true,
+    tip: 'Rango de años efectivamente cargados en el datamart. El SIS publica los datos en la Plataforma Nacional de Datos Abiertos del Perú (datosabiertos.gob.pe) como archivos ZIP anuales y semestrales.',
   },
   'kpi-regiones': {
     label: 'Regiones',
-    tip: 'Cantidad de regiones (departamentos) del Perú con al menos una atención registrada. El Perú tiene 25 regiones más la Provincia Constitucional del Callao.',
+    tip: 'Cantidad de regiones (departamentos) con al menos una atención registrada. El Perú tiene 25 regiones más la Provincia Constitucional del Callao (26 en total). El datamart usa el código UBIGEO de 6 dígitos para identificarlas.',
   },
   'kpi-ipress': {
     label: 'IPRESS Activas',
-    tip: 'IPRESS: Institución Prestadora de Servicios de Salud. Establecimientos (centros de salud, hospitales, clínicas) que atendieron asegurados SIS en el período.',
+    tip: 'IPRESS: Institución Prestadora de Servicios de Salud. Son los establecimientos (centros de salud, puestos de salud, hospitales, clínicas) que registraron atenciones a asegurados SIS. El nivel I corresponde a atención primaria; III a hospitales de alta complejidad.',
   },
   'kpi-servicios': {
     label: 'Tipos de Servicio',
-    tip: 'Cantidad de tipos de servicio distintos (Medicina General, Odontología, Laboratorio, etc.). Cada prestación pertenece a un servicio específico.',
+    tip: 'Cantidad de tipos de servicio distintos registrados. Ejemplos: Medicina General, Odontología, Laboratorio Clínico, Farmacia, CRED (Control del Niño Sano), Planificación Familiar. Cada atención pertenece a un único tipo de servicio.',
   },
   'kpi-planes': {
     label: 'Planes de Seguro',
-    tip: 'Modalidades de afiliación: SIS Gratuito (subsidiado), SIS Para Todos, SIS Independiente (contributivo), SIS Emprendedor, SIS Microempresa.',
+    tip: 'Modalidades de afiliación al SIS. SIS Gratuito: subsidiado para población vulnerable. SIS Para Todos / Independiente: contributivo. SIS Emprendedor y Microempresa: para trabajadores independientes y microempresas formales.',
   },
 }
 
@@ -90,7 +90,7 @@ function KPIDrawer({ meta, value, rawData, onClose }) {
           <p style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.7 }}>{meta.tip}</p>
         </div>
 
-        {anio.length > 0 && (
+        {anio.length > 0 && meta.showEvolution && (
           <div style={{ padding: '0 16px 16px', flex: 1, overflowY: 'auto' }}>
             <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, fontFamily: "'Montserrat',sans-serif" }}>
               <TrendingUp size={12} /> Evolucion Anual

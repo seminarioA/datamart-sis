@@ -16,7 +16,7 @@ import { SlidersHorizontal, X } from 'lucide-react'
 
 const CL = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
 const CD = ['#8a9fd8','#7ad5f5','#c4df6a','#f9b870','#e85fa0','#a0b2e8','#6a80c4','#5b6fb3']
-const H_BOT = 320
+
 
 export default function App() {
   const [dark, setDark]            = useState(() => localStorage.getItem('theme')==='dark')
@@ -42,27 +42,7 @@ export default function App() {
 
   const closeOnboarding = () => { localStorage.setItem('visited_v1','1'); setOnboarding(false) }
 
-  const [pdfLoading, setPdfLoading] = useState(false)
-
-  // PDF server-side via ReportLab+matplotlib — gráficos reales sin problemas de canvas
-  const handlePrint = async () => {
-    setPdfLoading(true)
-    try {
-      const resp = await fetch('/api/pdf')
-      if (!resp.ok) throw new Error(`Error ${resp.status}`)
-      const blob = await resp.blob()
-      const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
-      a.href     = url
-      a.download = `DataMart_SIS_${new Date().toISOString().slice(0,10)}.pdf`
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch(e) {
-      alert('Error generando PDF: ' + e.message)
-    } finally {
-      setPdfLoading(false)
-    }
-  }
+  const handlePrint = () => window.print()
 
   const fetchKPIs = useCallback(async () => {
     try {
@@ -119,7 +99,7 @@ export default function App() {
 
   // Filter bar — Hick's Law: pocas opciones, simples (UCD Ch.7 Hick's Law)
   const availableYears = [...new Set((charts?.anio||[]).map(d=>String(d.anio)))].sort()
-  const FilterBar = () => !showFilters ? null : (
+  const FilterBar = ({ force = false }) => (!showFilters && !force) ? null : (
     <div style={{ background:'var(--surface)', borderBottom:'2px solid var(--navy)', padding:'10px 14px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }} className="no-print filter-bar-anim">
       {/* Top N filter */}
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -179,7 +159,7 @@ export default function App() {
       case 'demographics':
         return (
           <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            <FilterBar />
+            <FilterBar force />
             <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
               <div style={{ height:340 }}>
                 <ChartPanel type="donut" title="Atenciones por Sexo"
@@ -200,7 +180,7 @@ export default function App() {
       case 'geography':
         return (
           <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            <FilterBar />
+            <FilterBar force />
             <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
               <div style={{ height:380 }}>
                 <ChartPanel type="hbar" title={`Top ${filterTopN} Regiones`}
@@ -221,7 +201,7 @@ export default function App() {
       case 'services':
         return (
           <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            <FilterBar />
+            <FilterBar force />
             <div style={{ flex:1, padding:'12px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, overflowY:'auto' }}>
               <div style={{ height:380 }}>
                 <ChartPanel type="hbar" title={`Top ${filterTopN} Servicios`}
@@ -243,7 +223,7 @@ export default function App() {
         const anioData = applyYearFilter(charts?.anio)
         return (
           <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            <FilterBar />
+            <FilterBar force />
             <div style={{ flex:1, padding:'12px', overflowY:'auto' }}>
               <div style={{ height:400 }}>
                 <ChartPanel type="line" title="Evolución de Atenciones por Año"
@@ -265,9 +245,9 @@ export default function App() {
                 style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color: showFilters?'#fff':'var(--navy)', background: showFilters?'var(--navy)':'var(--bg)', border:'1px solid', borderColor: showFilters?'var(--navy)':'var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
                 <SlidersHorizontal size={12}/> Filtros{filterYears.length>0||filterTopN!==12 ? ` (${filterYears.length>0?'Años ':''}${filterTopN!==12?'Top '+filterTopN:''})` : ''}
               </button>
-              <button onClick={handlePrint} disabled={pdfLoading}
-                style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color: pdfLoading?'var(--muted)':'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 12px', cursor: pdfLoading?'wait':'pointer', fontFamily:"'Signika',sans-serif", opacity: pdfLoading?0.7:1 }}>
-                {pdfLoading ? '⏳ Generando PDF (~40s)…' : '⬇ Descargar PDF'}
+              <button onClick={handlePrint}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
+                Imprimir / Guardar PDF
               </button>
             </div>
 
@@ -315,29 +295,15 @@ export default function App() {
               </div>
             </div>
 
-            {/* Bottom 3 charts */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, padding:'0 12px 8px' }}>
-              {[
-                { title:`Top ${filterTopN} Regiones`,  labels:charts?.region?.slice(0,filterTopN).map(d=>d.region)??[],              values:charts?.region?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[],  colors:c[0] },
-                { title:`Top ${filterTopN} Servicios`, labels:charts?.servicios?.slice(0,filterTopN).map(d=>trunc(d.servicio||d.cod_servicio,26))??[], values:charts?.servicios?.slice(0,filterTopN).map(d=>Number(d.atenciones))??[], colors:c[1] },
-                { title:'Por Grupo de Edad',           labels:charts?.edad?.map(d=>d.grupo_edad)??[],                                values:charts?.edad?.map(d=>Number(d.atenciones))??[],                          colors:c[2] },
-              ].map((p, i) => (
-                <div key={p.title} style={{ height:H_BOT, animationDelay:`${i*60}ms` }}>
-                  <ChartPanel type="hbar" {...p} dark={dark} loading={loading||!p.labels.length}
-                    onExpand={()=>expand(p.title,'hbar',p.labels,p.values,p.colors)} />
-                </div>
+            {/* Hint a módulos dedicados */}
+            <div style={{ padding:'4px 12px 12px', display:'flex', gap:8, flexWrap:'wrap' }} className="no-print">
+              {[['Geografía','geography'],['Servicios','services'],['Demografía','demographics'],['Tendencia','trends']].map(([label, id]) => (
+                <button key={id}
+                  onClick={() => { setModule(id); setModuleKey(k => k+1) }}
+                  style={{ fontSize:11, color:'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 10px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
+                  Ver {label} →
+                </button>
               ))}
-            </div>
-
-            {/* Plan de seguro */}
-            <div style={{ padding:'0 12px 12px' }}>
-              <div style={{ height:240 }}>
-                <ChartPanel type="donut" title="Por Plan de Seguro"
-                  labels={charts?.plan?.map(d=>d.desc_plan_seguro||d.cod_plan_seguro)??[]}
-                  values={charts?.plan?.map(d=>Number(d.atenciones))??[]}
-                  colors={c} dark={dark} loading={loading||!charts?.plan?.length}
-                  onExpand={()=>expand('Por Plan de Seguro','donut',charts?.plan?.map(d=>d.desc_plan_seguro||d.cod_plan_seguro),charts?.plan?.map(d=>Number(d.atenciones)),c)} />
-              </div>
             </div>
           </div>
         )

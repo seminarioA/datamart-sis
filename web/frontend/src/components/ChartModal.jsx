@@ -23,10 +23,10 @@ export default function ChartModal({ chart, dark, onClose }) {
       >
         {/* Close bar */}
         <div style={{ background:'var(--navy)', padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span style={{ color:'#fff', fontSize:12, fontFamily:"'Montserrat',sans-serif", fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em' }}>
+          <span style={{ color:'#fff', fontSize:12, fontFamily:"'Montserrat',sans-serif", fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginRight:12 }}>
             {chart.title}
           </span>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,.15)', border:'none', borderRadius:4, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:4, padding:'4px 10px', fontSize:11 }}>
+          <button onClick={onClose} style={{ background:'rgba(255,255,255,.15)', border:'none', borderRadius:4, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:4, padding:'4px 10px', fontSize:11, flexShrink:0 }}>
             <X size={13} /> Cerrar  (ESC)
           </button>
         </div>
