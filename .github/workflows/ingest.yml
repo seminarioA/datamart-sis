@@ -59,7 +59,8 @@ jobs:
             fi
 
             # Lanzar en background
-            DATABASE_URL='postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis' \
+            # DATABASE_URL NO se pasa aquí — el script usa su default hardcodeado
+            # para evitar que GitHub Actions lo maskee en el comando SSH
             nohup bash scripts/ingest_all.sh \
               >> /home/ubuntu/ingest_all.log 2>&1 &
             echo $! > /home/ubuntu/ingest_all.pid
@@ -80,7 +81,6 @@ jobs:
           script: |
             set -e
             cd /home/ubuntu/datamart-sis
-            DATABASE_URL='postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis' \
             bash scripts/ingest_all.sh 2>&1
 
       # ── Mostrar primeras líneas del log (solo background) ─────────────────
