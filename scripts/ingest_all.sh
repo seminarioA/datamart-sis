@@ -56,22 +56,43 @@ rows_in_db() {
     py_db "SELECT COALESCE(SUM(cantidad_atenciones),0) FROM datamart_sis.fact_atenciones_sis WHERE fuente_archivo='$1'" | tr -d ' \n'
 }
 
-total_in_db() {
-    py_db "SELECT COALESCE(SUM(cantidad_atenciones),0) FROM datamart_sis.fact_atenciones_sis" | tr -d ' \n'
-}
-
 rows_by_year() {
-    py_db "SELECT t.anio, SUM(f.cantidad_atenciones) AS atenciones
-           FROM datamart_sis.fact_atenciones_sis f
-           JOIN datamart_sis.dim_tiempo t ON f.id_tiempo = t.id_tiempo
-           GROUP BY t.anio ORDER BY t.anio" | \
+    # Usa la vista materializada (rapida) en lugar de un full scan de la fact table
+    py_db "SELECT anio, atenciones FROM datamart_sis.mv_por_anio ORDER BY anio" | \
     while IFS=$'\t' read -r yr cnt; do
         printf "  Anio %s: %'d atenciones\n" "$yr" "$cnt" 2>/dev/null || echo "  Anio $yr: $cnt atenciones"
     done
 }
 
+total_in_db() {
+    # Usa mv_kpis en lugar de SUM sobre 188M filas
+    py_db "SELECT total_atenciones FROM datamart_sis.mv_kpis" | tr -d ' \n'
+}
+
 check_db() {
     py_db "SELECT 1" >/dev/null 2>&1
+}
+
+create_index_fuente() {
+    log "  Creando indice en fuente_archivo (si no existe) ..."
+    "$VENV_PY" - "$DB_URL" <<'PYEOF' 2>&1
+import sys
+import psycopg2
+
+db_url = sys.argv[1]
+try:
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE INDEX IF NOT EXISTS idx_fact_fuente_archivo
+        ON datamart_sis.fact_atenciones_sis (fuente_archivo)
+    """)
+    conn.close()
+    print("  Indice idx_fact_fuente_archivo OK")
+except Exception as e:
+    print(f"  WARN: no se pudo crear indice: {e}")
+PYEOF
 }
 
 refresh_mvs() {
@@ -196,6 +217,8 @@ if ! check_db; then
     exit 1
 fi
 log "Conexion DB OK"
+
+create_index_fuente
 
 mkdir -p "$DATA_DIR" "$TMP_DIR"
 
