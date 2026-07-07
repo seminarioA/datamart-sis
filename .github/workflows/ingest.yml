@@ -1,0 +1,107 @@
+name: Ingest SIS Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Modo de ejecución'
+        required: true
+        default: 'background'
+        type: choice
+        options:
+          - background   # lanza nohup y devuelve inmediatamente
+          - foreground   # espera a que termine (timeout 6h, útil para ver logs en GH)
+
+jobs:
+  ingest:
+    name: Cargar datasets SIS al VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # 6h máx para modo foreground
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Subir script al VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 3m
+          script: |
+            set -e
+            cd /home/ubuntu/datamart-sis
+            git fetch origin main
+            git reset --hard origin/main
+            chmod +x scripts/ingest_all.sh
+            echo "Script actualizado OK"
+
+      # ── Modo background: lanza y vuelve ─────────────────────────────────
+      - name: Lanzar ingest en background
+        if: inputs.mode == 'background'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 2m
+          script: |
+            set -e
+            cd /home/ubuntu/datamart-sis
+
+            # Matar run anterior si existe
+            if [ -f /home/ubuntu/ingest_all.pid ]; then
+              OLD_PID=$(cat /home/ubuntu/ingest_all.pid)
+              kill "$OLD_PID" 2>/dev/null && echo "Run anterior (PID $OLD_PID) cancelado" || true
+              rm -f /home/ubuntu/ingest_all.pid
+            fi
+
+            # Lanzar en background
+            DATABASE_URL='postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis' \
+            nohup bash scripts/ingest_all.sh \
+              >> /home/ubuntu/ingest_all.log 2>&1 &
+            echo $! > /home/ubuntu/ingest_all.pid
+
+            echo "Ingest lanzado en background — PID $(cat /home/ubuntu/ingest_all.pid)"
+            echo "Monitorear con: tail -f /home/ubuntu/ingest_all.log"
+
+      # ── Modo foreground: espera y muestra logs ───────────────────────────
+      - name: Ejecutar ingest (foreground — espera hasta 6h)
+        if: inputs.mode == 'foreground'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 360m
+          script: |
+            set -e
+            cd /home/ubuntu/datamart-sis
+            DATABASE_URL='postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis' \
+            bash scripts/ingest_all.sh 2>&1
+
+      # ── Mostrar primeras líneas del log (solo background) ─────────────────
+      - name: Verificar que el proceso arrancó
+        if: inputs.mode == 'background'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 1m
+          script: |
+            sleep 5
+            PID=$(cat /home/ubuntu/ingest_all.pid 2>/dev/null || echo "?")
+            echo "PID del proceso: $PID"
+            if [ "$PID" != "?" ] && kill -0 "$PID" 2>/dev/null; then
+              echo "Proceso corriendo OK"
+            else
+              echo "ADVERTENCIA: proceso no encontrado (puede haber terminado muy rápido o fallado)"
+            fi
+            echo ""
+            echo "=== Últimas 20 líneas del log ==="
+            tail -20 /home/ubuntu/ingest_all.log 2>/dev/null || echo "(log vacío)"
