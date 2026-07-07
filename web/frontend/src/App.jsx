@@ -99,22 +99,24 @@ export default function App() {
 
   // Filter bar — Hick's Law: pocas opciones, simples (UCD Ch.7 Hick's Law)
   const availableYears = [...new Set((charts?.anio||[]).map(d=>String(d.anio)))].sort()
-  const FilterBar = ({ force = false }) => (!showFilters && !force) ? null : (
+  const FilterBar = ({ force = false, showTopN = true }) => (!showFilters && !force) ? null : (
     <div style={{ background:'var(--surface)', borderBottom:'2px solid var(--navy)', padding:'10px 14px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }} className="no-print filter-bar-anim">
-      {/* Top N filter */}
-      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        <span style={{ fontSize:11, color:'var(--muted)', fontWeight:600, whiteSpace:'nowrap' }}>Top N rankings:</span>
-        {[5, 10, 12, 26].map(n => (
-          <button key={n} onClick={()=>setFilterTopN(n)}
-            style={{ padding:'3px 10px', border:'1px solid', borderRadius:3, cursor:'pointer', fontSize:11, fontWeight:600,
-              background: filterTopN===n ? 'var(--navy)' : 'transparent',
-              borderColor: filterTopN===n ? 'var(--navy)' : 'var(--border)',
-              color: filterTopN===n ? '#fff' : 'var(--text)',
-            }}>
-            {n===26?'Todos':n}
-          </button>
-        ))}
-      </div>
+      {/* Top N filter — solo en módulos que usan rankings */}
+      {showTopN && (
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:11, color:'var(--muted)', fontWeight:600, whiteSpace:'nowrap' }}>Top N:</span>
+          {[5, 10, 12, 26].map(n => (
+            <button key={n} onClick={()=>setFilterTopN(n)}
+              style={{ padding:'3px 10px', border:'1px solid', borderRadius:3, cursor:'pointer', fontSize:11, fontWeight:600,
+                background: filterTopN===n ? 'var(--navy)' : 'transparent',
+                borderColor: filterTopN===n ? 'var(--navy)' : 'var(--border)',
+                color: filterTopN===n ? '#fff' : 'var(--text)',
+              }}>
+              {n===26?'Todos':n}
+            </button>
+          ))}
+        </div>
+      )}
       {/* Year filter (only if multiple years available) */}
       {availableYears.length > 1 && (
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -243,7 +245,7 @@ export default function App() {
             <div style={{ padding:'6px 12px 0', display:'flex', alignItems:'center', justifyContent:'flex-end', gap:8 }} className="no-print">
               <button onClick={()=>setShowFilters(v=>!v)}
                 style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, fontWeight:600, color: showFilters?'#fff':'var(--navy)', background: showFilters?'var(--navy)':'var(--bg)', border:'1px solid', borderColor: showFilters?'var(--navy)':'var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
-                <SlidersHorizontal size={12}/> Filtros{filterYears.length>0||filterTopN!==12 ? ` (${filterYears.length>0?'Años ':''}${filterTopN!==12?'Top '+filterTopN:''})` : ''}
+                <SlidersHorizontal size={12}/> Filtros{filterYears.length>0 ? ` (Años)` : ''}
               </button>
               <button onClick={handlePrint}
                 style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:'var(--navy)', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'5px 12px', cursor:'pointer', fontFamily:"'Signika',sans-serif" }}>
@@ -251,7 +253,7 @@ export default function App() {
               </button>
             </div>
 
-            <FilterBar />
+            <FilterBar showTopN={false} />
 
             {/* Main row */}
             <div style={{ display:'flex', gap:8, height:480, padding:'6px 12px' }} className="main-row">
