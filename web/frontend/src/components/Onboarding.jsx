@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { X, ChevronRight, ChevronLeft, LayoutDashboard, Map, TrendingUp, BookOpen, BarChart2 } from 'lucide-react'
+import { ChevronRight, ChevronLeft, LayoutDashboard, Map, TrendingUp, BookOpen, BarChart2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogPortal, DialogOverlay } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 const STEPS = [
   {
@@ -39,62 +41,77 @@ export default function Onboarding({ onClose }) {
   const S = STEPS[step]
   const Icon = S.icon
 
-  const next = () => step < STEPS.length-1 ? setStep(s=>s+1) : onClose()
-  const prev = () => setStep(s=>s-1)
+  const next = () => step < STEPS.length - 1 ? setStep(s => s + 1) : onClose()
+  const prev = () => setStep(s => s - 1)
 
-  // Cerrar con Escape
   useEffect(() => {
-    const h = e => { if (e.key==='Escape') onClose() }
+    const h = e => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [onClose])
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,.55)', backdropFilter:'blur(3px)' }}>
-      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:8, maxWidth:480, width:'90%', boxShadow:'0 20px 60px rgba(0,0,0,.3)', overflow:'hidden' }}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-xl max-w-[480px] w-[90%] shadow-2xl overflow-hidden animate-fade-slide-up">
         {/* Header */}
-        <div style={{ background:'var(--navy)', padding:'20px 24px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <img src="/sis_logo.png" alt="SIS" style={{ height:28 }} />
-            <span style={{ color:'rgba(255,255,255,.8)', fontSize:11, fontFamily:"'Montserrat',sans-serif", fontWeight:600, letterSpacing:'.05em', textTransform:'uppercase' }}>
+        <div className="bg-primary px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/sis_logo.png" alt="SIS" className="h-7" />
+            <span className="text-primary-foreground/80 text-[11px] font-heading font-semibold tracking-[.05em] uppercase">
               Guía rápida
             </span>
           </div>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,.1)', border:'none', borderRadius:4, padding:'4px 8px', color:'rgba(255,255,255,.7)', cursor:'pointer', fontSize:11 }}>
+          <Button
+            size="xs"
+            onClick={onClose}
+            className="bg-white/10 hover:bg-white/20 text-white/70 border-0"
+          >
             Saltar
-          </button>
+          </Button>
         </div>
 
-        {/* Contenido */}
-        <div style={{ padding:'28px 28px 20px' }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', width:56, height:56, background:'var(--bg)', borderRadius:12, margin:'0 auto 16px', border:'2px solid var(--navy)' }}>
-            <Icon size={24} style={{ color:'var(--navy)' }} />
+        {/* Content */}
+        <div className="px-7 pt-7 pb-5">
+          <div className="flex items-center justify-center w-14 h-14 bg-muted rounded-xl border-2 border-primary mx-auto mb-4">
+            <Icon size={24} className="text-primary" />
           </div>
-          <h2 style={{ fontFamily:"'Montserrat',sans-serif", fontWeight:700, fontSize:18, color:'var(--text)', textAlign:'center', margin:'0 0 10px' }}>{S.title}</h2>
-          <p style={{ fontSize:14, color:'var(--text)', lineHeight:1.7, textAlign:'center', margin:'0 0 16px' }}>{S.desc}</p>
-          <div style={{ background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'10px 14px', fontSize:12, color:'var(--muted)', textAlign:'center' }}>
-            💡 {S.hint}
+          <h2 className="font-heading font-bold text-lg text-foreground text-center mb-2.5">{S.title}</h2>
+          <p className="text-[14px] text-foreground/85 leading-relaxed text-center mb-4">{S.desc}</p>
+          <div className="bg-muted border border-border rounded-md px-3.5 py-2.5 text-[12px] text-muted-foreground text-center">
+            {S.hint}
           </div>
         </div>
 
         {/* Progress dots */}
-        <div style={{ display:'flex', justifyContent:'center', gap:6, paddingBottom:4 }}>
+        <div className="flex justify-center gap-1.5 pb-1">
           {STEPS.map((_, i) => (
-            <div key={i} onClick={()=>setStep(i)} style={{ width: i===step?20:8, height:8, borderRadius:4, background: i===step?'var(--navy)':'var(--border)', cursor:'pointer', transition:'all .2s' }} />
+            <button
+              key={i}
+              onClick={() => setStep(i)}
+              className="h-2 rounded-full transition-all duration-200"
+              style={{
+                width: i === step ? 20 : 8,
+                background: i === step ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+              }}
+            />
           ))}
         </div>
 
-        {/* Footer nav */}
-        <div style={{ padding:'12px 24px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <button onClick={prev} disabled={step===0}
-            style={{ display:'flex', alignItems:'center', gap:4, padding:'8px 16px', border:'1px solid var(--border)', borderRadius:4, background:'transparent', color: step===0?'var(--border)':'var(--text)', cursor: step===0?'default':'pointer', fontSize:13, fontFamily:"'Signika',sans-serif" }}>
+        {/* Footer */}
+        <div className="px-6 pt-3 pb-5 flex justify-between items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={prev}
+            disabled={step === 0}
+            className="gap-1"
+          >
             <ChevronLeft size={14} /> Anterior
-          </button>
-          <span style={{ fontSize:11, color:'var(--muted)' }}>{step+1} / {STEPS.length}</span>
-          <button onClick={next}
-            style={{ display:'flex', alignItems:'center', gap:4, padding:'8px 16px', border:'none', borderRadius:4, background:'var(--navy)', color:'#fff', cursor:'pointer', fontSize:13, fontFamily:"'Signika',sans-serif", fontWeight:600 }}>
-            {step===STEPS.length-1 ? 'Comenzar' : 'Siguiente'} <ChevronRight size={14} />
-          </button>
+          </Button>
+          <span className="text-[11px] text-muted-foreground">{step + 1} / {STEPS.length}</span>
+          <Button size="sm" onClick={next} className="gap-1">
+            {step === STEPS.length - 1 ? 'Comenzar' : 'Siguiente'} <ChevronRight size={14} />
+          </Button>
         </div>
       </div>
     </div>

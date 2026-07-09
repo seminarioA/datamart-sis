@@ -4,92 +4,116 @@ import {
   Stethoscope, CalendarDays, TrendingUp,
   BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight, Target,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
-// Módulos principales (en nav)
 export const MODULES = [
-  { id:'overview',     icon:LayoutDashboard, label:'Resumen',           desc:'Vista general del dashboard' },
-  { id:'map',          icon:Map,             label:'Mapa',              desc:'Distribución geográfica' },
-  { id:'demographics', icon:Users,           label:'Demografía',        desc:'Por sexo y grupo de edad' },
-  { id:'geography',    icon:Building2,       label:'Geografía',         desc:'Por región y nivel EESS' },
-  { id:'services',     icon:Stethoscope,     label:'Servicios',         desc:'Top servicios y planes' },
-  { id:'trends',       icon:CalendarDays,    label:'Tendencia',         desc:'Evolución anual' },
-  { id:'predicciones', icon:TrendingUp,      label:'Predicciones',      desc:'Forecasting OLS 2026-2028' },
-  { id:'acciones',     icon:Target,          label:'Acciones',          desc:'Recomendaciones para partes interesadas' },
-  { id:'glosario',     icon:BookOpen,        label:'Glosario',          desc:'Términos y definiciones' },
+  { id:'overview',     icon:LayoutDashboard, label:'Resumen',      desc:'Vista general del dashboard' },
+  { id:'map',          icon:Map,             label:'Mapa',         desc:'Distribución geográfica' },
+  { id:'demographics', icon:Users,           label:'Demografía',   desc:'Por sexo y grupo de edad' },
+  { id:'geography',    icon:Building2,       label:'Geografía',    desc:'Por región y nivel EESS' },
+  { id:'services',     icon:Stethoscope,     label:'Servicios',    desc:'Top servicios y planes' },
+  { id:'trends',       icon:CalendarDays,    label:'Tendencia',    desc:'Evolución anual' },
+  { id:'predicciones', icon:TrendingUp,      label:'Predicciones', desc:'Forecasting OLS 2026-2028' },
+  { id:'acciones',     icon:Target,          label:'Acciones',     desc:'Recomendaciones para partes interesadas' },
+  { id:'glosario',     icon:BookOpen,        label:'Glosario',     desc:'Términos y definiciones' },
 ]
 
 function NavItem({ m, active, onModule, collapsed }) {
   const Icon = m.icon
   const isActive = active === m.id
-  return (
+
+  const btn = (
     <button
       onClick={() => onModule(m.id)}
-      title={m.label}
-      style={{
-        width:'100%', display:'flex', alignItems:'center', gap:10,
-        padding: collapsed ? '10px 0' : '9px 14px',
-        justifyContent: collapsed ? 'center' : 'flex-start',
-        border:'none', cursor:'pointer',
-        background: isActive ? 'var(--navy)' : 'transparent',
-        color: isActive ? '#fff' : 'var(--muted)',
-        borderLeft: isActive ? '3px solid var(--accent)' : '3px solid transparent',
-        fontSize:12, fontFamily:"'Signika',sans-serif",
-        fontWeight: isActive ? 600 : 400,
-        transition:'background .15s, color .15s',
-        textAlign:'left', whiteSpace:'nowrap',
-      }}
-      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background='var(--bg)'; e.currentTarget.style.color='var(--text)' } }}
-      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--muted)' } }}
+      className={cn(
+        'w-full flex items-center gap-2.5 text-[12px] font-sans transition-colors duration-150 border-l-[3px]',
+        collapsed ? 'px-0 py-2.5 justify-center' : 'px-3.5 py-[9px] justify-start',
+        isActive
+          ? 'bg-primary text-primary-foreground border-l-[var(--accent-c)] font-semibold'
+          : 'bg-transparent text-muted-foreground border-l-transparent hover:bg-muted hover:text-foreground',
+      )}
     >
-      <Icon size={15} style={{ flexShrink:0 }} />
+      <Icon size={15} className="shrink-0" />
       {!collapsed && <span>{m.label}</span>}
     </button>
   )
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{btn}</TooltipTrigger>
+        <TooltipContent side="right">{m.label}</TooltipContent>
+      </Tooltip>
+    )
+  }
+  return btn
 }
 
 export default function Sidebar({ active, onModule, collapsed, onToggle, airflowUrl }) {
   const W = collapsed ? 60 : 220
   return (
-    <aside style={{
-      width:W, minWidth:W, flexShrink:0,
-      background:'var(--surface)', borderRight:'1px solid var(--border)',
-      display:'flex', flexDirection:'column',
-      height:'100vh', position:'sticky', top:0,
-      transition:'width .2s', zIndex:100, overflow:'hidden',
-    }}>
-      {/* Logo */}
-      <div style={{ padding: collapsed ? '14px 0' : '14px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent: collapsed ? 'center' : 'flex-start', gap:8, minHeight:56, flexShrink:0 }}>
-        <img src="/sis_logo.png" alt="SIS" style={{ height:26, flexShrink:0 }} />
-        {!collapsed && <span style={{ fontFamily:"'Montserrat',sans-serif", fontWeight:700, fontSize:12, color:'var(--navy)', whiteSpace:'nowrap' }}>DataMart SIS</span>}
-      </div>
+    <TooltipProvider delayDuration={300}>
+      <aside
+        style={{ width: W, minWidth: W }}
+        className="shrink-0 bg-card border-r border-border flex flex-col h-screen sticky top-0 transition-[width] duration-200 z-[100] overflow-hidden"
+      >
+        {/* Logo */}
+        <div className={cn(
+          'border-b border-border flex items-center gap-2 shrink-0 min-h-[56px]',
+          collapsed ? 'px-0 py-3.5 justify-center' : 'px-3.5 py-3.5 justify-start',
+        )}>
+          <img src="/sis_logo.png" alt="SIS" className="h-[26px] shrink-0" />
+          {!collapsed && (
+            <span className="font-heading font-bold text-[12px] text-primary whitespace-nowrap">
+              DataMart SIS
+            </span>
+          )}
+        </div>
 
-      {/* Nav principal */}
-      <nav style={{ flex:1, padding:'6px 0', overflowY:'auto' }}>
-        {MODULES.map(m => <NavItem key={m.id} m={m} active={active} onModule={onModule} collapsed={collapsed} />)}
-      </nav>
+        {/* Nav */}
+        <nav className="flex-1 py-1.5 overflow-y-auto">
+          {MODULES.map(m => (
+            <NavItem key={m.id} m={m} active={active} onModule={onModule} collapsed={collapsed} />
+          ))}
+        </nav>
 
-      {/* Footer — Airflow + Acerca De + Colapsar */}
-      <div style={{ borderTop:'1px solid var(--border)', flexShrink:0 }}>
-        {airflowUrl && (
-          <a href={airflowUrl} target="_blank" rel="noopener noreferrer" title="Apache Airflow"
-            style={{ display:'flex', alignItems:'center', gap:10, padding: collapsed ? '9px 0' : '9px 14px', justifyContent: collapsed ? 'center' : 'flex-start', color:'var(--muted)', fontSize:11, fontFamily:"'Signika',sans-serif", textDecoration:'none', whiteSpace:'nowrap' }}>
-            <ExternalLink size={13} style={{ flexShrink:0 }} />
-            {!collapsed && <span>Apache Airflow</span>}
-          </a>
-        )}
+        {/* Footer */}
+        <div className="border-t border-border shrink-0">
+          {airflowUrl && (
+            <a
+              href={airflowUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'flex items-center gap-2.5 text-muted-foreground text-[11px] hover:text-foreground transition-colors no-underline',
+                collapsed ? 'px-0 py-2.5 justify-center' : 'px-3.5 py-2.5 justify-start',
+              )}
+            >
+              <ExternalLink size={13} className="shrink-0" />
+              {!collapsed && <span>Apache Airflow</span>}
+            </a>
+          )}
 
-        {/* Acerca De — siempre al fondo, encima de Colapsar */}
-        <NavItem
-          m={{ id:'acerca', icon:Info, label:'Acerca de', desc:'Autores y stack tecnológico' }}
-          active={active} onModule={onModule} collapsed={collapsed}
-        />
+          <NavItem
+            m={{ id:'acerca', icon:Info, label:'Acerca de', desc:'Autores y stack tecnológico' }}
+            active={active} onModule={onModule} collapsed={collapsed}
+          />
 
-        <button onClick={onToggle}
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent: collapsed ? 'center' : 'flex-end', padding:'9px 14px', border:'none', cursor:'pointer', background:'transparent', color:'var(--muted)', fontSize:11 }}
-          title={collapsed ? 'Expandir' : 'Colapsar'}>
-          {collapsed ? <ChevronRight size={14}/> : <><span style={{marginRight:6}}>Colapsar</span><ChevronLeft size={14}/></>}
-        </button>
-      </div>
-    </aside>
+          <button
+            onClick={onToggle}
+            className={cn(
+              'w-full flex items-center text-muted-foreground text-[11px] hover:text-foreground transition-colors py-2.5',
+              collapsed ? 'justify-center px-0' : 'justify-end px-3.5 gap-1.5',
+            )}
+            title={collapsed ? 'Expandir' : 'Colapsar'}
+          >
+            {collapsed ? <ChevronRight size={14} /> : <><span>Colapsar</span><ChevronLeft size={14} /></>}
+          </button>
+        </div>
+      </aside>
+    </TooltipProvider>
   )
 }

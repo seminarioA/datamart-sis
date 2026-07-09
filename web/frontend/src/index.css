@@ -1,170 +1,167 @@
-/* ── Reset ─────────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* ── Tokens — Identidad SIS (Manual 2024) ────────────────────────────────── */
-:root {
-  --bg:      #f0f2f8;
-  --surface: #ffffff;
-  --border:  #d0d4e8;
-  --text:    #1a1c2e;
-  --muted:   #6b7190;
-  --navy:    #5b6fb3;
-  --navy2:   #4a5fa0;
-  --navy3:   #7a8ed0;
-  --navy4:   #a8b5e8;
-  --accent:  #dc388d;
-  --green:   #afcc46;
-  --orange:  #f6a64a;
-  --lblue:   #57c4f2;
-  --gray-sis:#c5c8c7;
-  --map1:    #dce3f6;
-  --map2:    #a8b5e8;
-  --map3:    #7a8ed0;
-  --map4:    #5b6fb3;
-  --map5:    #2a3a7c;
-  --navbar-h: 60px;
-}
+@layer base {
+  /* ── Shadcn CSS variables (HSL, no hsl() wrapper) ── */
+  :root {
+    --background:          228 24% 96%;
+    --foreground:          233 28% 14%;
+    --card:                0 0% 100%;
+    --card-foreground:     233 28% 14%;
+    --popover:             0 0% 100%;
+    --popover-foreground:  233 28% 14%;
+    --primary:             226 33% 54%;
+    --primary-foreground:  0 0% 100%;
+    --secondary:           228 30% 92%;
+    --secondary-foreground:226 33% 54%;
+    --muted:               228 24% 92%;
+    --muted-foreground:    233 15% 50%;
+    --accent:              329 63% 54%;
+    --accent-foreground:   0 0% 100%;
+    --destructive:         0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border:              228 28% 86%;
+    --input:               228 28% 86%;
+    --ring:                226 33% 54%;
+    --radius:              0.5rem;
 
-.dark {
-  --bg:      #0d0f1c;
-  --surface: #14172a;
-  --border:  #252840;
-  --text:    #e0e4f5;
-  --muted:   #8890b8;
-  --navy:    #8a9fd8;
-  --navy2:   #a0b2e8;
-  --navy3:   #6a80c4;
-  --navy4:   #4a5fa0;
-  --accent:  #e85fa0;
-  --green:   #c4df6a;
-  --orange:  #f9b870;
-  --lblue:   #7ad5f5;
-  --gray-sis:#a0a5a8;
-  --map1:    #151d3a;
-  --map2:    #1e2d5c;
-  --map3:    #2a3e7a;
-  --map4:    #3a52a0;
-  --map5:    #5b6fb3;
-}
+    /* ── Named color aliases (used by charts & Leaflet) ── */
+    --bg:       hsl(228 24% 96%);
+    --surface:  hsl(0 0% 100%);
+    --border-c: hsl(228 28% 86%);
+    --text:     hsl(233 28% 14%);
+    --muted-c:  hsl(233 15% 50%);
+    --navy:     hsl(226 33% 54%);
+    --navy2:    hsl(224 37% 46%);
+    --navy3:    hsl(226 40% 64%);
+    --navy4:    hsl(226 50% 78%);
+    --accent-c: hsl(329 63% 54%);
+    --green:    #afcc46;
+    --orange:   #f6a64a;
+    --lblue:    #57c4f2;
+    --gray-sis: #c5c8c7;
+    --map1:     #dce3f6;
+    --map2:     #a8b5e8;
+    --map3:     #7a8ed0;
+    --map4:     #5b6fb3;
+    --map5:     #2a3a7c;
+    --navbar-h: 60px;
+  }
 
-/* ── Base ──────────────────────────────────────────────────────────────────── */
-html { scroll-behavior: smooth; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Signika', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
-  min-height: 100vh;
-}
+  .dark {
+    --background:          232 36% 9%;
+    --foreground:          228 64% 92%;
+    --card:                233 34% 12%;
+    --card-foreground:     228 64% 92%;
+    --popover:             233 34% 12%;
+    --popover-foreground:  228 64% 92%;
+    --primary:             222 43% 69%;
+    --primary-foreground:  233 28% 10%;
+    --secondary:           237 29% 19%;
+    --secondary-foreground:222 43% 69%;
+    --muted:               237 29% 16%;
+    --muted-foreground:    232 23% 63%;
+    --accent:              330 72% 64%;
+    --accent-foreground:   0 0% 100%;
+    --destructive:         0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border:              237 29% 19%;
+    --input:               237 29% 19%;
+    --ring:                222 43% 69%;
 
-/* ── Leaflet dark mode ─────────────────────────────────────────────────────── */
-.dark .leaflet-tile {
-  filter: brightness(.8) invert(1) contrast(1.1) hue-rotate(200deg);
-}
-.leaflet-popup-content-wrapper {
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0,0,0,.2);
-  font-size: 12px;
-  font-family: 'Signika', sans-serif;
-  background: var(--surface);
-  color: var(--text);
-}
-.leaflet-popup-tip { display: none; }
+    --bg:       hsl(232 36% 9%);
+    --surface:  hsl(233 34% 12%);
+    --border-c: hsl(237 29% 19%);
+    --text:     hsl(228 64% 92%);
+    --muted-c:  hsl(232 23% 63%);
+    --navy:     hsl(222 43% 69%);
+    --navy2:    hsl(222 48% 76%);
+    --navy3:    hsl(222 35% 58%);
+    --navy4:    hsl(222 28% 46%);
+    --accent-c: hsl(330 72% 64%);
+    --map1:     #151d3a;
+    --map2:     #1e2d5c;
+    --map3:     #2a3e7a;
+    --map4:     #3a52a0;
+    --map5:     #5b6fb3;
+  }
 
-/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-/* ── Animaciones globales ─────────────────────────────────────────────────── */
-
-/* Entrada principal de módulo */
-@keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Entrada de panel individual */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px) scale(0.99); }
-  to   { opacity: 1; transform: translateY(0)  scale(1); }
-}
-
-/* Contador numérico */
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* Shimmer de skeleton loading */
-@keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
+  * { @apply border-border; box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Signika', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
 }
 
-/* Slide down para filtros */
-@keyframes slideDown {
-  from { max-height: 0; opacity: 0; transform: translateY(-6px); }
-  to   { max-height: 200px; opacity: 1; transform: translateY(0); }
+@layer components {
+  /* Leaflet dark mode */
+  .dark .leaflet-tile {
+    filter: brightness(.8) invert(1) contrast(1.1) hue-rotate(200deg);
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 4px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.2);
+    font-size: 12px;
+    font-family: 'Signika', sans-serif;
+    background: var(--surface);
+    color: var(--text);
+  }
+  .leaflet-popup-tip { display: none; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+
+  /* KPI hover */
+  .kpi-cell { @apply transition-all duration-200; }
+  .kpi-cell:hover {
+    @apply bg-muted shadow-md -translate-y-0.5;
+    cursor: default;
+  }
+
+  /* Chart panel hover */
+  .chart-panel-wrap { @apply transition-all duration-200; }
+  .chart-panel-wrap:hover { @apply shadow-lg -translate-y-px; }
+
+  /* Sidebar active accent bar */
+  .sidebar-item-active { @apply relative overflow-hidden; }
+  .sidebar-item-active::after {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent-c)] animate-fade-in;
+  }
 }
 
-/* Pulse ring para botón de expand */
-@keyframes pulseRing {
-  0%   { box-shadow: 0 0 0 0 rgba(91,111,179,.4); }
-  70%  { box-shadow: 0 0 0 6px rgba(91,111,179,0); }
-  100% { box-shadow: 0 0 0 0 rgba(91,111,179,0); }
-}
+@layer utilities {
+  /* Print */
+  @media print {
+    @page { size: A4 landscape; margin: 1cm 1.2cm 2.8cm 1.2cm; }
+    aside, .no-print, nav, button { display: none !important; }
+    body, html { height: auto !important; overflow: visible !important; background: #fff !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    #root > div { overflow: visible !important; height: auto !important; }
+    .main-row { height: 320px !important; page-break-inside: avoid; }
+    .main-row > div:first-child { flex: 0 0 45% !important; position: relative; }
+    .leaflet-container { display: none !important; }
+    .print-map-replacement { display: flex !important; flex-direction: column; height: 320px !important; overflow: hidden; }
+    .print-footer-citation {
+      display: block !important;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 2px solid #1a3a5c;
+      padding: 5px 14px; font-size: 8px; color: #333;
+      font-family: 'Signika', sans-serif; line-height: 1.6;
+    }
+  }
 
-/* Clases de animación reutilizables */
-.anim-module {
-  animation: fadeSlideUp .28s cubic-bezier(.22,.68,0,1.2) both;
+  @media (max-width: 860px) {
+    .main-row { flex-direction: column !important; height: auto !important; }
+    .main-row > div:first-child { flex: none !important; height: 340px; }
+  }
+  @media (max-width: 1100px) { .kpi-strip { grid-template-columns: repeat(3,1fr) !important; } }
+  @media (max-width: 540px)  { .kpi-strip { grid-template-columns: repeat(2,1fr) !important; } }
 }
-.anim-panel {
-  animation: fadeIn .25s ease both;
-}
-.filter-bar-anim {
-  animation: slideDown .22s ease both;
-  overflow: hidden;
-}
-
-/* KPI hover lift */
-.kpi-cell:hover {
-  background: var(--bg) !important;
-  box-shadow: 0 4px 16px rgba(91,111,179,.12);
-  transform: translateY(-2px);
-  transition: all .2s ease;
-  cursor: default;
-}
-.kpi-cell {
-  transition: all .2s ease;
-}
-
-/* Chart panel hover */
-.chart-panel-wrap {
-  transition: box-shadow .2s ease, transform .2s ease;
-}
-.chart-panel-wrap:hover {
-  box-shadow: 0 6px 24px rgba(0,0,0,.08);
-  transform: translateY(-1px);
-}
-
-/* Sidebar item slide-in accent */
-.sidebar-item-active {
-  position: relative;
-  overflow: hidden;
-}
-.sidebar-item-active::after {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--accent);
-  animation: fadeIn .2s ease;
-}
-
-/* Botón expand — pulse on first appear */
-.expand-btn-new {
-  animation: pulseRing 1.5s ease 0.5s 2;
-}
-/* 1782697705 */

@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react'
 import ApexCharts from 'apexcharts'
 import { fmt, fmtFull, trunc } from '../lib/format.js'
 import { Maximize2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 const fmtAxis = n => {
   const v = Number(n)
@@ -18,7 +19,6 @@ function buildOpts(type, labels, values, colors, dark, expanded) {
   const grid = dark ? '#252840' : '#d8dced'
   const tick = dark ? '#8890b8' : '#6b7190'
   const colArr = Array.isArray(colors) ? colors : [colors]
-  // Aumentar font y barHeight cuando está expandido
   const labelFontSize = expanded ? '13px' : '10px'
   const valFontSize  = expanded ? '12px' : '10px'
 
@@ -29,7 +29,7 @@ function buildOpts(type, labels, values, colors, dark, expanded) {
       series: values,
       labels,
       colors: colArr.length >= values.length ? colArr : CL,
-      dataLabels: { enabled:true, style:{ fontSize: expanded?'14px':'11px', fontFamily:"'Signika', sans-serif" }, dropShadow:{ enabled:false }, formatter: (val) => val.toFixed(1)+'%' },
+      dataLabels: { enabled:true, style:{ fontSize: expanded?'14px':'11px', fontFamily:"'Signika', sans-serif" }, dropShadow:{ enabled:false }, formatter: val => val.toFixed(1)+'%' },
       legend: { show:true, position:'bottom', fontSize: expanded?'13px':'11px', fontFamily:"'Signika', sans-serif", labels:{ colors:tick } },
       tooltip: { theme:dark?'dark':'light', y:{ formatter: v => fmtFull(v)+' atenciones' } },
       plotOptions: { pie: { donut:{ size:'60%' } } },
@@ -95,30 +95,27 @@ export default function ChartPanel({ title, type='hbar', labels, values, colors,
   useEffect(() => () => { chartRef.current?.destroy() }, [])
 
   return (
-    <div className="chart-panel-wrap" style={{ background:'var(--surface)', border:'1px solid var(--border)', display:'flex', flexDirection:'column', minHeight:0, height:'100%', animation:'fadeIn .3s ease both' }}>
-      {/* Header con botón de expansión (Affordance clara — libro Ch.7) */}
-      <div style={{ padding:'8px 10px', fontSize:10, fontWeight:700, fontFamily:"'Montserrat',sans-serif", textTransform:'uppercase', letterSpacing:'.07em', color:'var(--navy)', borderBottom:'1px solid var(--border)', borderLeft:'3px solid var(--navy)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <span>{title}</span>
+    <div className="chart-panel-wrap bg-card border border-border flex flex-col min-h-0 h-full animate-fade-in rounded-sm overflow-hidden">
+      <div className="flex items-center justify-between px-2.5 py-2 shrink-0 border-b border-border border-l-[3px] border-l-primary">
+        <span className="font-heading text-[10px] font-bold uppercase tracking-[.07em] text-primary">{title}</span>
         {onExpand && !loading && labels?.length > 0 && (
           <button
             onClick={onExpand}
             title="Expandir gráfico"
-            className="expand-btn-new" style={{ background:'none', border:'1px solid var(--border)', borderRadius:3, cursor:'pointer', color:'var(--muted)', padding:'2px 5px', display:'flex', alignItems:'center', lineHeight:1, transition:'all .15s' }}
-            onMouseEnter={e=>{ e.currentTarget.style.background='var(--navy)'; e.currentTarget.style.color='#fff'; e.currentTarget.style.borderColor='var(--navy)' }}
-            onMouseLeave={e=>{ e.currentTarget.style.background='none'; e.currentTarget.style.color='var(--muted)'; e.currentTarget.style.borderColor='var(--border)' }}
+            className="border border-border rounded text-muted-foreground p-1 flex items-center transition-colors hover:bg-primary hover:text-primary-foreground hover:border-primary"
           >
             <Maximize2 size={11} />
           </button>
         )}
       </div>
-      <div style={{ flex:1, padding:8, minHeight:0, position:'relative' }}>
+      <div className="flex-1 p-2 min-h-0 relative">
         {loading ? (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', flexDirection:'column', gap:8 }}>
-            <div style={{ width:28, height:28, border:'3px solid var(--border)', borderTopColor:'var(--navy)', borderRadius:'50%', animation:'spin .7s linear infinite' }} />
-            <span style={{ fontSize:10, color:'var(--muted)' }}>Cargando…</span>
+          <div className="flex flex-col items-center justify-center h-full gap-2">
+            <div className="w-7 h-7 border-[3px] border-border border-t-primary rounded-full animate-spin-slow" />
+            <span className="text-[10px] text-muted-foreground">Cargando…</span>
           </div>
         ) : (
-          <div ref={elRef} style={{ width:'100%', height:'100%' }} />
+          <div ref={elRef} className="w-full h-full" />
         )}
       </div>
     </div>

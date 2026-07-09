@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react'
-import ChartPanel from './ChartPanel.jsx'
 import { X } from 'lucide-react'
+import ChartPanel from './ChartPanel.jsx'
+import { Button } from '@/components/ui/button'
 
 export default function ChartModal({ chart, dark, onClose }) {
   if (!chart) return null
 
-  // Cerrar con Escape
   useEffect(() => {
     const h = e => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', h)
@@ -14,24 +14,26 @@ export default function ChartModal({ chart, dark, onClose }) {
 
   return (
     <div
-      style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,.75)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:20, animation:'fadeIn .18s ease' }}
+      className="fixed inset-0 z-[2000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-5 animate-fade-in"
       onClick={onClose}
     >
       <div
-        style={{ width:'92vw', height:'88vh', display:'flex', flexDirection:'column', borderRadius:6, overflow:'hidden', boxShadow:'0 24px 80px rgba(0,0,0,.4)', animation:'fadeSlideUp .22s cubic-bezier(.22,.68,0,1.2)' }}
+        className="w-[92vw] h-[88vh] flex flex-col rounded-lg overflow-hidden shadow-2xl animate-fade-slide-up"
         onClick={e => e.stopPropagation()}
       >
-        {/* Close bar */}
-        <div style={{ background:'var(--navy)', padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span style={{ color:'#fff', fontSize:12, fontFamily:"'Montserrat',sans-serif", fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginRight:12 }}>
+        <div className="bg-primary px-4 py-2.5 flex items-center justify-between shrink-0">
+          <span className="text-primary-foreground font-heading font-bold text-xs uppercase tracking-[.07em] truncate mr-3">
             {chart.title}
           </span>
-          <button onClick={onClose} style={{ background:'rgba(255,255,255,.15)', border:'none', borderRadius:4, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:4, padding:'4px 10px', fontSize:11, flexShrink:0 }}>
-            <X size={13} /> Cerrar  (ESC)
-          </button>
+          <Button
+            onClick={onClose}
+            size="xs"
+            className="bg-white/15 hover:bg-white/25 text-white border-0 shrink-0"
+          >
+            <X size={13} /> Cerrar (ESC)
+          </Button>
         </div>
-        {/* Chart full size */}
-        <div style={{ flex:1, minHeight:0 }}>
+        <div className="flex-1 min-h-0">
           <ChartPanel {...chart} dark={dark} loading={false} expanded />
         </div>
       </div>
