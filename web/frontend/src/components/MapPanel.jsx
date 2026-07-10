@@ -37,22 +37,48 @@ function buildLookup(regionRows) {
 
 function RegionCard({ info, onClose }) {
   if (!info) return null
+  const rows = [
+    ['Atenciones', fmtFull(info.atenciones)],
+    ['% del total', (info.pct * 100).toFixed(1) + ' %'],
+    ['IPRESS', info.ipress ? fmtFull(info.ipress) : '—'],
+  ]
   return (
-    <div style={{ position:'absolute', top:10, left:10, zIndex:800, background:'var(--surface)', border:'1px solid var(--border)', minWidth:180, boxShadow:'0 4px 16px rgba(0,0,0,.12)', borderRadius:4 }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px 4px', borderBottom:'1px solid var(--border)', borderLeft:'3px solid var(--navy)' }}>
-        <span style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'.04em', color:'var(--text)' }}>{info.name}</span>
-        <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--muted)', fontSize:14 }}>×</button>
+    <div style={{
+      position: 'absolute', top: 12, left: 12, zIndex: 800,
+      background: 'var(--surface)',
+      border: '1px solid var(--border-c)',
+      minWidth: 190,
+      boxShadow: '0 4px 20px hsl(var(--primary) / .12), 0 1px 4px hsl(var(--foreground) / .06)',
+      borderRadius: 12,
+      overflow: 'hidden',
+      fontFamily: "'Signika', sans-serif",
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '7px 10px 6px',
+        borderBottom: '1px solid var(--border-c)',
+        borderLeft: '3px solid var(--navy)',
+        background: 'hsl(var(--muted) / .4)',
+      }}>
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text)' }}>
+          {info.name}
+        </span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-c)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
       </div>
-      <div style={{ padding:'6px 8px', display:'grid', gap:4 }}>
-        {[['Atenciones',fmtFull(info.atenciones)],['% del total',(info.pct*100).toFixed(1)+' %'],['IPRESS',info.ipress?fmtFull(info.ipress):'—']].map(([l,v])=>(
-          <div key={l} style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
-            <span style={{ fontSize:10, color:'var(--muted)' }}>{l}</span>
-            <span style={{ fontSize:11, fontWeight:600, color:'var(--text)' }}>{v}</span>
+      <div style={{ padding: '8px 10px', display: 'grid', gap: 5 }}>
+        {rows.map(([l, v]) => (
+          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 10, color: 'var(--muted-c)' }}>{l}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{v}</span>
           </div>
         ))}
-        <div style={{ display:'flex', justifyContent:'space-between', gap:12 }}>
-          <span style={{ fontSize:10, color:'var(--muted)' }}>Ranking</span>
-          <span style={{ background:'var(--navy)', color:'#fff', fontSize:10, fontWeight:700, padding:'1px 6px', borderRadius:3 }}>#{info.rank}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 10, color: 'var(--muted-c)' }}>Ranking</span>
+          <span style={{
+            background: 'var(--navy)', color: '#fff',
+            fontSize: 10, fontWeight: 700,
+            padding: '2px 7px', borderRadius: 6,
+          }}>#{info.rank}</span>
         </div>
       </div>
     </div>
@@ -133,7 +159,7 @@ export default function MapPanel({ regionData, dark }) {
     const legend = L.control({ position:'bottomright' })
     legend.onAdd = () => {
       const el = L.DomUtil.create('div')
-      el.style.cssText='background:var(--surface);border:1px solid var(--border);padding:6px 8px;font-size:10px;line-height:1.9;color:var(--text);font-family:Signika,sans-serif'
+      el.style.cssText='background:var(--surface);border:1px solid var(--border-c);border-radius:8px;padding:7px 10px;font-size:10px;line-height:2;color:var(--text);font-family:Signika,sans-serif;box-shadow:0 2px 10px hsl(var(--primary)/.08)'
       const stops = dark ? MAP_STOPS_DARK : MAP_STOPS_LIGHT
       el.innerHTML = '<div style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px">Atenciones</div>'+
         ['0–20 %','20–40 %','40–60 %','60–80 %','80–100 %'].map((l,i)=>

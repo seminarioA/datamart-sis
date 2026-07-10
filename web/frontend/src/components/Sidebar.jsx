@@ -50,7 +50,7 @@ export default function Sidebar({ active, onModule, collapsed, onToggle, airflow
     <TooltipProvider delayDuration={200}>
       <aside
         style={{ width: W, minWidth: W }}
-        className="shrink-0 sticky top-3 z-[100] overflow-hidden transition-[width] duration-200 flex flex-col glass rounded-2xl m-3 h-[calc(100vh-1.5rem)]"
+        className="shrink-0 z-[100] overflow-hidden transition-[width] duration-200 flex flex-col glass rounded-2xl h-full"
       >
         {/* Logo */}
         <div className={cn(

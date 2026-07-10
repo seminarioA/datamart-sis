@@ -12,7 +12,7 @@ import Glosario     from './components/Glosario.jsx'
 import Acciones     from './components/Acciones.jsx'
 import Onboarding   from './components/Onboarding.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { SlidersHorizontal, X, Map, Stethoscope, Users, TrendingUp, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -158,10 +158,8 @@ export default function App() {
 
       case 'map':
         return (
-          <div className="flex-1 p-3 overflow-hidden">
-            <div className="h-[calc(100vh-175px)] flex flex-col">
-              <MapPanel regionData={charts?.region} dark={dark} />
-            </div>
+          <div className="flex-1 p-3 overflow-hidden flex flex-col min-h-0">
+            <MapPanel regionData={charts?.region} dark={dark} />
           </div>
         )
 
@@ -335,15 +333,23 @@ export default function App() {
             </div>
 
             {/* Quick nav */}
-            <div className="no-print px-3 py-3 flex gap-2 flex-wrap">
-              {[['Geografía','geography'],['Servicios','services'],['Demografía','demographics'],['Tendencia','trends']].map(([label, id]) => (
+            <div className="no-print px-3 pb-3 flex gap-2 flex-wrap">
+              {[
+                ['Geografía',   'geography',    Map],
+                ['Servicios',   'services',     Stethoscope],
+                ['Demografía',  'demographics', Users],
+                ['Tendencia',   'trends',       TrendingUp],
+              ].map(([label, id, Icon]) => (
                 <Button
                   key={id}
                   size="xs"
                   variant="outline"
                   onClick={() => { setModule(id); setModuleKey(k => k + 1) }}
+                  className="gap-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5"
                 >
-                  Ver {label} →
+                  <Icon size={11} />
+                  {label}
+                  <ArrowRight size={10} />
                 </Button>
               ))}
             </div>
@@ -353,7 +359,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
+    <div className="flex h-screen overflow-hidden p-3 gap-3">
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
       {expandedChart && <ChartModal chart={expandedChart} dark={dark} onClose={() => setExpandedChart(null)} />}
 
@@ -365,13 +371,16 @@ export default function App() {
         airflowUrl={null}
       />
 
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-hidden min-h-0">
         <Navbar dark={dark} onToggleTheme={() => setDark(d => !d)} status={status} />
-        <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
-        {/* KPI strip gets a transparent background so the page gradient shows */}
-        <KPIStrip data={kpis} rawData={charts} />
-        <div key={moduleKey} className="animate-fade-slide-up flex-1 flex flex-col overflow-hidden min-h-0">
-          {moduleContent()}
+
+        {/* Main content island */}
+        <div className="flex-1 glass rounded-2xl flex flex-col overflow-hidden min-h-0">
+          <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
+          <KPIStrip data={kpis} rawData={charts} />
+          <div key={moduleKey} className="animate-fade-slide-up flex-1 flex flex-col overflow-hidden min-h-0">
+            {moduleContent()}
+          </div>
         </div>
       </div>
 

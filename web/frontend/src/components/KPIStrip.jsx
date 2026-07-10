@@ -41,7 +41,7 @@ function KPICell({ meta, value, onClick }) {
         className="kpi-cell bg-card px-3.5 py-3 text-center select-none"
         style={{ cursor: onClick && !isLoading ? 'pointer' : 'default' }}
       >
-        <div className="flex items-center justify-center gap-1 font-heading text-[10px] font-bold uppercase tracking-[.07em] text-muted-foreground">
+        <div className="flex items-center justify-center gap-1 font-heading text-[9.5px] font-bold uppercase tracking-[.04em] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
           {meta.label}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -141,7 +141,7 @@ export default function KPIStrip({ data, rawData }) {
   ]
   return (
     <>
-      <div className="kpi-strip grid grid-cols-6 gap-2 px-4 py-3">
+      <div className="kpi-strip grid grid-cols-6 gap-2 px-4 py-3 border-b border-border/40">
         {kpis.map(k => {
           const meta = KPI_META[k.id]
           return (
