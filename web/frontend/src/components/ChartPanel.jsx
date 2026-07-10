@@ -95,8 +95,8 @@ export default function ChartPanel({ title, type='hbar', labels, values, colors,
   useEffect(() => () => { chartRef.current?.destroy() }, [])
 
   return (
-    <div className="chart-panel-wrap bg-card border border-border flex flex-col min-h-0 h-full animate-fade-in rounded-sm overflow-hidden">
-      <div className="flex items-center justify-between px-2.5 py-2 shrink-0 border-b border-border border-l-[3px] border-l-primary">
+    <div className="chart-panel-wrap">
+      <div className="flex items-center justify-between px-3 py-2.5 shrink-0 border-b border-border/60 border-l-[3px] border-l-primary rounded-tl-[inherit]">
         <span className="font-heading text-[10px] font-bold uppercase tracking-[.07em] text-primary">{title}</span>
         {onExpand && !loading && labels?.length > 0 && (
           <button

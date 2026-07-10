@@ -99,7 +99,7 @@ export default function App() {
   const FilterBar = ({ force = false, showTopN = true }) => {
     if (!showFilters && !force) return null
     return (
-      <div className="no-print filter-bar-anim bg-card border-b-2 border-primary px-3.5 py-2.5 flex items-center flex-wrap gap-3">
+      <div className="no-print filter-bar-anim glass border-b border-border/50 px-4 py-2.5 flex items-center flex-wrap gap-3">
         {showTopN && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground font-semibold whitespace-nowrap">Top N:</span>
@@ -353,7 +353,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
       {expandedChart && <ChartModal chart={expandedChart} dark={dark} onClose={() => setExpandedChart(null)} />}
 
@@ -368,6 +368,7 @@ export default function App() {
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
         <Navbar dark={dark} onToggleTheme={() => setDark(d => !d)} status={status} />
         <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
+        {/* KPI strip gets a transparent background so the page gradient shows */}
         <KPIStrip data={kpis} rawData={charts} />
         <div key={moduleKey} className="animate-fade-slide-up flex-1 flex flex-col overflow-hidden min-h-0">
           {moduleContent()}

@@ -5,8 +5,6 @@ import {
   BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight, Target,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
 export const MODULES = [
@@ -17,7 +15,7 @@ export const MODULES = [
   { id:'services',     icon:Stethoscope,     label:'Servicios',    desc:'Top servicios y planes' },
   { id:'trends',       icon:CalendarDays,    label:'Tendencia',    desc:'Evolución anual' },
   { id:'predicciones', icon:TrendingUp,      label:'Predicciones', desc:'Forecasting OLS 2026-2028' },
-  { id:'acciones',     icon:Target,          label:'Acciones',     desc:'Recomendaciones para partes interesadas' },
+  { id:'acciones',     icon:Target,          label:'Acciones',     desc:'Recomendaciones' },
   { id:'glosario',     icon:BookOpen,        label:'Glosario',     desc:'Términos y definiciones' },
 ]
 
@@ -28,15 +26,9 @@ function NavItem({ m, active, onModule, collapsed }) {
   const btn = (
     <button
       onClick={() => onModule(m.id)}
-      className={cn(
-        'w-full flex items-center gap-2.5 text-[12px] font-sans transition-colors duration-150 border-l-[3px]',
-        collapsed ? 'px-0 py-2.5 justify-center' : 'px-3.5 py-[9px] justify-start',
-        isActive
-          ? 'bg-primary text-primary-foreground border-l-[var(--accent-c)] font-semibold'
-          : 'bg-transparent text-muted-foreground border-l-transparent hover:bg-muted hover:text-foreground',
-      )}
+      className={cn('nav-pill', isActive && 'active', collapsed && 'collapsed')}
     >
-      <Icon size={15} className="shrink-0" />
+      <Icon size={15} style={{ flexShrink: 0 }} />
       {!collapsed && <span>{m.label}</span>}
     </button>
   )
@@ -53,64 +45,62 @@ function NavItem({ m, active, onModule, collapsed }) {
 }
 
 export default function Sidebar({ active, onModule, collapsed, onToggle, airflowUrl }) {
-  const W = collapsed ? 60 : 220
+  const W = collapsed ? 64 : 224
   return (
-    <TooltipProvider delayDuration={300}>
+    <TooltipProvider delayDuration={200}>
       <aside
         style={{ width: W, minWidth: W }}
-        className="shrink-0 bg-card border-r border-border flex flex-col h-screen sticky top-0 transition-[width] duration-200 z-[100] overflow-hidden"
+        className="shrink-0 h-screen sticky top-0 z-[100] overflow-hidden transition-[width] duration-200 flex flex-col glass"
       >
         {/* Logo */}
         <div className={cn(
-          'border-b border-border flex items-center gap-2 shrink-0 min-h-[56px]',
-          collapsed ? 'px-0 py-3.5 justify-center' : 'px-3.5 py-3.5 justify-start',
+          'flex items-center gap-2.5 shrink-0 py-4 min-h-[60px]',
+          collapsed ? 'justify-center px-0' : 'px-4',
         )}>
-          <img src="/sis_logo.png" alt="SIS" className="h-[26px] shrink-0" />
+          <img src="/sis_logo.png" alt="SIS" className="h-7 shrink-0" />
           {!collapsed && (
-            <span className="font-heading font-bold text-[12px] text-primary whitespace-nowrap">
+            <span className="font-heading font-bold text-[13px] text-primary whitespace-nowrap tracking-tight">
               DataMart SIS
             </span>
           )}
         </div>
 
+        <div className="mx-3 h-px bg-border/60 shrink-0" />
+
         {/* Nav */}
-        <nav className="flex-1 py-1.5 overflow-y-auto">
+        <nav className="flex-1 p-2 overflow-y-auto space-y-0.5">
           {MODULES.map(m => (
             <NavItem key={m.id} m={m} active={active} onModule={onModule} collapsed={collapsed} />
           ))}
         </nav>
 
+        <div className="mx-3 h-px bg-border/60 shrink-0" />
+
         {/* Footer */}
-        <div className="border-t border-border shrink-0">
+        <div className="p-2 space-y-0.5">
           {airflowUrl && (
             <a
-              href={airflowUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                'flex items-center gap-2.5 text-muted-foreground text-[11px] hover:text-foreground transition-colors no-underline',
-                collapsed ? 'px-0 py-2.5 justify-center' : 'px-3.5 py-2.5 justify-start',
-              )}
+              href={airflowUrl} target="_blank" rel="noopener noreferrer"
+              className={cn('nav-pill no-underline', collapsed && 'collapsed')}
             >
-              <ExternalLink size={13} className="shrink-0" />
+              <ExternalLink size={13} style={{ flexShrink: 0 }} />
               {!collapsed && <span>Apache Airflow</span>}
             </a>
           )}
 
           <NavItem
-            m={{ id:'acerca', icon:Info, label:'Acerca de', desc:'Autores y stack tecnológico' }}
+            m={{ id:'acerca', icon:Info, label:'Acerca de', desc:'Autores y stack' }}
             active={active} onModule={onModule} collapsed={collapsed}
           />
 
           <button
             onClick={onToggle}
-            className={cn(
-              'w-full flex items-center text-muted-foreground text-[11px] hover:text-foreground transition-colors py-2.5',
-              collapsed ? 'justify-center px-0' : 'justify-end px-3.5 gap-1.5',
-            )}
+            className={cn('nav-pill w-full', collapsed ? 'collapsed justify-center' : 'justify-end gap-1.5')}
             title={collapsed ? 'Expandir' : 'Colapsar'}
           >
-            {collapsed ? <ChevronRight size={14} /> : <><span>Colapsar</span><ChevronLeft size={14} /></>}
+            {collapsed
+              ? <ChevronRight size={14} />
+              : <><span className="text-[11px]">Colapsar</span><ChevronLeft size={14} /></>}
           </button>
         </div>
       </aside>

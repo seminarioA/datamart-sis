@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 @layer base {
-  /* ── Shadcn CSS variables (HSL, no hsl() wrapper) ── */
   :root {
-    --background:          228 24% 96%;
+    /* Shadcn HSL tokens */
+    --background:          228 30% 94%;
     --foreground:          233 28% 14%;
     --card:                0 0% 100%;
     --card-foreground:     233 28% 14%;
@@ -15,21 +15,21 @@
     --primary-foreground:  0 0% 100%;
     --secondary:           228 30% 92%;
     --secondary-foreground:226 33% 54%;
-    --muted:               228 24% 92%;
+    --muted:               228 24% 90%;
     --muted-foreground:    233 15% 50%;
     --accent:              329 63% 54%;
     --accent-foreground:   0 0% 100%;
     --destructive:         0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border:              228 28% 86%;
-    --input:               228 28% 86%;
+    --border:              228 22% 88%;
+    --input:               228 22% 88%;
     --ring:                226 33% 54%;
-    --radius:              0.5rem;
+    --radius:              1rem;
+    --glass:               228 40% 98%;
 
-    /* ── Named color aliases (used by charts & Leaflet) ── */
-    --bg:       hsl(228 24% 96%);
+    --bg:       hsl(228 30% 94%);
     --surface:  hsl(0 0% 100%);
-    --border-c: hsl(228 28% 86%);
+    --border-c: hsl(228 22% 88%);
     --text:     hsl(233 28% 14%);
     --muted-c:  hsl(233 15% 50%);
     --navy:     hsl(226 33% 54%);
@@ -41,71 +41,161 @@
     --orange:   #f6a64a;
     --lblue:    #57c4f2;
     --gray-sis: #c5c8c7;
-    --map1:     #dce3f6;
-    --map2:     #a8b5e8;
-    --map3:     #7a8ed0;
-    --map4:     #5b6fb3;
-    --map5:     #2a3a7c;
-    --navbar-h: 60px;
+    --map1: #dce3f6; --map2: #a8b5e8; --map3: #7a8ed0;
+    --map4: #5b6fb3; --map5: #2a3a7c;
+    --navbar-h: 62px;
   }
 
   .dark {
-    --background:          232 36% 9%;
-    --foreground:          228 64% 92%;
-    --card:                233 34% 12%;
-    --card-foreground:     228 64% 92%;
-    --popover:             233 34% 12%;
-    --popover-foreground:  228 64% 92%;
+    --background:          232 36% 8%;
+    --foreground:          228 60% 92%;
+    --card:                233 30% 13%;
+    --card-foreground:     228 60% 92%;
+    --popover:             233 30% 13%;
+    --popover-foreground:  228 60% 92%;
     --primary:             222 43% 69%;
     --primary-foreground:  233 28% 10%;
-    --secondary:           237 29% 19%;
+    --secondary:           237 25% 18%;
     --secondary-foreground:222 43% 69%;
-    --muted:               237 29% 16%;
-    --muted-foreground:    232 23% 63%;
+    --muted:               237 25% 16%;
+    --muted-foreground:    232 23% 60%;
     --accent:              330 72% 64%;
     --accent-foreground:   0 0% 100%;
     --destructive:         0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border:              237 29% 19%;
-    --input:               237 29% 19%;
+    --border:              237 22% 20%;
+    --input:               237 22% 20%;
     --ring:                222 43% 69%;
+    --glass:               233 30% 16%;
 
-    --bg:       hsl(232 36% 9%);
-    --surface:  hsl(233 34% 12%);
-    --border-c: hsl(237 29% 19%);
-    --text:     hsl(228 64% 92%);
-    --muted-c:  hsl(232 23% 63%);
+    --bg:       hsl(232 36% 8%);
+    --surface:  hsl(233 30% 13%);
+    --border-c: hsl(237 22% 20%);
+    --text:     hsl(228 60% 92%);
+    --muted-c:  hsl(232 23% 60%);
     --navy:     hsl(222 43% 69%);
     --navy2:    hsl(222 48% 76%);
     --navy3:    hsl(222 35% 58%);
     --navy4:    hsl(222 28% 46%);
     --accent-c: hsl(330 72% 64%);
-    --map1:     #151d3a;
-    --map2:     #1e2d5c;
-    --map3:     #2a3e7a;
-    --map4:     #3a52a0;
-    --map5:     #5b6fb3;
+    --map1: #151d3a; --map2: #1e2d5c; --map3: #2a3e7a;
+    --map4: #3a52a0; --map5: #5b6fb3;
   }
 
-  * { @apply border-border; box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-family: 'Signika', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     line-height: 1.5;
     min-height: 100vh;
+    background: linear-gradient(135deg,
+      hsl(228 40% 91%) 0%,
+      hsl(226 35% 93%) 45%,
+      hsl(275 20% 92%) 100%);
   }
+  .dark body { background: hsl(232 36% 8%); }
 }
 
 @layer components {
-  /* Leaflet dark mode */
+  /* ── Glass island ───────────────────────────────────────────── */
+  .glass {
+    background: rgba(255,255,255,.72);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.60);
+    box-shadow: 0 4px 24px rgba(91,111,179,.10), 0 1px 4px rgba(0,0,0,.05);
+  }
+  .dark .glass {
+    background: rgba(20,23,42,.65);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    border: 1px solid rgba(255,255,255,.07);
+    box-shadow: 0 4px 24px rgba(0,0,0,.4);
+  }
+
+  /* ── Opaque island (chart panels, KPI cells, cards) ─────────── */
+  .island {
+    background: hsl(var(--card));
+    border-radius: 1rem;
+    border: 1px solid hsl(var(--border) / .6);
+    box-shadow: 0 2px 16px rgba(91,111,179,.07), 0 1px 3px rgba(0,0,0,.04);
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .island:hover {
+    box-shadow: 0 6px 28px rgba(91,111,179,.13), 0 2px 8px rgba(0,0,0,.06);
+    transform: translateY(-1px);
+  }
+  .dark .island {
+    box-shadow: 0 2px 16px rgba(0,0,0,.3);
+  }
+  .dark .island:hover {
+    box-shadow: 0 6px 28px rgba(0,0,0,.45);
+  }
+
+  /* ── Pill nav item ──────────────────────────────────────────── */
+  .nav-pill {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    border-radius: 0.75rem;
+    padding: 9px 12px;
+    border: none;
+    cursor: pointer;
+    color: hsl(var(--muted-foreground));
+    background: transparent;
+    font-family: 'Signika', sans-serif;
+    transition: background .15s, color .15s;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .nav-pill:hover {
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+  }
+  .nav-pill.active {
+    background: hsl(var(--foreground));
+    color: hsl(var(--background));
+    font-weight: 600;
+    box-shadow: 0 2px 12px rgba(0,0,0,.18);
+  }
+  /* collapsed variant */
+  .nav-pill.collapsed {
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  /* ── KPI cell ───────────────────────────────────────────────── */
+  .kpi-cell {
+    @apply island p-4 text-center select-none cursor-pointer;
+  }
+  .kpi-cell:hover {
+    box-shadow: 0 8px 28px rgba(91,111,179,.16);
+    transform: translateY(-2px);
+  }
+
+  /* ── Chart panel wrap ───────────────────────────────────────── */
+  .chart-panel-wrap {
+    @apply island flex flex-col min-h-0 h-full overflow-hidden animate-fade-in;
+  }
+
+  /* ── Filter bar ─────────────────────────────────────────────── */
+  .filter-bar-anim { animation: slide-down .22s ease both; overflow: hidden; }
+  @keyframes slide-down {
+    from { max-height: 0; opacity: 0; }
+    to   { max-height: 200px; opacity: 1; }
+  }
+
+  /* ── Leaflet ────────────────────────────────────────────────── */
   .dark .leaflet-tile {
     filter: brightness(.8) invert(1) contrast(1.1) hue-rotate(200deg);
   }
   .leaflet-popup-content-wrapper {
-    border-radius: 4px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.2);
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,.15) !important;
     font-size: 12px;
     font-family: 'Signika', sans-serif;
     background: var(--surface);
@@ -113,31 +203,33 @@
   }
   .leaflet-popup-tip { display: none; }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  /* ── Scrollbar ──────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
-
-  /* KPI hover */
-  .kpi-cell { @apply transition-all duration-200; }
-  .kpi-cell:hover {
-    @apply bg-muted shadow-md -translate-y-0.5;
-    cursor: default;
-  }
-
-  /* Chart panel hover */
-  .chart-panel-wrap { @apply transition-all duration-200; }
-  .chart-panel-wrap:hover { @apply shadow-lg -translate-y-px; }
-
-  /* Sidebar active accent bar */
-  .sidebar-item-active { @apply relative overflow-hidden; }
-  .sidebar-item-active::after {
-    content: '';
-    @apply absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent-c)] animate-fade-in;
-  }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9999px; }
 }
 
 @layer utilities {
+  @keyframes fade-slide-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px) scale(.99); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: .4; }
+  }
+  .animate-fade-slide-up { animation: fade-slide-up .28s cubic-bezier(.22,.68,0,1.2) both; }
+  .animate-fade-in       { animation: fade-in .25s ease both; }
+  .animate-spin-slow     { animation: spin .7s linear infinite; }
+  .animate-pulse-kpi     { animation: pulse 1.4s ease-in-out infinite; }
+
   /* Print */
   @media print {
     @page { size: A4 landscape; margin: 1cm 1.2cm 2.8cm 1.2cm; }
@@ -146,15 +238,12 @@
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     #root > div { overflow: visible !important; height: auto !important; }
     .main-row { height: 320px !important; page-break-inside: avoid; }
-    .main-row > div:first-child { flex: 0 0 45% !important; position: relative; }
     .leaflet-container { display: none !important; }
-    .print-map-replacement { display: flex !important; flex-direction: column; height: 320px !important; overflow: hidden; }
+    .print-map-replacement { display: flex !important; flex-direction: column; height: 320px !important; }
     .print-footer-citation {
-      display: block !important;
-      position: fixed; bottom: 0; left: 0; right: 0;
+      display: block !important; position: fixed; bottom: 0; left: 0; right: 0;
       background: #fff; border-top: 2px solid #1a3a5c;
-      padding: 5px 14px; font-size: 8px; color: #333;
-      font-family: 'Signika', sans-serif; line-height: 1.6;
+      padding: 5px 14px; font-size: 8px; color: #333; line-height: 1.6;
     }
   }
 

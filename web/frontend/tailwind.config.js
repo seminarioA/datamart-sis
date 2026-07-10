@@ -39,6 +39,7 @@ export default {
           DEFAULT:    'hsl(var(--popover))',
           foreground: 'hsl(var(--popover-foreground))',
         },
+        glass: 'hsl(var(--glass))',
         sis: {
           navy:   '#5b6fb3',
           navy2:  '#4a5fa0',
@@ -50,13 +51,30 @@ export default {
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg:   'var(--radius)',
+        md:   'calc(var(--radius) - 4px)',
+        sm:   'calc(var(--radius) - 8px)',
+        xl:   'calc(var(--radius) + 4px)',
+        '2xl':'calc(var(--radius) + 8px)',
+        '3xl':'calc(var(--radius) + 16px)',
       },
       fontFamily: {
-        sans: ["'Signika'", 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans:    ["'Signika'", 'ui-sans-serif', 'system-ui', 'sans-serif'],
         heading: ["'Montserrat'", 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
+      backdropBlur: {
+        xs: '2px',
+        sm: '6px',
+        md: '12px',
+        lg: '20px',
+        xl: '32px',
+      },
+      boxShadow: {
+        glass:   '0 8px 32px 0 rgba(91,111,179,.12)',
+        'glass-dark': '0 8px 32px 0 rgba(0,0,0,.35)',
+        island:  '0 4px 24px rgba(91,111,179,.10), 0 1px 4px rgba(0,0,0,.06)',
+        'island-hover': '0 8px 32px rgba(91,111,179,.18), 0 2px 8px rgba(0,0,0,.08)',
+        kpi:     '0 2px 12px rgba(91,111,179,.08)',
       },
       keyframes: {
         'fade-slide-up': {
@@ -67,18 +85,15 @@ export default {
           from: { opacity: '0', transform: 'translateY(8px) scale(0.99)' },
           to:   { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
-        shimmer: {
-          '0%':   { backgroundPosition: '-200% center' },
-          '100%': { backgroundPosition:  '200% center' },
-        },
         'slide-down': {
           from: { maxHeight: '0', opacity: '0' },
           to:   { maxHeight: '200px', opacity: '1' },
         },
-        spin: { to: { transform: 'rotate(360deg)' } },
-        pulse: {
-          '0%,100%': { opacity: '1' },
-          '50%':     { opacity: '.4' },
+        spin:  { to: { transform: 'rotate(360deg)' } },
+        pulse: { '0%,100%': { opacity: '1' }, '50%': { opacity: '.4' } },
+        float: {
+          '0%,100%': { transform: 'translateY(0)' },
+          '50%':     { transform: 'translateY(-4px)' },
         },
       },
       animation: {
@@ -87,6 +102,7 @@ export default {
         'slide-down':    'slide-down .22s ease both',
         'spin-slow':     'spin .7s linear infinite',
         pulse:           'pulse 1.4s ease-in-out infinite',
+        float:           'float 3s ease-in-out infinite',
       },
     },
   },

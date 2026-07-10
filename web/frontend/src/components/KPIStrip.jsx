@@ -141,7 +141,7 @@ export default function KPIStrip({ data, rawData }) {
   ]
   return (
     <>
-      <div className="kpi-strip grid grid-cols-6 bg-border gap-px border-b border-border">
+      <div className="kpi-strip grid grid-cols-6 gap-2 px-4 py-3">
         {kpis.map(k => {
           const meta = KPI_META[k.id]
           return (
