@@ -12,7 +12,8 @@ from airflow.operators.bash import BashOperator
 
 DATAMART_DIR = "/home/ubuntu/datamart-sis"
 VENV_PY = f"{DATAMART_DIR}/.venv/bin/python"
-DB_URL  = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis"
+import os
+DB_URL = os.environ.get("DATABASE_URL", "")
 
 SIS_FILES = [
     "OPENDATA_DS_01_2017_ATENCIONES_0.zip",

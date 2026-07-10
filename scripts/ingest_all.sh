@@ -19,7 +19,7 @@ DATAMART_DIR="${DATAMART_DIR:-/home/ubuntu/datamart-sis}"
 DATA_DIR="$DATAMART_DIR/data/raw"
 TMP_DIR="$DATA_DIR/_tmp"
 VENV_PY="$DATAMART_DIR/.venv/bin/python"
-DB_URL="${DATABASE_URL:-postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis}"
+DB_URL="${DATABASE_URL:?DATABASE_URL must be set}"
 BASE_URL="https://www.datosabiertos.gob.pe/sites/default/files"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36"
 

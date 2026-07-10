@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: datamart_sis
       POSTGRES_USER: datamart
-      POSTGRES_PASSWORD: FTNIdAQSBTZ5zloaSGl11L4
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5433:5432"
     volumes:

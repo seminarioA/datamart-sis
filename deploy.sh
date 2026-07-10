@@ -6,11 +6,11 @@ set -e
 
 log() { echo "[deploy $(date +%H:%M:%S)] $*"; }
 
-# Configuración — DB en VPS vieja
+# Configuración — DB en VPS vieja (credenciales via entorno, nunca hardcodeadas)
+: "${DATABASE_URL:?DATABASE_URL must be set}"
+: "${DB_PASS:?DB_PASS must be set}"
 DB_HOST=170.9.4.149
 DB_PORT=5433
-DB_PASS=FTNIdAQSBTZ5zloaSGl11L4
-DATABASE_URL="postgresql://datamart:${DB_PASS}@${DB_HOST}:${DB_PORT}/datamart_sis"
 AIRFLOW_DB_URL="postgresql+psycopg2://datamart:${DB_PASS}@${DB_HOST}:${DB_PORT}/airflow_db"
 
 # ── 0. Setup anti-OOM: swap + swappiness (idempotente) ──────────────────────

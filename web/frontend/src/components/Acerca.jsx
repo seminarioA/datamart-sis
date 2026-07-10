@@ -16,94 +16,89 @@ const AUTHORS = [
   { name:'Sergio Mena Delgado',         code:'U22323434', linkedin:'https://www.linkedin.com/in/sergio-delgado-mena-358087287/' },
 ]
 
-export default function Acerca({ dark }) {
-  const card = {
-    background:'var(--surface)', border:'1px solid var(--border)',
-    borderRadius:4, padding:'16px 20px', marginBottom:8,
-  }
-  const h2 = {
-    fontSize:10, fontWeight:700, fontFamily:"'Montserrat',sans-serif",
-    textTransform:'uppercase', letterSpacing:'.08em',
-    color:'var(--navy)', marginBottom:12, borderLeft:'3px solid var(--navy)',
-    paddingLeft:8,
-  }
-
+function SectionTitle({ children }) {
   return (
-    <div style={{ flex:1, overflowY:'auto', padding:'12px 20px 24px', display:'flex', flexDirection:'column', gap:8 }}>
+    <p className="text-[10px] font-bold font-heading uppercase tracking-[.07em] text-primary mb-3">
+      {children}
+    </p>
+  )
+}
 
-      {/* Proyecto */}
-      <div style={card}>
-        <div style={h2}>Sobre el proyecto</div>
-        <p style={{ fontSize:13, color:'var(--text)', lineHeight:1.7, margin:0 }}>
-          DataMart SIS es un sistema de inteligencia de negocios construido sobre datos abiertos del
-          <strong> Seguro Integral de Salud (SIS)</strong> del Ministerio de Salud del Perú.
+export default function Acerca() {
+  return (
+    <div className="flex-1 overflow-y-auto px-5 pb-6 pt-3 flex flex-col gap-3 min-h-0">
+
+      <div className="island p-5">
+        <SectionTitle>Sobre el proyecto</SectionTitle>
+        <p className="text-[13px] text-foreground leading-relaxed">
+          DataMart SIS es un sistema de inteligencia de negocios construido sobre datos abiertos del{' '}
+          <strong>Seguro Integral de Salud (SIS)</strong> del Ministerio de Salud del Perú.
           Procesa más de <strong>14 millones de registros</strong> de atenciones de salud (2017–2025)
           y los presenta en un dashboard interactivo con análisis predictivo.
         </p>
-        <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap' }}>
+        <div className="flex gap-2 mt-4 flex-wrap">
           <a href="https://github.com/seminarioA/datamart-sis" target="_blank" rel="noopener noreferrer"
-            style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'var(--navy)', textDecoration:'none', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'6px 12px', fontWeight:600 }}>
+            className="inline-flex items-center gap-1.5 text-[12px] text-primary font-semibold no-underline border border-border/60 rounded-lg px-3 py-1.5 bg-muted/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors">
             ↗ Ver en GitHub
           </a>
           <a href="https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis" target="_blank" rel="noopener noreferrer"
-            style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'var(--navy)', textDecoration:'none', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:4, padding:'6px 12px', fontWeight:600 }}>
-            <Database size={14} /> Datos Abiertos MINSA
+            className="inline-flex items-center gap-1.5 text-[12px] text-primary font-semibold no-underline border border-border/60 rounded-lg px-3 py-1.5 bg-muted/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors">
+            <Database size={13} /> Datos Abiertos MINSA
           </a>
         </div>
       </div>
 
-      {/* Autores */}
-      <div style={card}>
-        <div style={h2}>Autores</div>
-        {/* Autores en fila horizontal — 3 columnas */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
+      <div className="island p-5">
+        <SectionTitle>Autores</SectionTitle>
+        <div className="grid grid-cols-3 gap-3">
           {AUTHORS.map(a => (
-            <div key={a.name} style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', background:'var(--bg)', borderRadius:8, padding:'16px 12px', border:'1px solid var(--border)', gap:8 }}>
-              {/* Avatar */}
-              <div style={{ width:48, height:48, borderRadius:'50%', background:'var(--navy)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 2px 8px rgba(91,111,179,.25)' }}>
-                <Users size={20} color="#fff" />
+            <div key={a.name}
+                 className="flex flex-col items-center text-center gap-2 bg-muted/30 rounded-xl p-4 border border-border/40">
+              <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center shrink-0"
+                   style={{ boxShadow: '0 2px 8px hsl(var(--primary) / .25)' }}>
+                <Users size={18} className="text-primary-foreground" />
               </div>
-              {/* Info */}
               <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', lineHeight:1.3 }}>{a.name}</div>
-                <div style={{ fontSize:11, color:'var(--muted)', marginTop:3 }}>Código: {a.code}</div>
+                <div className="text-[13px] font-bold text-foreground leading-snug">{a.name}</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Código: {a.code}</div>
               </div>
-              {/* LinkedIn button */}
               {a.linkedin && (
                 <a href={a.linkedin} target="_blank" rel="noopener noreferrer"
-                  style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:11, color:'#fff', textDecoration:'none', fontWeight:600, background:'#0077b5', borderRadius:4, padding:'5px 12px', transition:'opacity .15s', marginTop:'auto' }}
-                  onMouseEnter={e=>e.currentTarget.style.opacity='.85'}
-                  onMouseLeave={e=>e.currentTarget.style.opacity='1'}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                   className="inline-flex items-center gap-1.5 text-[11px] text-white font-semibold no-underline rounded px-3 py-1 mt-auto transition-opacity hover:opacity-85"
+                   style={{ background: '#0077b5' }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff">
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  </svg>
                   LinkedIn
                 </a>
               )}
             </div>
           ))}
-          <div style={{ marginTop:6, fontSize:12, color:'var(--muted)', background:'var(--bg)', padding:'8px 12px', borderRadius:4 }}>
-            <strong style={{ color:'var(--text)' }}>Docente:</strong> Balcazar Chumacero, Oscar Eduardo<br/>
-            <strong style={{ color:'var(--text)' }}>Curso:</strong> Inteligencia de Negocios<br/>
-            <strong style={{ color:'var(--text)' }}>Universidad:</strong>{' '}
-            <a href="https://utp.edu.pe" target="_blank" rel="noopener noreferrer" style={{ color:'var(--navy)' }}>
-              Universidad Tecnológica del Perú (UTP)
-            </a><br/>
-            <strong style={{ color:'var(--text)' }}>Período:</strong> 2025 – 2026
-          </div>
+        </div>
+        <div className="mt-3 text-[12px] text-muted-foreground bg-muted/30 rounded-lg px-3 py-2.5 border border-border/40 leading-relaxed">
+          <strong className="text-foreground">Docente:</strong> Balcazar Chumacero, Oscar Eduardo<br/>
+          <strong className="text-foreground">Curso:</strong> Inteligencia de Negocios<br/>
+          <strong className="text-foreground">Universidad:</strong>{' '}
+          <a href="https://utp.edu.pe" target="_blank" rel="noopener noreferrer"
+             className="text-primary hover:underline">
+            Universidad Tecnológica del Perú (UTP)
+          </a><br/>
+          <strong className="text-foreground">Período:</strong> 2025 – 2026
         </div>
       </div>
 
-      {/* Stack tecnológico */}
-      <div style={card}>
-        <div style={h2}>Stack tecnológico</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+      <div className="island p-5">
+        <SectionTitle>Stack tecnológico</SectionTitle>
+        <div className="grid grid-cols-2 gap-2">
           {STACK.map(s => {
             const Icon = s.icon
             return (
-              <div key={s.label} style={{ display:'flex', gap:10, alignItems:'flex-start', background:'var(--bg)', borderRadius:4, padding:'10px 12px' }}>
-                <Icon size={16} style={{ color:'var(--navy)', flexShrink:0, marginTop:1 }} />
+              <div key={s.label}
+                   className="flex gap-2.5 items-start bg-muted/30 rounded-lg px-3 py-2.5 border border-border/40">
+                <Icon size={15} className="text-primary shrink-0 mt-0.5" />
                 <div>
-                  <div style={{ fontSize:12, fontWeight:600, color:'var(--text)' }}>{s.label}</div>
-                  <div style={{ fontSize:10, color:'var(--muted)', marginTop:2, lineHeight:1.4 }}>{s.desc}</div>
+                  <div className="text-[12px] font-semibold text-foreground">{s.label}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{s.desc}</div>
                 </div>
               </div>
             )
@@ -111,28 +106,28 @@ export default function Acerca({ dark }) {
         </div>
       </div>
 
-      {/* Fuente */}
-      <div style={card}>
-        <div style={h2}>Fuente de datos</div>
-        <div style={{ display:'grid', gap:6 }}>
+      <div className="island p-5">
+        <SectionTitle>Fuente de datos</SectionTitle>
+        <div className="flex flex-col gap-2">
           {[
-            ['Entidad','Seguro Integral de Salud (SIS) — MINSA'],
-            ['Licencia','Open Data Commons Attribution License (ODC-By)'],
-            ['Cobertura','2017 – 2025 (archivos anuales/semestrales)'],
-            ['Formato','CSV comprimido en ZIP'],
-          ].map(([k,v])=>(
-            <div key={k} style={{ display:'flex', gap:8, fontSize:12 }}>
-              <span style={{ color:'var(--muted)', flexShrink:0, width:80 }}>{k}:</span>
-              <span style={{ color:'var(--text)' }}>{v}</span>
+            ['Entidad',   'Seguro Integral de Salud (SIS) — MINSA'],
+            ['Licencia',  'Open Data Commons Attribution License (ODC-By)'],
+            ['Cobertura', '2017 – 2025 (archivos anuales/semestrales)'],
+            ['Formato',   'CSV comprimido en ZIP'],
+          ].map(([k, v]) => (
+            <div key={k} className="flex gap-2 text-[12px]">
+              <span className="text-muted-foreground shrink-0 w-20">{k}:</span>
+              <span className="text-foreground">{v}</span>
             </div>
           ))}
           <a href="https://www.datosabiertos.gob.pe/dataset/datos-de-atenciones-realizadas-los-asegurados-sis"
-            target="_blank" rel="noopener noreferrer"
-            style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'var(--navy)', marginTop:4 }}>
+             target="_blank" rel="noopener noreferrer"
+             className="inline-flex items-center gap-1.5 text-[12px] text-primary mt-1 hover:underline">
             <ExternalLink size={12} /> Portal Nacional de Datos Abiertos
           </a>
         </div>
       </div>
+
     </div>
   )
 }

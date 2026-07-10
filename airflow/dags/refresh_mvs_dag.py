@@ -8,7 +8,8 @@ from pathlib import Path
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-DATABASE_URL = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis"
+import os
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 CACHE_DIR    = Path("/home/ubuntu/datamart-sis/cache")
 MVS = [
     "mv_kpis","mv_por_anio","mv_por_region","mv_por_edad",
@@ -20,10 +21,10 @@ def refresh_mv(mv_name: str, **ctx):
     c = psycopg2.connect(DATABASE_URL); c.autocommit = True
     c.cursor().execute(f"REFRESH MATERIALIZED VIEW datamart_sis.{mv_name}")
     c.close()
-    for k in [mv_name.replace("mv_", "", 1), "dashboard"]:
-        f = CACHE_DIR / f"{k}.json"
-        if f.exists(): f.unlink()
-    print(f"Refreshed {mv_name} — cache invalidado")
+    # No borrar cache en disco — la API usa stale-while-revalidate y
+    # reemplaza atómicamente (.json.tmp → rename) en el siguiente request.
+    # Borrar aquí dejaría una ventana sin cache si la API está bajo carga.
+    print(f"Refreshed {mv_name}")
 
 with DAG(
     dag_id="refresh_mvs",

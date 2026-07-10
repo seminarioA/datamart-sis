@@ -30,34 +30,35 @@ export default function Glosario() {
       )
 
   return (
-    <div style={{ flex:1, overflowY:'auto', padding:'12px 20px 24px', display:'flex', flexDirection:'column', gap:0 }}>
-      {/* Search */}
-      <div style={{ position:'sticky', top:0, background:'var(--bg)', paddingBottom:12, paddingTop:4, zIndex:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--surface)', border:'1px solid var(--border)', borderRadius:6, padding:'8px 12px' }}>
-          <Search size={14} style={{ color:'var(--muted)', flexShrink:0 }} />
+    <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
+      <div className="sticky top-0 bg-background px-5 pt-3 pb-3 z-10">
+        <div className="island flex items-center gap-2.5 px-3 py-2.5">
+          <Search size={14} className="text-muted-foreground shrink-0" />
           <input
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Buscar término… (IPRESS, Nivel, SIS, ELT…)"
-            style={{ border:'none', outline:'none', background:'transparent', width:'100%', fontSize:13, color:'var(--text)', fontFamily:"'Signika',sans-serif" }}
+            className="border-none outline-none bg-transparent w-full text-[13px] text-foreground placeholder:text-muted-foreground"
+            style={{ fontFamily: "'Signika', sans-serif" }}
           />
         </div>
-        <div style={{ fontSize:11, color:'var(--muted)', marginTop:6 }}>{filtered.length} término{filtered.length!==1?'s':''}</div>
+        <p className="text-[11px] text-muted-foreground mt-1.5 px-0.5">
+          {filtered.length} término{filtered.length !== 1 ? 's' : ''}
+        </p>
       </div>
 
-      {/* Lista */}
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+      <div className="flex flex-col gap-2 px-5 pb-6">
         {filtered.map(t => (
-          <div key={t.term} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:4, padding:'14px 16px', borderLeft:'3px solid var(--navy)' }}>
-            <div style={{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap', marginBottom:6 }}>
-              <span style={{ fontFamily:"'Montserrat',sans-serif", fontWeight:700, fontSize:14, color:'var(--navy)' }}>{t.term}</span>
-              <span style={{ fontSize:11, color:'var(--muted)', fontStyle:'italic' }}>{t.full}</span>
+          <div key={t.term} className="island px-4 py-3.5">
+            <div className="flex items-baseline gap-2.5 flex-wrap mb-1.5">
+              <span className="font-heading font-bold text-[14px] text-primary">{t.term}</span>
+              <span className="text-[11px] text-muted-foreground italic">{t.full}</span>
             </div>
-            <p style={{ fontSize:13, color:'var(--text)', lineHeight:1.7, margin:0 }}>{t.def}</p>
+            <p className="text-[13px] text-foreground leading-relaxed m-0">{t.def}</p>
           </div>
         ))}
         {filtered.length === 0 && (
-          <div style={{ textAlign:'center', padding:'40px 20px', color:'var(--muted)', fontSize:13 }}>
+          <div className="text-center py-10 text-[13px] text-muted-foreground">
             No se encontraron términos para "{q}"
           </div>
         )}

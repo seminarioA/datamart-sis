@@ -17,10 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import os
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@localhost:5433/datamart_sis"
-)
+DATABASE_URL = os.environ["DATABASE_URL"]
 STATIC       = Path(__file__).parent / "static"
 FRONTEND     = Path(__file__).parent / "frontend" / "dist"
 CACHE_DIR    = Path(__file__).parent.parent / "cache"
