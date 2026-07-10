@@ -4,10 +4,10 @@ import { fmt, fmtFull } from '../lib/format.js'
 
 // Stakeholders a los que va dirigida cada acción
 const STAKEHOLDERS = {
-  MINSA:    { label:'MINSA',          color:'#5b6fb3', bg:'#eef0fa' },
-  SIS:      { label:'SIS',            color:'#dc388d', bg:'#fceef5' },
-  REGIONAL: { label:'Gobierno Regional', color:'#afcc46', bg:'#f4f9e8' },
-  IPRESS:   { label:'IPRESS',         color:'#f6a64a', bg:'#fef6ec' },
+  MINSA:    { label:'MINSA',            color:'hsl(var(--primary))', bg:'color-mix(in srgb, hsl(var(--primary)) 10%, white)' },
+  SIS:      { label:'SIS',              color:'hsl(var(--accent))',  bg:'color-mix(in srgb, hsl(var(--accent)) 10%, white)' },
+  REGIONAL: { label:'Gobierno Regional', color:'var(--green)',       bg:'color-mix(in srgb, var(--green) 12%, white)' },
+  IPRESS:   { label:'IPRESS',           color:'var(--orange)',       bg:'color-mix(in srgb, var(--orange) 12%, white)' },
 }
 
 // Genera hallazgos e insights basados en los datos reales del dashboard
@@ -126,9 +126,9 @@ function generateInsights(charts, kpis) {
 }
 
 const SEVERITY_COLORS = {
-  alta:  { bg:'#fff1f1', border:'#dc388d', badge:'#dc388d', label:'Prioridad Alta' },
-  media: { bg:'#fff8ec', border:'#f6a64a', badge:'#f6a64a', label:'Prioridad Media' },
-  baja:  { bg:'#f4f9e8', border:'#afcc46', badge:'#afcc46', label:'Prioridad Baja' },
+  alta:  { bg:'color-mix(in srgb, hsl(var(--accent)) 6%, white)', border:'hsl(var(--accent))', badge:'hsl(var(--accent))', label:'Prioridad Alta' },
+  media: { bg:'color-mix(in srgb, var(--orange) 8%, white)',      border:'var(--orange)',      badge:'var(--orange)',      label:'Prioridad Media' },
+  baja:  { bg:'color-mix(in srgb, var(--green) 8%, white)',       border:'var(--green)',       badge:'var(--green)',       label:'Prioridad Baja' },
 }
 
 function InsightCard({ insight }) {
@@ -141,15 +141,19 @@ function InsightCard({ insight }) {
       {/* Header del card */}
       <div
         onClick={()=>setOpen(v=>!v)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(v=>!v) } }}
         style={{ background:sv.bg, padding:'12px 16px', cursor:'pointer', display:'flex', alignItems:'flex-start', gap:12 }}
       >
         <div style={{ width:36, height:36, borderRadius:8, background:sv.badge, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <Icon size={18} color="#fff" />
+          <Icon size={18} color="hsl(var(--accent-foreground))" />
         </div>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3, flexWrap:'wrap' }}>
             <span style={{ fontSize:10, fontWeight:700, color:sv.badge, textTransform:'uppercase', letterSpacing:'.06em' }}>{insight.tipo}</span>
-            <span style={{ fontSize:10, fontWeight:600, background:sv.badge, color:'#fff', padding:'1px 7px', borderRadius:10 }}>{sv.label}</span>
+            <span style={{ fontSize:10, fontWeight:600, background:sv.badge, color:'hsl(var(--accent-foreground))', padding:'1px 7px', borderRadius:10 }}>{sv.label}</span>
           </div>
           <div style={{ fontSize:13, fontWeight:700, color:'var(--text)', lineHeight:1.4 }}>{insight.titulo}</div>
           <div style={{ fontSize:12, color:'var(--muted)', marginTop:4, lineHeight:1.5 }}>{insight.hallazgo}</div>
@@ -189,14 +193,18 @@ export default function Acciones({ dark }) {
   const [data, setData] = useState(null)
   const [kpis, setKpis] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/dashboard').then(r=>r.json()).catch(()=>({})),
-      fetch('/api/kpis').then(r=>r.json()).catch(()=>({})),
+      fetch('/api/dashboard').then(r=>r.json()),
+      fetch('/api/kpis').then(r=>r.json()),
     ]).then(([d, k]) => {
       setData(d)
       setKpis(k)
+      setLoading(false)
+    }).catch(() => {
+      setError('No se pudo conectar con el servidor')
       setLoading(false)
     })
   }, [])
@@ -207,14 +215,14 @@ export default function Acciones({ dark }) {
   return (
     <div style={{ flex:1, overflowY:'auto', padding:'12px 20px 24px' }}>
       {/* Header explicativo */}
-      <div style={{ background:'var(--navy)', borderRadius:6, padding:'16px 20px', marginBottom:16, color:'#fff' }}>
+      <div style={{ background:'var(--navy)', borderRadius:6, padding:'16px 20px', marginBottom:16, color:'hsl(var(--primary-foreground))' }}>
         <div style={{ fontFamily:"'Montserrat',sans-serif", fontWeight:700, fontSize:15, marginBottom:6 }}>
           🎯 Acciones Concretas para Partes Interesadas
         </div>
         <p style={{ fontSize:12, color:'rgba(255,255,255,.8)', lineHeight:1.6, margin:0 }}>
           Hallazgos del análisis de datos SIS {kpis?.anio_inicio}–{kpis?.anio_fin} con recomendaciones priorizadas
           por impacto, dirigidas a <strong>MINSA, SIS, Gobiernos Regionales e IPRESS</strong>.
-          {altas > 0 && <span style={{ display:'inline-block', background:'#dc388d', borderRadius:4, padding:'1px 8px', marginLeft:8, fontSize:11, fontWeight:700 }}>⚠️ {altas} acción{altas>1?'es':''} de alta prioridad</span>}
+          {altas > 0 && <span style={{ display:'inline-block', background:'hsl(var(--accent))', borderRadius:4, padding:'1px 8px', marginLeft:8, fontSize:11, fontWeight:700 }}>⚠️ {altas} acción{altas>1?'es':''} de alta prioridad</span>}
         </p>
       </div>
 
@@ -230,6 +238,10 @@ export default function Acciones({ dark }) {
 
       {loading ? (
         <div style={{ textAlign:'center', padding:40, color:'var(--muted)' }}>Analizando datos…</div>
+      ) : error ? (
+        <div style={{ textAlign:'center', padding:40, color:'hsl(var(--accent))' }}>
+          {error}. Intenta recargar la página.
+        </div>
       ) : insights?.length ? (
         <div>
           {/* Ordenar: alta primero */}

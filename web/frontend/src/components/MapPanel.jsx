@@ -1,20 +1,36 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { fmt, fmtFull, norm } from '../lib/format.js'
 
-const MAP_STOPS_LIGHT = ['#dce3f6','#a8b5e8','#7a8ed0','#5b6fb3','#2a3a7c']
-const MAP_STOPS_DARK  = ['#151d3a','#1e2d5c','#2a3e7a','#3a52a0','#5b6fb3']
+const MAP_STOP_VARS = ['--map1', '--map2', '--map3', '--map4', '--map5']
+
+// The --map1..5 custom properties are defined once in index.css (light values
+// under :root, dark values under .dark) — read them from the live stylesheet
+// instead of re-declaring the same hex palette in JS. Toggling the `dark`
+// class on a detached root read is synchronous (no repaint happens between
+// the two reads), so this is safe to call once on mount without any visible
+// flash regardless of which theme is currently active.
+function readMapStops() {
+  const root = document.documentElement
+  const hadDark = root.classList.contains('dark')
+  root.classList.remove('dark')
+  const light = MAP_STOP_VARS.map(v => getComputedStyle(root).getPropertyValue(v).trim())
+  root.classList.add('dark')
+  const dark = MAP_STOP_VARS.map(v => getComputedStyle(root).getPropertyValue(v).trim())
+  root.classList.toggle('dark', hadDark)
+  return { light, dark }
+}
+
+function mapColor(v, max, dark, stops) {
+  const arr = dark ? stops.dark : stops.light
+  if (!max || !v) return arr[0]
+  const t = v / max
+  const i = t > .8 ? 4 : t > .6 ? 3 : t > .4 ? 2 : t > .2 ? 1 : 0
+  return arr[i]
+}
 const TILE = {
   light: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
   dark:  'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
-}
-
-function mapColor(v, max, dark) {
-  const stops = dark ? MAP_STOPS_DARK : MAP_STOPS_LIGHT
-  if (!max || !v) return stops[0]
-  const t = v / max
-  const i = t > .8 ? 4 : t > .6 ? 3 : t > .4 ? 2 : t > .2 ? 1 : 0
-  return stops[i]
 }
 
 function buildLookup(regionRows) {
@@ -75,7 +91,7 @@ function RegionCard({ info, onClose }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 10, color: 'var(--muted-c)' }}>Ranking</span>
           <span style={{
-            background: 'var(--navy)', color: '#fff',
+            background: 'var(--navy)', color: 'hsl(var(--primary-foreground))',
             fontSize: 10, fontWeight: 700,
             padding: '2px 7px', borderRadius: 6,
           }}>#{info.rank}</span>
@@ -93,7 +109,13 @@ export default function MapPanel({ regionData, dark }) {
   const legendRef   = useRef(null)
   const selectedRef = useRef(null)
   const [geojson, setGeojson]   = useState(null)
+  const [geojsonError, setGeojsonError] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [stops, setStops]       = useState(null)
+
+  // Read the --map1..5 palette from the live stylesheet once on mount, before
+  // first paint, so there's no flash of missing/fallback colors.
+  useLayoutEffect(() => { setStops(readMapStops()) }, [])
 
   // Init map once — invalidateSize after 300ms so DOM has settled
   useEffect(() => {
@@ -112,7 +134,10 @@ export default function MapPanel({ regionData, dark }) {
   })
 
   useEffect(() => {
-    fetch('/static/peru.geojson').then(r=>r.json()).then(setGeojson).catch(console.error)
+    fetch('/static/peru.geojson').then(r=>r.json()).then(setGeojson).catch(err => {
+      console.error('failed to load peru.geojson:', err)
+      setGeojsonError(true)
+    })
   }, [])
 
   useEffect(() => {
@@ -122,7 +147,7 @@ export default function MapPanel({ regionData, dark }) {
   }, [dark])
 
   useEffect(() => {
-    if (!leafletRef.current || !geojson || !regionData?.length) return
+    if (!leafletRef.current || !geojson || !regionData?.length || !stops) return
     const { lookup, detail } = buildLookup(regionData)
     const max = Math.max(...Object.values(lookup).map(Number).filter(Boolean))
     if (geoLayerRef.current) leafletRef.current.removeLayer(geoLayerRef.current)
@@ -132,14 +157,14 @@ export default function MapPanel({ regionData, dark }) {
     geoLayerRef.current = L.geoJSON(geojson, {
       style: feat => {
         const key = norm(feat.properties.name||'')
-        return { fillColor: mapColor(lookup[key]||0, max, dark), weight:.8, color:'#777', fillOpacity:.85 }
+        return { fillColor: mapColor(lookup[key]||0, max, dark, stops), weight:.8, color:'var(--muted-c)', fillOpacity:.85 }
       },
       onEachFeature: (feat, layer) => {
         const key = norm(feat.properties.name||'')
         const name = feat.properties.name||key
         const v = lookup[key]||0
         layer.bindTooltip(`<strong style="font-size:12px">${name}</strong><br>${fmtFull(v)} atenciones`, { sticky:true, offset:[8,0] })
-        layer.on('mouseover', e => { if (e.target!==selectedRef.current) e.target.setStyle({ weight:2, color:'#333', fillOpacity:.95 }) })
+        layer.on('mouseover', e => { if (e.target!==selectedRef.current) e.target.setStyle({ weight:2, color:'var(--text)', fillOpacity:.95 }) })
         layer.on('mouseout',  e => { if (e.target!==selectedRef.current) geoLayerRef.current.resetStyle(e.target) })
         layer.on('click', e => {
           L.DomEvent.stopPropagation(e)
@@ -160,15 +185,15 @@ export default function MapPanel({ regionData, dark }) {
     legend.onAdd = () => {
       const el = L.DomUtil.create('div')
       el.style.cssText='background:var(--surface);border:1px solid var(--border-c);border-radius:8px;padding:7px 10px;font-size:10px;line-height:2;color:var(--text);font-family:Signika,sans-serif;box-shadow:0 2px 10px hsl(var(--primary)/.08)'
-      const stops = dark ? MAP_STOPS_DARK : MAP_STOPS_LIGHT
+      const legendStops = dark ? stops.dark : stops.light
       el.innerHTML = '<div style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px">Atenciones</div>'+
         ['0–20 %','20–40 %','40–60 %','60–80 %','80–100 %'].map((l,i)=>
-          `<div style="display:flex;align-items:center;gap:5px"><div style="width:13px;height:13px;background:${stops[i]};border:1px solid #aaa;flex-shrink:0"></div>${l}</div>`
+          `<div style="display:flex;align-items:center;gap:5px"><div style="width:13px;height:13px;background:${legendStops[i]};border:1px solid var(--border-c);flex-shrink:0"></div>${l}</div>`
         ).join('')
       return el
     }
     legend.addTo(leafletRef.current); legendRef.current=legend
-  }, [geojson, regionData, dark])
+  }, [geojson, regionData, dark, stops])
 
   return (
     <div style={{ background:'var(--surface)', border:'1px solid var(--border)', display:'flex', flexDirection:'column', minHeight:0, flex:1 }}>
@@ -177,6 +202,15 @@ export default function MapPanel({ regionData, dark }) {
       </div>
       <div style={{ flex:1, position:'relative', minHeight:0 }}>
         <div ref={mapRef} style={{ position:'absolute', inset:0 }} />
+        {geojsonError && (
+          <div style={{
+            position:'absolute', inset:0, zIndex:700, display:'flex',
+            alignItems:'center', justifyContent:'center', textAlign:'center',
+            background:'var(--surface)', color:'var(--muted-c)', fontSize:12, padding:20,
+          }}>
+            No se pudo cargar el mapa. Intenta recargar la página.
+          </div>
+        )}
         <RegionCard info={selected} onClose={()=>setSelected(null)} />
       </div>
     </div>

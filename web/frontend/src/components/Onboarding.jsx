@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronRight, ChevronLeft, LayoutDashboard, Map, TrendingUp, BookOpen, BarChart2 } from 'lucide-react'
-import { Dialog, DialogContent, DialogPortal, DialogOverlay } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
 const STEPS = [
@@ -88,6 +87,7 @@ export default function Onboarding({ onClose }) {
             <button
               key={i}
               onClick={() => setStep(i)}
+              aria-label={`Ir al paso ${i+1}`}
               className="h-2 rounded-full transition-all duration-200"
               style={{
                 width: i === step ? 20 : 8,

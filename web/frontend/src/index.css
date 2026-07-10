@@ -42,7 +42,6 @@
     --navy2:    hsl(224 37% 46%);
     --navy3:    hsl(226 40% 64%);
     --navy4:    hsl(226 50% 78%);
-    --accent-c: hsl(var(--accent));
     --green:    #afcc46;
     --orange:   #f6a64a;
     --lblue:    #57c4f2;
@@ -86,7 +85,6 @@
     --navy2:    hsl(222 48% 76%);
     --navy3:    hsl(222 35% 58%);
     --navy4:    hsl(222 28% 46%);
-    --accent-c: hsl(var(--accent));
     --map1: #151d3a; --map2: #1e2d5c; --map3: #2a3e7a;
     --map4: #3a52a0; --map5: #5b6fb3;
   }

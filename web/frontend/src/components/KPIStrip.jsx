@@ -55,7 +55,7 @@ function KPICell({ meta, value, onClick }) {
         <div
           className="font-heading font-bold text-2xl tabular-nums leading-tight mt-1 transition-colors duration-200"
           style={{
-            color: isLoading ? 'transparent' : (meta.accent ? 'var(--accent-c)' : 'hsl(var(--primary))'),
+            color: isLoading ? 'transparent' : (meta.accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))'),
             background: isLoading ? 'hsl(var(--muted))' : 'transparent',
             borderRadius: isLoading ? 4 : 0,
             animation: isLoading ? 'pulse 1.4s ease-in-out infinite' : 'none',
@@ -79,7 +79,7 @@ function KPIDrawer({ meta, value, rawData, open, onClose }) {
           <SheetTitle>{meta.label}</SheetTitle>
           <div
             className="text-[30px] font-heading font-bold leading-tight mt-1"
-            style={{ color: meta.accent ? 'var(--accent-c)' : 'hsl(var(--primary))' }}
+            style={{ color: meta.accent ? 'hsl(var(--accent))' : 'hsl(var(--primary))' }}
           >
             {value}
           </div>
@@ -105,7 +105,7 @@ function KPIDrawer({ meta, value, rawData, open, onClose }) {
                     <span className="text-[11px] font-semibold text-foreground">{d.anio}</span>
                     <span className="text-[11px] text-muted-foreground flex gap-2 items-center">
                       {delta && (
-                        <span style={{ color: Number(delta) >= 0 ? 'var(--green)' : 'var(--accent-c)', fontWeight:600 }}>
+                        <span style={{ color: Number(delta) >= 0 ? 'var(--green)' : 'hsl(var(--accent))', fontWeight:600 }}>
                           {Number(delta) >= 0 ? '+' : ''}{delta}%
                         </span>
                       )}

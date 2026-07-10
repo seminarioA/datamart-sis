@@ -39,6 +39,7 @@ export default function Glosario() {
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Buscar término… (IPRESS, Nivel, SIS, ELT…)"
+            aria-label="Buscar en el glosario"
             style={{ border:'none', outline:'none', background:'transparent', width:'100%', fontSize:13, color:'var(--text)', fontFamily:"'Signika',sans-serif" }}
           />
         </div>

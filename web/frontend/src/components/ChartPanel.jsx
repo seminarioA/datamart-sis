@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react'
 import ApexCharts from 'apexcharts'
 import { fmt, fmtFull, trunc } from '../lib/format.js'
+import { CL, GRID, TICK } from '../lib/chartColors.js'
 import { Maximize2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -12,12 +13,9 @@ const fmtAxis = n => {
   return String(Math.round(v))
 }
 
-const CL = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
-const CD = ['#8a9fd8','#7ad5f5','#c4df6a','#f9b870','#e85fa0','#a0b2e8','#6a80c4','#5b6fb3']
-
 function buildOpts(type, labels, values, colors, dark, expanded) {
-  const grid = dark ? '#252840' : '#d8dced'
-  const tick = dark ? '#8890b8' : '#6b7190'
+  const grid = dark ? GRID.dark : GRID.light
+  const tick = dark ? TICK.dark : TICK.light
   const colArr = Array.isArray(colors) ? colors : [colors]
   const labelFontSize = expanded ? '13px' : '10px'
   const valFontSize  = expanded ? '12px' : '10px'
@@ -113,6 +111,10 @@ export default function ChartPanel({ title, type='hbar', labels, values, colors,
           <div className="flex flex-col items-center justify-center h-full gap-2">
             <div className="w-7 h-7 border-[3px] border-border border-t-primary rounded-full animate-spin-slow" />
             <span className="text-[10px] text-muted-foreground">Cargando…</span>
+          </div>
+        ) : (!labels?.length || !values?.length) ? (
+          <div className="flex flex-col items-center justify-center h-full gap-1">
+            <span className="text-[11px] text-muted-foreground">Sin datos disponibles</span>
           </div>
         ) : (
           <div ref={elRef} className="w-full h-full" />

@@ -12,12 +12,10 @@ import Glosario     from './components/Glosario.jsx'
 import Acciones     from './components/Acciones.jsx'
 import Onboarding   from './components/Onboarding.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
+import { CL, CD } from './lib/chartColors.js'
 import { SlidersHorizontal, X, Map, Stethoscope, Users, TrendingUp, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-const CL = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
-const CD = ['#8a9fd8','#7ad5f5','#c4df6a','#f9b870','#e85fa0','#a0b2e8','#6a80c4','#5b6fb3']
 
 export default function App() {
   const [dark, setDark]            = useState(() => localStorage.getItem('theme') === 'dark')
@@ -28,6 +26,7 @@ export default function App() {
   const [charts, setCharts]        = useState(null)
   const [mvStatus, setMvStatus]    = useState({ ready: 0, total: 8 })
   const [status, setStatus]        = useState('Cargando…')
+  const [statusError, setStatusError] = useState(false)
   const [showOnboarding, setOnboarding] = useState(() => !localStorage.getItem('visited_v1'))
   const [expandedChart, setExpandedChart] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
@@ -75,8 +74,12 @@ export default function App() {
       try {
         const d = await fetch('/api/status').then(r => r.json())
         setMvStatus({ ready: d.mvs_ready, total: d.mvs_total })
+        setStatusError(false)
         if (d.building) t = setTimeout(async () => { await poll(); fetchCharts(); fetchKPIs() }, 25000)
-      } catch {}
+      } catch (err) {
+        console.error('status poll failed:', err)
+        setStatusError(true)
+      }
     }
     poll()
     return () => clearTimeout(t)
@@ -136,7 +139,7 @@ export default function App() {
                   size="xs"
                   variant="outline"
                   onClick={() => setFilterYears([])}
-                  className="border-[var(--accent-c)] text-[var(--accent-c)] hover:bg-[var(--accent-c)] hover:text-white gap-1"
+                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground gap-1"
                 >
                   <X size={10} /> Limpiar
                 </Button>
@@ -368,11 +371,12 @@ export default function App() {
         onModule={m => { setModule(m); setModuleKey(k => k + 1) }}
         collapsed={collapsed}
         onToggle={() => setCollapsed(v => !v)}
-        airflowUrl={null}
+        // Requires VITE_AIRFLOW_URL to be set in the frontend build env; falls back to null (link hidden) otherwise.
+        airflowUrl={import.meta.env.VITE_AIRFLOW_URL || null}
       />
 
       <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-hidden min-h-0">
-        <Navbar dark={dark} onToggleTheme={() => setDark(d => !d)} status={status} />
+        <Navbar dark={dark} onToggleTheme={() => setDark(d => !d)} status={status} statusError={statusError} />
 
         {/* Main content island */}
         <div className="flex-1 glass rounded-2xl flex flex-col overflow-hidden min-h-0">

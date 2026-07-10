@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import ApexCharts from 'apexcharts'
 import { fmt, fmtFull } from '../lib/format.js'
+import { CL, GRID, TICK, BELOW_AVG } from '../lib/chartColors.js'
 import { TrendingUp, TrendingDown, Info, BarChart2, Calendar, MapPin } from 'lucide-react'
 
 const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -52,8 +53,8 @@ function ForecastChart({ historico, prediccion, dark }) {
 
   useEffect(() => {
     if (!ref.current || !historico?.length) return
-    const grid  = dark ? '#252840' : '#d8dced'
-    const tick  = dark ? '#8890b8' : '#6b7190'
+    const grid  = dark ? GRID.dark : GRID.light
+    const tick  = dark ? TICK.dark : TICK.light
 
     const allData = [...historico, ...prediccion]
     const cats = allData.map(d => d.anio)
@@ -93,7 +94,7 @@ function ForecastChart({ historico, prediccion, dark }) {
       yaxis: {
         labels: { style: { colors: tick, fontSize: '10px' }, formatter: v => fmt(v) },
       },
-      colors: ['#5b6fb3', '#afcc46', '#dc388d'],
+      colors: [CL[0], CL[2], CL[4]],
       stroke: {
         curve: 'smooth',
         width: [3, 1.5, 3],
@@ -146,19 +147,19 @@ function SeasonalChart({ data, dark }) {
 
   useEffect(() => {
     if (!ref.current || !data?.length) return
-    const tick = dark ? '#8890b8' : '#6b7190'
+    const tick = dark ? TICK.dark : TICK.light
     const opts = {
       chart: { type: 'bar', height: '100%', toolbar: { show: false }, background: 'transparent', fontFamily: "'Signika',sans-serif" },
       theme: { mode: dark ? 'dark' : 'light' },
       series: [{ name: 'Índice estacional', data: data.map(d => d.indice) }],
       xaxis: { categories: data.map(d => d.nombre), labels: { style: { colors: tick, fontSize: '10px' } }, axisBorder: { show: false }, axisTicks: { show: false } },
       yaxis: { labels: { style: { colors: tick, fontSize: '10px' }, formatter: v => v + '%' } },
-      colors: data.map(d => d.indice >= 100 ? '#5b6fb3' : '#a8b5e8'),
+      colors: data.map(d => d.indice >= 100 ? CL[0] : BELOW_AVG),
       plotOptions: { bar: { borderRadius: 3, columnWidth: '60%', distributed: true } },
       dataLabels: { enabled: true, formatter: v => v + '%', style: { fontSize: '10px', fontWeight: 600 } },
       tooltip: { theme: dark ? 'dark' : 'light', y: { formatter: v => v + '% vs. promedio' } },
       legend: { show: false },
-      grid: { borderColor: dark ? '#252840' : '#d8dced', strokeDashArray: 3, yaxis: { lines: { show: true } }, xaxis: { lines: { show: false } } },
+      grid: { borderColor: dark ? GRID.dark : GRID.light, strokeDashArray: 3, yaxis: { lines: { show: true } }, xaxis: { lines: { show: false } } },
       annotations: { yaxis: [{ y: 100, borderColor: 'var(--accent)', strokeDashArray: 4, label: { text: 'Promedio', style: { color: 'var(--accent)', fontSize: '10px', background: 'transparent' } } }] },
     }
     if (chartRef.current) { chartRef.current.updateOptions(opts, true) }
