@@ -9,7 +9,7 @@ log() { echo "[deploy $(date +%H:%M:%S)] $*"; }
 # Configuración — DB en VPS vieja
 DB_HOST=170.9.4.149
 DB_PORT=5433
-DB_PASS=FTNIdAQSBTZ5zloaSGl11L4
+DB_PASS="${DB_PASS:?Debes exportar DB_PASS antes de correr deploy.sh}"
 DATABASE_URL="postgresql://datamart:${DB_PASS}@${DB_HOST}:${DB_PORT}/datamart_sis"
 AIRFLOW_DB_URL="postgresql+psycopg2://datamart:${DB_PASS}@${DB_HOST}:${DB_PORT}/airflow_db"
 
