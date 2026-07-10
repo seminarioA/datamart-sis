@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react'
 import ApexCharts from 'apexcharts'
 import { fmt, fmtFull, trunc } from '../lib/format.js'
 import { Maximize2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { resolveChartSeries, resolveGridTick } from '../lib/chartColors.js'
 
 const fmtAxis = n => {
   const v = Number(n)
@@ -12,12 +12,11 @@ const fmtAxis = n => {
   return String(Math.round(v))
 }
 
-const CL = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
-const CD = ['#8a9fd8','#7ad5f5','#c4df6a','#f9b870','#e85fa0','#a0b2e8','#6a80c4','#5b6fb3']
-
 function buildOpts(type, labels, values, colors, dark, expanded) {
-  const grid = dark ? '#252840' : '#d8dced'
-  const tick = dark ? '#8890b8' : '#6b7190'
+  // Lee CSS vars en el momento de buildOpts (llamado desde useEffect,
+  // después de que .dark se aplica al DOM → valores siempre correctos)
+  const { grid, tick } = resolveGridTick()
+  const palette = resolveChartSeries()
   const colArr = Array.isArray(colors) ? colors : [colors]
   const labelFontSize = expanded ? '13px' : '10px'
   const valFontSize  = expanded ? '12px' : '10px'
@@ -28,7 +27,7 @@ function buildOpts(type, labels, values, colors, dark, expanded) {
       theme: { mode: dark?'dark':'light' },
       series: values,
       labels,
-      colors: colArr.length >= values.length ? colArr : CL,
+      colors: colArr.length >= values.length ? colArr : palette,
       dataLabels: { enabled:true, style:{ fontSize: expanded?'14px':'11px', fontFamily:"'Signika', sans-serif" }, dropShadow:{ enabled:false }, formatter: val => val.toFixed(1)+'%' },
       legend: { show:true, position:'bottom', fontSize: expanded?'13px':'11px', fontFamily:"'Signika', sans-serif", labels:{ colors:tick } },
       tooltip: { theme:dark?'dark':'light', y:{ formatter: v => fmtFull(v)+' atenciones' } },
@@ -96,7 +95,8 @@ export default function ChartPanel({ title, type='hbar', labels, values, colors,
 
   return (
     <div className="chart-panel-wrap">
-      <div className="flex items-center justify-between px-3 py-2.5 shrink-0 border-b border-border/60 border-l-[3px] border-l-primary rounded-tl-[inherit]">
+      {/* Encabezado sin border-l — el acento corre en todo el panel via inset box-shadow */}
+      <div className="flex items-center justify-between px-3 py-2.5 shrink-0 border-b border-border/60">
         <span className="font-heading text-[10px] font-bold uppercase tracking-[.07em] text-primary">{title}</span>
         {onExpand && !loading && labels?.length > 0 && (
           <button

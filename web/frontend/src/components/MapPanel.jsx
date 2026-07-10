@@ -1,16 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { fmt, fmtFull, norm } from '../lib/format.js'
+import { resolveMapStops } from '../lib/chartColors.js'
 
-const MAP_STOPS_LIGHT = ['#dce3f6','#a8b5e8','#7a8ed0','#5b6fb3','#2a3a7c']
-const MAP_STOPS_DARK  = ['#151d3a','#1e2d5c','#2a3e7a','#3a52a0','#5b6fb3']
 const TILE = {
   light: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
   dark:  'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
 }
 
-function mapColor(v, max, dark) {
-  const stops = dark ? MAP_STOPS_DARK : MAP_STOPS_LIGHT
+function mapColor(v, max, stops) {
   if (!max || !v) return stops[0]
   const t = v / max
   const i = t > .8 ? 4 : t > .6 ? 3 : t > .4 ? 2 : t > .2 ? 1 : 0
@@ -40,45 +38,35 @@ function RegionCard({ info, onClose }) {
   const rows = [
     ['Atenciones', fmtFull(info.atenciones)],
     ['% del total', (info.pct * 100).toFixed(1) + ' %'],
-    ['IPRESS', info.ipress ? fmtFull(info.ipress) : '—'],
+    ['IPRESS',      info.ipress ? fmtFull(info.ipress) : '—'],
   ]
   return (
-    <div style={{
-      position: 'absolute', top: 12, left: 12, zIndex: 800,
-      background: 'var(--surface)',
-      border: '1px solid var(--border-c)',
-      minWidth: 190,
-      boxShadow: '0 4px 20px hsl(var(--primary) / .12), 0 1px 4px hsl(var(--foreground) / .06)',
-      borderRadius: 12,
-      overflow: 'hidden',
-      fontFamily: "'Signika', sans-serif",
+    <div className="island overflow-hidden" style={{
+      position: 'absolute', top: 12, left: 12, zIndex: 800, minWidth: 190,
     }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '7px 10px 6px',
-        borderBottom: '1px solid var(--border-c)',
-        borderLeft: '3px solid var(--navy)',
-        background: 'hsl(var(--muted) / .4)',
-      }}>
-        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text)' }}>
+      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/60 bg-muted/40"
+           style={{ borderLeft: '3px solid var(--navy)' }}>
+        <span className="text-[11px] font-bold uppercase tracking-[.04em] text-foreground">
           {info.name}
         </span>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-c)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+        <button onClick={onClose}
+          className="text-muted-foreground hover:text-foreground bg-transparent border-0 cursor-pointer text-base leading-none px-0.5">
+          ×
+        </button>
       </div>
-      <div style={{ padding: '8px 10px', display: 'grid', gap: 5 }}>
+      <div className="px-2.5 py-2 grid gap-1.5">
         {rows.map(([l, v]) => (
-          <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 10, color: 'var(--muted-c)' }}>{l}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>{v}</span>
+          <div key={l} className="flex justify-between items-center gap-3">
+            <span className="text-[10px] text-muted-foreground">{l}</span>
+            <span className="text-[11px] font-semibold text-foreground">{v}</span>
           </div>
         ))}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 10, color: 'var(--muted-c)' }}>Ranking</span>
-          <span style={{
-            background: 'var(--navy)', color: '#fff',
-            fontSize: 10, fontWeight: 700,
-            padding: '2px 7px', borderRadius: 6,
-          }}>#{info.rank}</span>
+        <div className="flex justify-between items-center gap-3">
+          <span className="text-[10px] text-muted-foreground">Ranking</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                style={{ background: 'var(--navy)', color: 'hsl(var(--primary-foreground))' }}>
+            #{info.rank}
+          </span>
         </div>
       </div>
     </div>
@@ -95,17 +83,14 @@ export default function MapPanel({ regionData, dark }) {
   const [geojson, setGeojson]   = useState(null)
   const [selected, setSelected] = useState(null)
 
-  // Init map once — invalidateSize after 300ms so DOM has settled
   useEffect(() => {
     if (leafletRef.current || !mapRef.current) return
     leafletRef.current = L.map(mapRef.current, { zoomControl:false, scrollWheelZoom:false })
     L.control.zoom({ position:'bottomleft' }).addTo(leafletRef.current)
     leafletRef.current.setView([-9.2, -75.0], 5)
-    // Force size recalculation after mount
     setTimeout(() => leafletRef.current?.invalidateSize(), 300)
   }, [])
 
-  // Also invalidate on every render to handle tab switching
   useEffect(() => {
     const t = setTimeout(() => leafletRef.current?.invalidateSize(), 100)
     return () => clearTimeout(t)
@@ -125,6 +110,8 @@ export default function MapPanel({ regionData, dark }) {
     if (!leafletRef.current || !geojson || !regionData?.length) return
     const { lookup, detail } = buildLookup(regionData)
     const max = Math.max(...Object.values(lookup).map(Number).filter(Boolean))
+    // Lee stops del CSS vars para el tema activo (después de que .dark se aplica)
+    const stops = resolveMapStops()
     if (geoLayerRef.current) leafletRef.current.removeLayer(geoLayerRef.current)
     if (legendRef.current) legendRef.current.remove()
     selectedRef.current = null; setSelected(null)
@@ -132,14 +119,14 @@ export default function MapPanel({ regionData, dark }) {
     geoLayerRef.current = L.geoJSON(geojson, {
       style: feat => {
         const key = norm(feat.properties.name||'')
-        return { fillColor: mapColor(lookup[key]||0, max, dark), weight:.8, color:'#777', fillOpacity:.85 }
+        return { fillColor: mapColor(lookup[key]||0, max, stops), weight:.8, color: 'var(--border-c)', fillOpacity:.85 }
       },
       onEachFeature: (feat, layer) => {
         const key = norm(feat.properties.name||'')
         const name = feat.properties.name||key
         const v = lookup[key]||0
         layer.bindTooltip(`<strong style="font-size:12px">${name}</strong><br>${fmtFull(v)} atenciones`, { sticky:true, offset:[8,0] })
-        layer.on('mouseover', e => { if (e.target!==selectedRef.current) e.target.setStyle({ weight:2, color:'#333', fillOpacity:.95 }) })
+        layer.on('mouseover', e => { if (e.target!==selectedRef.current) e.target.setStyle({ weight:2, color:'var(--muted-c)', fillOpacity:.95 }) })
         layer.on('mouseout',  e => { if (e.target!==selectedRef.current) geoLayerRef.current.resetStyle(e.target) })
         layer.on('click', e => {
           L.DomEvent.stopPropagation(e)
@@ -159,11 +146,20 @@ export default function MapPanel({ regionData, dark }) {
     const legend = L.control({ position:'bottomright' })
     legend.onAdd = () => {
       const el = L.DomUtil.create('div')
-      el.style.cssText='background:var(--surface);border:1px solid var(--border-c);border-radius:8px;padding:7px 10px;font-size:10px;line-height:2;color:var(--text);font-family:Signika,sans-serif;box-shadow:0 2px 10px hsl(var(--primary)/.08)'
-      const stops = dark ? MAP_STOPS_DARK : MAP_STOPS_LIGHT
-      el.innerHTML = '<div style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px">Atenciones</div>'+
+      el.style.cssText = [
+        'background:var(--surface)',
+        'border:1px solid var(--border-c)',
+        'border-radius:8px',
+        'padding:7px 10px',
+        'font-size:10px',
+        'line-height:2',
+        'color:var(--text)',
+        'font-family:Signika,sans-serif',
+        'box-shadow:0 2px 10px rgba(0,0,0,.08)',
+      ].join(';')
+      el.innerHTML = '<div style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-c);margin-bottom:3px">Atenciones</div>'+
         ['0–20 %','20–40 %','40–60 %','60–80 %','80–100 %'].map((l,i)=>
-          `<div style="display:flex;align-items:center;gap:5px"><div style="width:13px;height:13px;background:${stops[i]};border:1px solid #aaa;flex-shrink:0"></div>${l}</div>`
+          `<div style="display:flex;align-items:center;gap:5px"><div style="width:13px;height:13px;background:${stops[i]};border:1px solid var(--border-c);flex-shrink:0;border-radius:2px"></div>${l}</div>`
         ).join('')
       return el
     }
@@ -171,12 +167,15 @@ export default function MapPanel({ regionData, dark }) {
   }, [geojson, regionData, dark])
 
   return (
-    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', display:'flex', flexDirection:'column', minHeight:0, flex:1 }}>
-      <div style={{ padding:'8px 12px', fontSize:10, fontWeight:700, fontFamily:"'Montserrat',sans-serif", textTransform:'uppercase', letterSpacing:'.07em', color:'var(--navy)', borderBottom:'1px solid var(--border)', borderLeft:'3px solid var(--navy)', flexShrink:0 }}>
-        Atenciones por Departamento
+    <div className="chart-panel-wrap">
+      <div className="flex items-center px-3 py-2.5 shrink-0 border-b border-border/60">
+        <span className="font-heading text-[10px] font-bold uppercase tracking-[.07em] text-primary">
+          Atenciones por Departamento
+        </span>
       </div>
-      <div style={{ flex:1, position:'relative', minHeight:0 }}>
-        <div ref={mapRef} style={{ position:'absolute', inset:0 }} />
+      {/* El mapa Leaflet necesita position:relative + flex:1 para llenarse correctamente */}
+      <div className="flex-1 relative min-h-0">
+        <div ref={mapRef} className="absolute inset-0" />
         <RegionCard info={selected} onClose={()=>setSelected(null)} />
       </div>
     </div>

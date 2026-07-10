@@ -12,12 +12,10 @@ import Glosario     from './components/Glosario.jsx'
 import Acciones     from './components/Acciones.jsx'
 import Onboarding   from './components/Onboarding.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
+import { resolveChartSeries } from './lib/chartColors.js'
 import { SlidersHorizontal, X, Map, Stethoscope, Users, TrendingUp, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-const CL = ['#5b6fb3','#57c4f2','#afcc46','#f6a64a','#dc388d','#4a5fa0','#7a8ed0','#2a3a7c']
-const CD = ['#8a9fd8','#7ad5f5','#c4df6a','#f9b870','#e85fa0','#a0b2e8','#6a80c4','#5b6fb3']
 
 export default function App() {
   const [dark, setDark]            = useState(() => localStorage.getItem('theme') === 'dark')
@@ -84,7 +82,8 @@ export default function App() {
 
   useEffect(() => { fetchKPIs(); fetchCharts() }, [fetchKPIs, fetchCharts])
 
-  const c = dark ? CD : CL
+  // Colores resueltos desde CSS vars en tiempo de render — se adaptan al tema activo
+  const c = resolveChartSeries()
   const loading = !charts
 
   const applyYearFilter = (data, yearKey = 'anio') =>

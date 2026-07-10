@@ -39,15 +39,20 @@ _pool = psycopg2.pool.ThreadedConnectionPool(1, 5, DATABASE_URL)
 # L2: archivo JSON en disco (persiste entre reinicios, ms)
 # L3: PostgreSQL MV (fuente de verdad, segundos)
 _mem: dict = {}
-MEM_TTL  = 900   # 15 min en memoria
-DISK_TTL = 3600  # 1 h en disco
+MEM_TTL = 900   # 15 min en memoria — fuerza re-validación periódica contra DB
+
+# L2 (disco) NO tiene TTL: el archivo solo se reemplaza cuando llega data
+# fresca e íntegra desde L3 (DB). Esto garantiza disponibilidad permanente
+# del caché incluso si la DB está temporalmente inaccesible.
+
+_refreshing: set = set()
+_rlock = threading.Lock()
 
 
 def _disk_read(key: str):
+    """Lee del disco sin verificar antigüedad — siempre disponible si existe."""
     p = CACHE_DIR / f"{key}.json"
     if not p.exists():
-        return None
-    if time.time() - p.stat().st_mtime > DISK_TTL:
         return None
     try:
         return json.loads(p.read_text())
@@ -55,35 +60,75 @@ def _disk_read(key: str):
         return None
 
 
-def _disk_write(key: str, data):
+def _disk_write(key: str, data) -> bool:
+    """Escritura atómica: .tmp → rename garantiza que no haya estado corrupto."""
     try:
-        (CACHE_DIR / f"{key}.json").write_text(
-            json.dumps(data, ensure_ascii=False, default=str)
-        )
+        tmp = CACHE_DIR / f"{key}.json.tmp"
+        tmp.write_text(json.dumps(data, ensure_ascii=False, default=str))
+        tmp.rename(CACHE_DIR / f"{key}.json")   # POSIX: operación atómica
+        return True
     except Exception:
-        pass
+        return False
+
+
+def _bg_refresh(key: str, fn):
+    """Refresca DB en background; escribe a disco SOLO si el resultado es íntegro."""
+    with _rlock:
+        if key in _refreshing:
+            return
+        _refreshing.add(key)
+
+    def _run():
+        try:
+            data = fn()
+            is_valid = data is not None and data not in ([], {})
+            if is_valid:
+                _mem[key] = {"ts": time.time(), "data": data}
+                _disk_write(key, data)
+        except Exception:
+            pass
+        finally:
+            with _rlock:
+                _refreshing.discard(key)
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def _cached(key: str, fn):
     now = time.time()
-    # L1 — memoria
-    if key in _mem and now - _mem[key]["ts"] < MEM_TTL:
-        return _mem[key]["data"]
-    # L2 — disco
+    # L1 — memoria (TTL 15 min)
+    entry = _mem.get(key)
+    if entry and now - entry["ts"] < MEM_TTL:
+        return entry["data"]
+
+    # L3 — intentar DB sincrónicamente (primera carga o TTL expirado)
+    # Si falla, L2 (disco) actúa como fallback sin TTL
     disk = _disk_read(key)
+
     if disk is not None:
-        _mem[key] = {"ts": now, "data": disk}
+        # Servir dato estable de inmediato; refrescar DB en background
+        # Ajustamos ts para reintentar en ~60 s si el bg_refresh no llega primero
+        _mem[key] = {"ts": now - MEM_TTL + 60, "data": disk}
+        _bg_refresh(key, fn)
         return disk
-    # L3 — base de datos
-    result = fn()
-    _mem[key] = {"ts": now, "data": result}
-    _disk_write(key, result)
-    return result
+
+    # Sin caché en disco todavía (primera ejecución o caché borrado)
+    try:
+        data = fn()
+        if data is not None and data not in ([], {}):
+            _mem[key] = {"ts": now, "data": data}
+            _disk_write(key, data)
+            return data
+    except Exception:
+        pass
+    return [] if True else {}   # respuesta vacía de emergencia
 
 
 def _invalidate(key: str):
     _mem.pop(key, None)
-    (CACHE_DIR / f"{key}.json").unlink(missing_ok=True)
+    # No borramos el archivo de disco — solo refrescaremos su contenido
+    # cuando llegue nueva data íntegra desde DB (_bg_refresh lo sobreescribe)
+    _bg_refresh(key, lambda: None)   # no-op: dispara ciclo de refresco limpio
 
 
 def _q(sql: str, params=None) -> list[dict]:

@@ -206,8 +206,19 @@
   }
 
   /* ── Chart panel wrap ────────────────────────────────────────── */
+  /* Acento izquierdo full-height via inset shadow — no altera box-model */
   .chart-panel-wrap {
     @apply island flex flex-col min-h-0 h-full overflow-hidden animate-fade-in;
+    box-shadow:
+      inset 3px 0 0 hsl(var(--primary)),
+      0 2px 16px hsl(var(--primary) / .06),
+      0 1px 3px  hsl(var(--foreground) / .04);
+  }
+  .dark .chart-panel-wrap {
+    box-shadow:
+      inset 3px 0 0 hsl(var(--primary)),
+      0 2px 16px hsl(var(--foreground) / .06),
+      0 1px 3px  hsl(var(--foreground) / .03);
   }
 
   /* ── Filter bar slide-in ─────────────────────────────────────── */
