@@ -20,7 +20,7 @@ import signal
 import time
 from pathlib import Path
 
-VPS_HOST = "192.9.159.35"
+VPS_HOST = os.environ.get("VPS_HOST", "192.9.159.35")  # fallback solo para uso local; sobrescribir via env en uso compartido/productivo
 VPS_USER = "ubuntu"
 VPS_DIR  = "/home/ubuntu/datamart-sis"
 LOG_FILE = "/home/ubuntu/ingest_all.log"
@@ -31,7 +31,6 @@ def ssh_cmd(key: str, cmd: str, interactive: bool = False) -> subprocess.Complet
     base = [
         "ssh",
         "-i", key,
-        "-o", "StrictHostKeyChecking=no",
         "-o", "ConnectTimeout=15",
         f"{VPS_USER}@{VPS_HOST}",
         cmd,
@@ -47,7 +46,6 @@ def ssh_stream(key: str, cmd: str):
         [
             "ssh",
             "-i", key,
-            "-o", "StrictHostKeyChecking=no",
             "-o", "ConnectTimeout=15",
             "-t",  # pseudo-TTY para ver output en tiempo real
             f"{VPS_USER}@{VPS_HOST}",

@@ -3,27 +3,41 @@ DAG: refresh_mvs — max_active_runs=1 evita runs duplicados y ExclusiveLocks si
 Ejecuta REFRESH de forma secuencial (uno a la vez) e invalida cache JSON.
 """
 from __future__ import annotations
+import os
 from datetime import datetime
 from pathlib import Path
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-DATABASE_URL = "postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis"
+DATABASE_URL = os.environ["DATABASE_URL"]
 CACHE_DIR    = Path("/home/ubuntu/datamart-sis/cache")
 MVS = [
     "mv_kpis","mv_por_anio","mv_por_region","mv_por_edad",
     "mv_por_sexo","mv_top_servicios","mv_por_nivel","mv_por_plan","mv_por_mes",
 ]
 
+def _refresh_concurrently(cur, mv_name: str):
+    """Intenta REFRESH CONCURRENTLY; si falla (p.ej. falta indice unico), degrada a REFRESH normal."""
+    try:
+        cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY datamart_sis.{mv_name}")
+    except Exception as e:
+        print(f"[mv] {mv_name}: REFRESH CONCURRENTLY fallo ({e}) — degradando a REFRESH bloqueante")
+        cur.execute(f"REFRESH MATERIALIZED VIEW datamart_sis.{mv_name}")
+
 def refresh_mv(mv_name: str, **ctx):
     import psycopg2
     c = psycopg2.connect(DATABASE_URL); c.autocommit = True
-    c.cursor().execute(f"REFRESH MATERIALIZED VIEW datamart_sis.{mv_name}")
+    cur = c.cursor()
+    _refresh_concurrently(cur, mv_name)
     c.close()
-    for k in [mv_name.replace("mv_", "", 1), "dashboard"]:
-        f = CACHE_DIR / f"{k}.json"
-        if f.exists(): f.unlink()
+    f = CACHE_DIR / f"{mv_name.replace('mv_', '', 1)}.json"
+    if f.exists(): f.unlink()
     print(f"Refreshed {mv_name} — cache invalidado")
+
+def invalidate_dashboard_cache(**ctx):
+    f = CACHE_DIR / "dashboard.json"
+    if f.exists(): f.unlink()
+    print("Cache 'dashboard' invalidado (una sola vez, tras refrescar todas las MVs)")
 
 with DAG(
     dag_id="refresh_mvs",
@@ -40,5 +54,10 @@ with DAG(
         PythonOperator(task_id=f"refresh_{mv}", python_callable=refresh_mv, op_kwargs={"mv_name": mv})
         for mv in MVS
     ]
+    invalidar_dashboard = PythonOperator(
+        task_id="invalidar_cache_dashboard",
+        python_callable=invalidate_dashboard_cache,
+    )
     for i in range(len(tasks) - 1):
         tasks[i] >> tasks[i + 1]
+    tasks[-1] >> invalidar_dashboard

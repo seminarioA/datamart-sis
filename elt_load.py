@@ -60,6 +60,11 @@ def process_batch(conn, rows: list, fuente: str) -> int:
         cur.execute("SELECT datamart_sis.fn_load_staging(%s)", (fuente,))
         filas = cur.fetchone()[0]
 
+    if filas is None or filas <= 0:
+        raise RuntimeError(
+            f"fn_load_staging devolvió {filas} filas para {fuente} — posible fallo silencioso"
+        )
+
     conn.commit()
     return filas
 
@@ -103,17 +108,50 @@ def load_file(conn, csv_path: Path, fuente: str) -> int:
                 f"{fuente}: batch {batch_num} (último) -> {filas:,} filas | acumulado: {total:,}"
             )
 
+    # Todos los batches se commitearon sin excepciones: marcar el archivo
+    # como completamente cargado en la tabla de control.
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO datamart_sis.etl_load_control (fuente_archivo, rows_loaded)
+            VALUES (%s, %s)
+            ON CONFLICT (fuente_archivo) DO UPDATE
+                SET rows_loaded = EXCLUDED.rows_loaded,
+                    completed_at = now()
+            """,
+            (fuente, total),
+        )
+    conn.commit()
+
     return total
 
 
-def already_loaded(conn, zip_name: str) -> bool:
-    """Devuelve True si el archivo ya fue cargado (tiene filas en la fact table)."""
+def ensure_control_table(conn) -> None:
+    """Crea (si no existe) la tabla de control que rastrea qué archivos
+    fueron completamente cargados. Idempotente — segura de llamar siempre."""
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT COUNT(*) FROM datamart_sis.fact_atenciones_sis WHERE fuente_archivo = %s",
+            """
+            CREATE TABLE IF NOT EXISTS datamart_sis.etl_load_control (
+                fuente_archivo TEXT PRIMARY KEY,
+                rows_loaded INTEGER NOT NULL,
+                completed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+            """
+        )
+    conn.commit()
+
+
+def already_loaded(conn, zip_name: str) -> bool:
+    """Devuelve True si el archivo ya fue cargado COMPLETAMENTE, según la
+    tabla de control (no infiere completitud a partir del conteo de filas
+    en la fact table, ya que una carga parcial dejaría filas sin terminar)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT EXISTS(SELECT 1 FROM datamart_sis.etl_load_control WHERE fuente_archivo = %s)",
             (zip_name,)
         )
-        return cur.fetchone()[0] > 0
+        return cur.fetchone()[0]
 
 
 def main():
@@ -143,6 +181,7 @@ def main():
 
     conn = psycopg2.connect(DATABASE_URL)
     try:
+        ensure_control_table(conn)
         for zp in zips:
             if not args.force and already_loaded(conn, zp.name):
                 log.info(f"{zp.name}: ya cargado — omitiendo (usa --force para recargar)")

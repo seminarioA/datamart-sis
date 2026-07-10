@@ -3,7 +3,8 @@
 # ingest_all.sh — Carga incremental de datasets SIS al datamart PostgreSQL
 #
 # Uso en VPS (lanzar en background):
-#   nohup bash scripts/ingest_all.sh >> /home/ubuntu/ingest_all.log 2>&1 &
+#   DATABASE_URL=postgresql://user:pass@host:5432/dbname \
+#       nohup bash scripts/ingest_all.sh >> /home/ubuntu/ingest_all.log 2>&1 &
 #   echo $! > /home/ubuntu/ingest_all.pid
 #
 # Monitorear:
@@ -19,7 +20,7 @@ DATAMART_DIR="${DATAMART_DIR:-/home/ubuntu/datamart-sis}"
 DATA_DIR="$DATAMART_DIR/data/raw"
 TMP_DIR="$DATA_DIR/_tmp"
 VENV_PY="$DATAMART_DIR/.venv/bin/python"
-DB_URL="${DATABASE_URL:-postgresql://datamart:FTNIdAQSBTZ5zloaSGl11L4@170.9.4.149:5433/datamart_sis}"
+DB_URL="${DATABASE_URL:?DATABASE_URL debe estar seteada}"
 BASE_URL="https://www.datosabiertos.gob.pe/sites/default/files"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36"
 
@@ -32,7 +33,9 @@ log() {
 # ---------------------------------------------------------------------------
 py_db() {
     # py_db "<SQL>" [<expected_type: scalar|table>]
-    "$VENV_PY" - "$DB_URL" "$1" <<'PYEOF' 2>/dev/null
+    # Nota: sin redirigir stderr — el script ya corre bajo
+    # `nohup ... >> ingest_all.log 2>&1`, asi que los DB_ERROR quedan en el log.
+    "$VENV_PY" - "$DB_URL" "$1" <<'PYEOF'
 import sys
 import psycopg2
 
@@ -106,18 +109,33 @@ mvs = [
     'mv_kpis','mv_por_anio','mv_por_region','mv_por_edad',
     'mv_por_sexo','mv_top_servicios','mv_por_nivel','mv_por_plan','mv_por_mes'
 ]
-try:
-    conn = psycopg2.connect(db_url)
-    conn.autocommit = True
-    cur = conn.cursor()
-    for mv in mvs:
-        cur.execute(f'REFRESH MATERIALIZED VIEW datamart_sis.{mv}')
+
+conn = psycopg2.connect(db_url)
+conn.autocommit = True
+cur = conn.cursor()
+
+any_failed = False
+for mv in mvs:
+    try:
+        try:
+            cur.execute(f'REFRESH MATERIALIZED VIEW CONCURRENTLY datamart_sis.{mv}')
+        except Exception as e_concurrent:
+            print(f'  [mv] {mv}: REFRESH CONCURRENTLY fallo ({e_concurrent}) — degradando a REFRESH bloqueante')
+            cur.execute(f'REFRESH MATERIALIZED VIEW datamart_sis.{mv}')
         print(f'  [mv] {mv} OK')
-    conn.close()
-except Exception as e:
-    print(f'  [mv] ERROR: {e}')
+    except Exception as e:
+        print(f'  [mv] {mv} FAILED: {e}')
+        any_failed = True
+
+conn.close()
+
+if any_failed:
     sys.exit(1)
 PYEOF
+    if [ $? -ne 0 ]; then
+        log "  MVs refresh: al menos una MV fallo (ver log arriba)"
+        return 1
+    fi
     log "  MVs refreshed"
 }
 

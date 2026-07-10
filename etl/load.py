@@ -94,6 +94,9 @@ def _insert_fact(engine, df: pd.DataFrame, table: str):
     """
     Carga la tabla de hechos en batches usando pandas to_sql.
     Usa 'append' porque la PK es BIGSERIAL auto-incremental.
+
+    Antes de cargar, borra cualquier fila previa con el mismo fuente_archivo
+    para que un rerun del pipeline sea idempotente (no duplique datos).
     """
     if df.empty:
         logger.warning(f"{table}: DataFrame de hechos vacío.")
@@ -102,6 +105,25 @@ def _insert_fact(engine, df: pd.DataFrame, table: str):
     qualified = f"{SCHEMA}.{table}".lower()
     total = len(df)
     loaded = 0
+
+    fuente_col = "FUENTE_ARCHIVO" if "FUENTE_ARCHIVO" in df.columns else (
+        "fuente_archivo" if "fuente_archivo" in df.columns else None
+    )
+    if fuente_col:
+        fuentes = df[fuente_col].dropna().unique().tolist()
+        if fuentes:
+            with engine.begin() as conn:
+                result = conn.execute(
+                    text(f"DELETE FROM {qualified} WHERE fuente_archivo = ANY(:fuentes)"),
+                    {"fuentes": fuentes},
+                )
+                deleted = result.rowcount if result.rowcount is not None and result.rowcount >= 0 else 0
+            logger.info(f"{table}: {deleted:,} filas previas eliminadas (rerun) para {len(fuentes)} fuente(s)")
+    else:
+        logger.warning(
+            f"{table}: no se encontró columna 'fuente_archivo'/'FUENTE_ARCHIVO' en el DataFrame — "
+            f"no se puede garantizar idempotencia antes de la carga."
+        )
 
     # Nombre de tabla en minúsculas para pandas (PostgreSQL es case-insensitive)
     for i in range(0, total, BATCH_SIZE):

@@ -138,7 +138,7 @@ def download_file(url: str, dest: Path) -> bool:
                     downloaded += len(chunk)
             logger.info(f"Descargado {downloaded / 1e6:.1f} MB → {dest.name}")
             return True
-    except requests.HTTPError as e:
+    except requests.exceptions.RequestException as e:
         logger.warning(f"No se pudo descargar {url}: {e}")
         return False
 
