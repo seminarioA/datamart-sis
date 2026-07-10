@@ -4,20 +4,20 @@
 
 @layer base {
   :root {
-    /* Shadcn HSL tokens */
+    /* ── Shadcn semantic tokens ──────────────────────────────────── */
     --background:          228 30% 94%;
     --foreground:          233 28% 14%;
     --card:                0 0% 100%;
     --card-foreground:     233 28% 14%;
     --popover:             0 0% 100%;
     --popover-foreground:  233 28% 14%;
-    --primary:             226 33% 54%;
+    --primary:             226 33% 54%;       /* navy SIS #5b6fb3 */
     --primary-foreground:  0 0% 100%;
     --secondary:           228 30% 92%;
     --secondary-foreground:226 33% 54%;
     --muted:               228 24% 90%;
     --muted-foreground:    233 15% 50%;
-    --accent:              329 63% 54%;
+    --accent:              329 63% 54%;       /* rosa SIS #dc388d */
     --accent-foreground:   0 0% 100%;
     --destructive:         0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -25,18 +25,24 @@
     --input:               228 22% 88%;
     --ring:                226 33% 54%;
     --radius:              1rem;
-    --glass:               228 40% 98%;
 
-    --bg:       hsl(228 30% 94%);
-    --surface:  hsl(0 0% 100%);
-    --border-c: hsl(228 22% 88%);
-    --text:     hsl(233 28% 14%);
-    --muted-c:  hsl(233 15% 50%);
-    --navy:     hsl(226 33% 54%);
+    /* ── Gradiente de página ────────────────────────────────────── */
+    /* Derivados del --primary para mantener coherencia con el brandbook */
+    --page-from: hsl(228 40% 91%);
+    --page-via:  hsl(226 35% 93%);
+    --page-to:   hsl(270 20% 92%);
+
+    /* ── Aliases para ApexCharts y Leaflet (no usan Tailwind) ───── */
+    --bg:       hsl(var(--background));
+    --surface:  hsl(var(--card));
+    --border-c: hsl(var(--border));
+    --text:     hsl(var(--foreground));
+    --muted-c:  hsl(var(--muted-foreground));
+    --navy:     hsl(var(--primary));
     --navy2:    hsl(224 37% 46%);
     --navy3:    hsl(226 40% 64%);
     --navy4:    hsl(226 50% 78%);
-    --accent-c: hsl(329 63% 54%);
+    --accent-c: hsl(var(--accent));
     --green:    #afcc46;
     --orange:   #f6a64a;
     --lblue:    #57c4f2;
@@ -53,7 +59,7 @@
     --card-foreground:     228 60% 92%;
     --popover:             233 30% 13%;
     --popover-foreground:  228 60% 92%;
-    --primary:             222 43% 69%;
+    --primary:             222 43% 69%;       /* navy claro en dark */
     --primary-foreground:  233 28% 10%;
     --secondary:           237 25% 18%;
     --secondary-foreground:222 43% 69%;
@@ -66,18 +72,21 @@
     --border:              237 22% 20%;
     --input:               237 22% 20%;
     --ring:                222 43% 69%;
-    --glass:               233 30% 16%;
 
-    --bg:       hsl(232 36% 8%);
-    --surface:  hsl(233 30% 13%);
-    --border-c: hsl(237 22% 20%);
-    --text:     hsl(228 60% 92%);
-    --muted-c:  hsl(232 23% 60%);
-    --navy:     hsl(222 43% 69%);
+    --page-from: hsl(232 40% 7%);
+    --page-via:  hsl(234 32% 8%);
+    --page-to:   hsl(240 25% 9%);
+
+    --bg:       hsl(var(--background));
+    --surface:  hsl(var(--card));
+    --border-c: hsl(var(--border));
+    --text:     hsl(var(--foreground));
+    --muted-c:  hsl(var(--muted-foreground));
+    --navy:     hsl(var(--primary));
     --navy2:    hsl(222 48% 76%);
     --navy3:    hsl(222 35% 58%);
     --navy4:    hsl(222 28% 46%);
-    --accent-c: hsl(330 72% 64%);
+    --accent-c: hsl(var(--accent));
     --map1: #151d3a; --map2: #1e2d5c; --map3: #2a3e7a;
     --map4: #3a52a0; --map5: #5b6fb3;
   }
@@ -91,50 +100,63 @@
     line-height: 1.5;
     min-height: 100vh;
     background: linear-gradient(135deg,
-      hsl(228 40% 91%) 0%,
-      hsl(226 35% 93%) 45%,
-      hsl(275 20% 92%) 100%);
+      var(--page-from) 0%,
+      var(--page-via)  45%,
+      var(--page-to)   100%);
   }
-  .dark body { background: hsl(232 36% 8%); }
 }
 
 @layer components {
-  /* ── Glass island ───────────────────────────────────────────── */
+  /* ── Glass island ────────────────────────────────────────────── */
+  /* El fondo usa --card con alpha para que el gradiente traspase */
   .glass {
-    background: rgba(255,255,255,.72);
+    background: hsl(var(--card) / .72);
     backdrop-filter: blur(18px) saturate(180%);
     -webkit-backdrop-filter: blur(18px) saturate(180%);
-    border: 1px solid rgba(255,255,255,.60);
-    box-shadow: 0 4px 24px rgba(91,111,179,.10), 0 1px 4px rgba(0,0,0,.05);
+    border: 1px solid hsl(var(--card) / .55);
+    box-shadow:
+      0 4px 24px hsl(var(--primary) / .08),
+      0 1px 4px  hsl(var(--foreground) / .04);
   }
   .dark .glass {
-    background: rgba(20,23,42,.65);
+    background: hsl(var(--card) / .65);
     backdrop-filter: blur(18px) saturate(150%);
     -webkit-backdrop-filter: blur(18px) saturate(150%);
-    border: 1px solid rgba(255,255,255,.07);
-    box-shadow: 0 4px 24px rgba(0,0,0,.4);
+    border: 1px solid hsl(var(--foreground) / .07);
+    box-shadow:
+      0 4px 24px hsl(var(--foreground) / .25),
+      0 1px 4px  hsl(var(--foreground) / .10);
   }
 
-  /* ── Opaque island (chart panels, KPI cells, cards) ─────────── */
+  /* ── Opaque island ───────────────────────────────────────────── */
   .island {
     background: hsl(var(--card));
-    border-radius: 1rem;
+    border-radius: var(--radius);
     border: 1px solid hsl(var(--border) / .6);
-    box-shadow: 0 2px 16px rgba(91,111,179,.07), 0 1px 3px rgba(0,0,0,.04);
+    box-shadow:
+      0 2px 16px hsl(var(--primary) / .06),
+      0 1px 3px  hsl(var(--foreground) / .04);
     transition: box-shadow .2s ease, transform .2s ease;
   }
   .island:hover {
-    box-shadow: 0 6px 28px rgba(91,111,179,.13), 0 2px 8px rgba(0,0,0,.06);
+    box-shadow:
+      0 6px 28px hsl(var(--primary) / .12),
+      0 2px 8px  hsl(var(--foreground) / .05);
     transform: translateY(-1px);
   }
   .dark .island {
-    box-shadow: 0 2px 16px rgba(0,0,0,.3);
+    box-shadow:
+      0 2px 16px hsl(var(--foreground) / .06),
+      0 1px 3px  hsl(var(--foreground) / .03);
   }
   .dark .island:hover {
-    box-shadow: 0 6px 28px rgba(0,0,0,.45);
+    box-shadow:
+      0 6px 28px hsl(var(--foreground) / .14),
+      0 2px 8px  hsl(var(--foreground) / .06);
   }
 
-  /* ── Pill nav item ──────────────────────────────────────────── */
+  /* ── Pill nav item ───────────────────────────────────────────── */
+  /* Usa tokens semánticos del brandbook SIS: --primary y --accent */
   .nav-pill {
     width: 100%;
     display: flex;
@@ -148,54 +170,58 @@
     color: hsl(var(--muted-foreground));
     background: transparent;
     font-family: 'Signika', sans-serif;
-    transition: background .15s, color .15s;
+    transition: background .15s ease, color .15s ease;
     text-align: left;
     white-space: nowrap;
   }
   .nav-pill:hover {
-    background: hsl(var(--muted));
-    color: hsl(var(--foreground));
+    /* Tint suave del --primary (navy SIS) al 10% */
+    background: hsl(var(--primary) / .10);
+    color: hsl(var(--primary));
   }
   .nav-pill.active {
-    background: hsl(var(--foreground));
-    color: hsl(var(--background));
+    /* Relleno sólido con --primary (navy SIS), texto blanco */
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
     font-weight: 600;
-    box-shadow: 0 2px 12px rgba(0,0,0,.18);
+    /* Sombra coloreada derivada del mismo --primary */
+    box-shadow: 0 2px 12px hsl(var(--primary) / .30);
   }
-  /* collapsed variant */
   .nav-pill.collapsed {
     justify-content: center;
     padding: 10px 0;
   }
 
-  /* ── KPI cell ───────────────────────────────────────────────── */
+  /* ── KPI cell ────────────────────────────────────────────────── */
   .kpi-cell {
     @apply island p-4 text-center select-none cursor-pointer;
   }
   .kpi-cell:hover {
-    box-shadow: 0 8px 28px rgba(91,111,179,.16);
+    box-shadow:
+      0 8px 28px hsl(var(--primary) / .14),
+      0 2px 8px  hsl(var(--foreground) / .05);
     transform: translateY(-2px);
   }
 
-  /* ── Chart panel wrap ───────────────────────────────────────── */
+  /* ── Chart panel wrap ────────────────────────────────────────── */
   .chart-panel-wrap {
     @apply island flex flex-col min-h-0 h-full overflow-hidden animate-fade-in;
   }
 
-  /* ── Filter bar ─────────────────────────────────────────────── */
+  /* ── Filter bar slide-in ─────────────────────────────────────── */
   .filter-bar-anim { animation: slide-down .22s ease both; overflow: hidden; }
   @keyframes slide-down {
     from { max-height: 0; opacity: 0; }
     to   { max-height: 200px; opacity: 1; }
   }
 
-  /* ── Leaflet ────────────────────────────────────────────────── */
+  /* ── Leaflet ─────────────────────────────────────────────────── */
   .dark .leaflet-tile {
     filter: brightness(.8) invert(1) contrast(1.1) hue-rotate(200deg);
   }
   .leaflet-popup-content-wrapper {
     border-radius: 12px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,.15) !important;
+    box-shadow: 0 4px 20px hsl(var(--foreground) / .12) !important;
     font-size: 12px;
     font-family: 'Signika', sans-serif;
     background: var(--surface);
@@ -203,10 +229,13 @@
   }
   .leaflet-popup-tip { display: none; }
 
-  /* ── Scrollbar ──────────────────────────────────────────────── */
+  /* ── Scrollbar ───────────────────────────────────────────────── */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+  }
 }
 
 @layer utilities {
@@ -218,19 +247,15 @@
     from { opacity: 0; transform: translateY(8px) scale(.99); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
   }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  @keyframes pulse {
-    0%,100% { opacity: 1; }
-    50%      { opacity: .4; }
-  }
+  @keyframes spin  { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
   .animate-fade-slide-up { animation: fade-slide-up .28s cubic-bezier(.22,.68,0,1.2) both; }
   .animate-fade-in       { animation: fade-in .25s ease both; }
   .animate-spin-slow     { animation: spin .7s linear infinite; }
   .animate-pulse-kpi     { animation: pulse 1.4s ease-in-out infinite; }
 
-  /* Print */
+  /* ── Print ───────────────────────────────────────────────────── */
   @media print {
     @page { size: A4 landscape; margin: 1cm 1.2cm 2.8cm 1.2cm; }
     aside, .no-print, nav, button { display: none !important; }
@@ -242,11 +267,12 @@
     .print-map-replacement { display: flex !important; flex-direction: column; height: 320px !important; }
     .print-footer-citation {
       display: block !important; position: fixed; bottom: 0; left: 0; right: 0;
-      background: #fff; border-top: 2px solid #1a3a5c;
+      background: #fff; border-top: 2px solid hsl(var(--primary));
       padding: 5px 14px; font-size: 8px; color: #333; line-height: 1.6;
     }
   }
 
+  /* ── Responsive ──────────────────────────────────────────────── */
   @media (max-width: 860px) {
     .main-row { flex-direction: column !important; height: auto !important; }
     .main-row > div:first-child { flex: none !important; height: 340px; }
