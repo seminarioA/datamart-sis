@@ -15,9 +15,12 @@ jobs:
           port: 22
           command_timeout: 2m
           script: |
-            docker exec datamart-sis-postgres \
-              psql -U datamart -d datamart_sis \
-              -c "ALTER USER datamart WITH PASSWORD '${{ secrets.DB_NEW_PASS }}';"
+            echo "=== Docker containers ==="
+            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "docker not available"
+            echo "=== Processes on port 5433 ==="
+            ss -tlnp | grep 5433 || true
+            echo "=== psql available? ==="
+            which psql 2>/dev/null || echo "psql not in PATH"
 
       - name: Actualizar DATABASE_URL en GitHub Secrets
         env:
