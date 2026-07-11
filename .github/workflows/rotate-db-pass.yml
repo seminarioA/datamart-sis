@@ -15,12 +15,18 @@ jobs:
           port: 22
           command_timeout: 2m
           script: |
-            echo "=== Docker containers ==="
-            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "docker not available"
-            echo "=== Processes on port 5433 ==="
-            ss -tlnp | grep 5433 || true
-            echo "=== psql available? ==="
-            which psql 2>/dev/null || echo "psql not in PATH"
+            echo "=== All docker containers (including stopped) ==="
+            docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || echo "docker not available"
+            echo "=== All listening ports ==="
+            ss -tlnp
+            echo "=== postgres processes ==="
+            ps aux | grep -i postgres | grep -v grep || echo "no postgres processes"
+            echo "=== systemd postgres service ==="
+            systemctl status postgresql 2>&1 | head -5 || true
+            echo "=== home dir contents ==="
+            ls /home/ubuntu/
+            echo "=== docker compose files ==="
+            find /home/ubuntu -name "docker-compose*.yml" 2>/dev/null | head -5
 
       - name: Actualizar DATABASE_URL en GitHub Secrets
         env:
