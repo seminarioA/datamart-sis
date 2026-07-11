@@ -6,55 +6,22 @@ jobs:
   rotate:
     runs-on: ubuntu-latest
     steps:
-      - name: Levantar postgres si está caído, cambiar contraseña, reiniciar API
+      - name: Diagnóstico de volúmenes Docker
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ubuntu
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          command_timeout: 5m
+          command_timeout: 1m
           script: |
-            set -e
-            cd /home/ubuntu/datamart-sis
-
-            # 1. Arrancar postgres via docker-compose.simple.yml si no está corriendo
-            if ! docker ps --format '{{.Names}}' | grep -q postgres; then
-              echo "Postgres no está corriendo — arrancando..."
-              cd /home/ubuntu/datamart-sis
-              # docker-compose V1 o V2
-              if command -v docker-compose &>/dev/null; then
-                POSTGRES_PASSWORD='${{ secrets.DB_NEW_PASS }}' \
-                  docker-compose -f docker-compose.simple.yml up -d postgres
-              else
-                POSTGRES_PASSWORD='${{ secrets.DB_NEW_PASS }}' \
-                  docker compose --file docker-compose.simple.yml up -d postgres
-              fi
-              echo "Esperando que postgres esté listo..."
-              sleep 12
-            fi
-
-            # 2. Cambiar contraseña (conectar con la contraseña actual)
-            CONTAINER=$(docker ps --format '{{.Names}}' | grep postgres | head -1)
-            echo "Contenedor postgres: $CONTAINER"
-            docker exec "$CONTAINER" \
-              psql -U datamart -d datamart_sis \
-              -c "ALTER USER datamart WITH PASSWORD '${{ secrets.DB_NEW_PASS }}';"
-
-            # 3. Reiniciar API con la nueva DATABASE_URL (postgres expuesto en host:5433)
-            NEW_DB_URL="postgresql://datamart:${{ secrets.DB_NEW_PASS }}@localhost:5433/datamart_sis"
-            # -x = coincidencia exacta de nombre de proceso (evita auto-matar el script SSH)
-            pkill -9 -x uvicorn  2>/dev/null || true
-            pkill -9 -x gunicorn 2>/dev/null || true
-            sleep 3
-            source /home/ubuntu/datamart-sis/.venv/bin/activate
-            cd /home/ubuntu/datamart-sis/web
-            DATABASE_URL="$NEW_DB_URL" \
-              nohup uvicorn app:app --host 0.0.0.0 --port 8080 --workers 1 \
-              >> /home/ubuntu/web.log 2>&1 &
-            echo "API reiniciada con PID $!"
-            sleep 8
-            curl -sf http://localhost:8080/api/status && echo "API OK" || echo "API no responde aún (revisar web.log)"
+            echo "=== Volúmenes Docker ==="
+            docker volume ls
+            echo "=== Tamaño de cada volumen con datos de postgres ==="
+            docker volume ls --format '{{.Name}}' | grep -i "pg\|postgres\|data" | while read v; do
+              SIZE=$(docker run --rm -v "$v":/data alpine du -sh /data 2>/dev/null | cut -f1)
+              echo "$v → $SIZE"
+            done
 
       - name: Actualizar DATABASE_URL en GitHub Secrets
         env:
