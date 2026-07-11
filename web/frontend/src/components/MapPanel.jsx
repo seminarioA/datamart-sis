@@ -49,7 +49,7 @@ function RegionCard({ info, onClose }) {
         <span className="text-[11px] font-bold uppercase tracking-[.04em] text-foreground">
           {info.name}
         </span>
-        <button onClick={onClose}
+        <button onClick={onClose} aria-label="Cerrar"
           className="text-muted-foreground hover:text-foreground bg-transparent border-0 cursor-pointer text-base leading-none px-0.5">
           ×
         </button>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { ChevronRight, ChevronLeft, LayoutDashboard, Map, TrendingUp, BookOpen, BarChart2 } from 'lucide-react'
-import { Dialog, DialogContent, DialogPortal, DialogOverlay } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
 const STEPS = [
@@ -44,15 +44,14 @@ export default function Onboarding({ onClose }) {
   const next = () => step < STEPS.length - 1 ? setStep(s => s + 1) : onClose()
   const prev = () => setStep(s => s - 1)
 
-  useEffect(() => {
-    const h = e => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [onClose])
-
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-xl max-w-[480px] w-[90%] shadow-2xl overflow-hidden animate-fade-slide-up">
+    <Dialog open onOpenChange={open => !open && onClose()}>
+      <DialogContent
+        showClose={false}
+        className="bg-card border border-border rounded-xl max-w-[480px] w-[90%] shadow-2xl overflow-hidden p-0 z-[9999]"
+      >
+      <DialogTitle className="sr-only">{S.title}</DialogTitle>
+      <div>
         {/* Header */}
         <div className="bg-primary px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -114,6 +113,7 @@ export default function Onboarding({ onClose }) {
           </Button>
         </div>
       </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

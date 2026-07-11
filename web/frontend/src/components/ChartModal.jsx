@@ -18,7 +18,11 @@ export default function ChartModal({ chart, dark, onClose }) {
       onClick={onClose}
     >
       <div
-        className="w-[92vw] h-[88vh] flex flex-col rounded-lg overflow-hidden shadow-2xl animate-fade-slide-up"
+        role="dialog"
+        aria-modal="true"
+        aria-label={chart.title}
+        tabIndex={-1}
+        className="w-[92vw] h-[88vh] flex flex-col rounded-lg overflow-hidden shadow-2xl animate-fade-slide-up focus:outline-none"
         onClick={e => e.stopPropagation()}
       >
         <div className="bg-primary px-4 py-2.5 flex items-center justify-between shrink-0">

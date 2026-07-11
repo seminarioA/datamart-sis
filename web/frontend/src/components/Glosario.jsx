@@ -32,7 +32,7 @@ export default function Glosario() {
   return (
     <div className="flex-1 overflow-y-auto flex flex-col min-h-0">
       <div className="sticky top-0 bg-background px-5 pt-3 pb-3 z-10">
-        <div className="island flex items-center gap-2.5 px-3 py-2.5">
+        <div className="island flex items-center gap-2.5 px-3 py-2.5 focus-within:ring-2 focus-within:ring-primary/50">
           <Search size={14} className="text-muted-foreground shrink-0" />
           <input
             value={q}

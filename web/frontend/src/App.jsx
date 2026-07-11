@@ -19,7 +19,7 @@ import { cn } from '@/lib/utils'
 
 export default function App() {
   const [dark, setDark]            = useState(() => localStorage.getItem('theme') === 'dark')
-  const [collapsed, setCollapsed]  = useState(false)
+  const [collapsed, setCollapsed]  = useState(() => localStorage.getItem('sidebar_collapsed') === 'true')
   const [module, setModule]        = useState('overview')
   const [moduleKey, setModuleKey]  = useState(0)
   const [kpis, setKpis]            = useState(null)
@@ -36,6 +36,19 @@ export default function App() {
     document.documentElement.classList.toggle('dark', dark)
     localStorage.setItem('theme', dark ? 'dark' : 'light')
   }, [dark])
+
+  useEffect(() => {
+    localStorage.setItem('sidebar_collapsed', String(collapsed))
+  }, [collapsed])
+
+  // Auto-colapsar en móvil
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    if (mq.matches) setCollapsed(true)
+    const h = e => { if (e.matches) setCollapsed(true) }
+    mq.addEventListener('change', h)
+    return () => mq.removeEventListener('change', h)
+  }, [])
 
   const closeOnboarding = () => { localStorage.setItem('visited_v1', '1'); setOnboarding(false) }
   const handlePrint = () => window.print()

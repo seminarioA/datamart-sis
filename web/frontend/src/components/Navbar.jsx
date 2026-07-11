@@ -10,9 +10,9 @@ export default function Navbar({ dark, onToggleTheme, status }) {
   return (
     <header className="island shrink-0 flex items-center px-5 py-3.5 gap-3 z-50">
       <div>
-        <p className="font-heading font-bold text-[14px] text-primary tracking-tight leading-tight">
+        <h1 className="font-heading font-bold text-[14px] text-primary tracking-tight leading-tight">
           Atenciones de Salud
-        </p>
+        </h1>
         <p className="text-[10px] text-muted-foreground tracking-wide font-light mt-0.5">
           Seguro Integral de Salud · Datos Abiertos MINSA · Perú
         </p>
