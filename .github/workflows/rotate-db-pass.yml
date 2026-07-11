@@ -21,12 +21,17 @@ jobs:
             # 1. Arrancar postgres via docker-compose.simple.yml si no está corriendo
             if ! docker ps --format '{{.Names}}' | grep -q postgres; then
               echo "Postgres no está corriendo — arrancando..."
-              POSTGRES_PASSWORD='${{ secrets.DB_NEW_PASS }}' \
-                docker compose -f docker-compose.simple.yml up -d postgres
+              cd /home/ubuntu/datamart-sis
+              # docker-compose V1 o V2
+              if command -v docker-compose &>/dev/null; then
+                POSTGRES_PASSWORD='${{ secrets.DB_NEW_PASS }}' \
+                  docker-compose -f docker-compose.simple.yml up -d postgres
+              else
+                POSTGRES_PASSWORD='${{ secrets.DB_NEW_PASS }}' \
+                  docker compose --file docker-compose.simple.yml up -d postgres
+              fi
               echo "Esperando que postgres esté listo..."
-              sleep 10
-              docker compose -f docker-compose.simple.yml exec -T postgres \
-                pg_isready -U datamart -d datamart_sis
+              sleep 12
             fi
 
             # 2. Cambiar contraseña (conectar con la contraseña actual)
