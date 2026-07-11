@@ -1,0 +1,33 @@
+name: Rotate DB password (one-shot)
+on:
+  workflow_dispatch:
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cambiar contraseña en PostgreSQL
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ubuntu
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          command_timeout: 2m
+          script: |
+            sudo -u postgres psql -p 5433 \
+              -c "ALTER USER datamart WITH PASSWORD '${{ secrets.DB_NEW_PASS }}';"
+
+      - name: Actualizar DATABASE_URL en GitHub Secrets
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh secret set DATABASE_URL \
+            --repo ${{ github.repository }} \
+            --body "postgresql://datamart:${{ secrets.DB_NEW_PASS }}@${{ secrets.VPS_HOST }}:5433/datamart_sis"
+
+      - name: Limpiar secreto temporal
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          gh secret delete DB_NEW_PASS --repo ${{ github.repository }}
