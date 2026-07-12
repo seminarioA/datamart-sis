@@ -27,7 +27,7 @@ jobs:
               - 'deploy.sh'
               - 'sql/**'
               - 'elt_load.py'
-              - 'airflow/dags/**'
+              - 'prefect/**'
             frontend:
               - 'web/frontend/src/**'
               - 'web/frontend/public/**'
@@ -45,18 +45,18 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       dashboard_url: ${{ steps.get_urls.outputs.dashboard_url }}
-      airflow_url:   ${{ steps.get_urls.outputs.airflow_url }}
+      prefect_url:   ${{ steps.get_urls.outputs.prefect_url }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pull + restart backend services
+      - name: Pull + restart backend + Prefect
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ubuntu
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          command_timeout: 12m
+          command_timeout: 15m
           script: |
             set -e
             cd /home/ubuntu/datamart-sis
@@ -64,14 +64,21 @@ jobs:
             git reset --hard origin/main
             source .venv/bin/activate
             pip install -r requirements.txt -q
-            pkill -9 -f 'uvicorn app:app' 2>/dev/null || true
+
+            # Reiniciar API
+            pkill -9 -x uvicorn 2>/dev/null || true
             sleep 2
             cd web
             DATABASE_URL='${{ secrets.DATABASE_URL }}' \
             PYTHONUNBUFFERED=1 nohup uvicorn app:app \
               --host 0.0.0.0 --port 8080 --workers 1 \
               >> /home/ubuntu/web.log 2>&1 &
-            echo "Backend redeployado (solo uvicorn) — PID $!"
+            echo "API PID: $!"
+
+            # Reiniciar Prefect
+            cd /home/ubuntu/datamart-sis
+            DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+            bash prefect/start_prefect.sh
 
       - name: Read public URLs
         id: get_urls
@@ -81,10 +88,10 @@ jobs:
           SSH="ssh -i /tmp/vps_key -o StrictHostKeyChecking=no ubuntu@${{ secrets.VPS_HOST }}"
           for i in 1 2 3 4 5; do
             DASH=$($SSH "cat /home/ubuntu/public_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
-            AF=$($SSH "cat /home/ubuntu/airflow_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
+            PF=$($SSH "cat /home/ubuntu/prefect_url.txt 2>/dev/null || echo ''" | tr -d '\r\n')
             if [[ "$DASH" == https://* ]]; then
               echo "dashboard_url=$DASH" >> "$GITHUB_OUTPUT"
-              echo "airflow_url=$AF"     >> "$GITHUB_OUTPUT"
+              echo "prefect_url=$PF"     >> "$GITHUB_OUTPUT"
               break
             fi
             sleep 10
@@ -105,8 +112,8 @@ jobs:
       contents: write
     env:
       # Si backend cambió usa la URL del job; si solo frontend cambió usa la del repo
-      DASH_URL: ${{ needs.deploy-backend.outputs.dashboard_url || 'https://datamart-sis.vercel.app' }}
-      AF_URL:   ${{ needs.deploy-backend.outputs.airflow_url }}
+      DASH_URL:    ${{ needs.deploy-backend.outputs.dashboard_url || 'https://datamart-sis.vercel.app' }}
+      PREFECT_URL: ${{ needs.deploy-backend.outputs.prefect_url }}
       GH_TOKEN: ${{ secrets.GH_PAT }}
     steps:
       - uses: actions/checkout@v4
@@ -134,8 +141,7 @@ jobs:
           pytest tests/test_dashboard_modules.py \
             --base-url "${{ env.DASH_URL }}" \
             -v --tb=short --timeout=30 \
-            || echo "⚠️ Algunos tests fallaron"
-
+            || echo "Algunos tests fallaron"
 
       - name: Deploy to Vercel (frontend)
         if: needs.changes.outputs.frontend == 'true' && env.VERCEL_TOKEN != ''
@@ -149,7 +155,6 @@ jobs:
           npm ci --legacy-peer-deps --quiet
           npm run build
           vercel --prod --yes --token "$VERCEL_TOKEN" 2>&1 | tail -5
-          # Reasignar alias de produccion al nuevo deployment
           TEAM="$VERCEL_ORG_ID"
           PROJ="$VERCEL_PROJECT_ID"
           DEPLOY_ID=$(curl -s \
@@ -171,8 +176,8 @@ jobs:
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
           TAG="deploy-$(date -u '+%Y%m%d-%H%M')"
           CHANGED="${{ needs.changes.outputs.backend == 'true' && 'Backend+Frontend' || 'Frontend only (Vercel)' }}"
-          printf 'DataMart SIS - %s\n\nCambios: %s\nDashboard: %s\nAirflow: %s\nCommit: %s\n' \
-            "$DATE" "$CHANGED" "${{ env.DASH_URL }}" "${{ env.AF_URL }}" \
+          printf 'DataMart SIS - %s\n\nCambios: %s\nDashboard: %s\nPrefect UI: %s\nCommit: %s\n' \
+            "$DATE" "$CHANGED" "${{ env.DASH_URL }}" "${{ env.PREFECT_URL }}" \
             "$(echo ${{ github.sha }} | cut -c1-7)" > /tmp/rn.md
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \

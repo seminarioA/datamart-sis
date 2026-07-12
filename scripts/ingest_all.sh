@@ -65,8 +65,13 @@ rows_by_year() {
 }
 
 total_in_db() {
-    # Usa mv_kpis en lugar de SUM sobre 188M filas
-    py_db "SELECT total_atenciones FROM datamart_sis.mv_kpis" | tr -d ' \n'
+    # Prefiere mv_kpis (pre-agregada); cae a full scan si la MV aún no existe
+    result=$(py_db "SELECT total_atenciones FROM datamart_sis.mv_kpis" 2>/dev/null | tr -d ' \n')
+    if [ -z "$result" ]; then
+        py_db "SELECT COALESCE(SUM(cantidad_atenciones),0) FROM datamart_sis.fact_atenciones_sis" | tr -d ' \n'
+    else
+        printf '%s' "$result"
+    fi
 }
 
 check_db() {
@@ -277,3 +282,28 @@ log "Total en DB: $(total_in_db)"
 log "============================================================"
 log "INGEST COMPLETADO"
 log "============================================================"
+
+# ---------------------------------------------------------------------------
+# Verificación de cobertura: todos los 14 archivos esperados deben tener datos
+# ---------------------------------------------------------------------------
+log ""
+log "--- Verificacion de cobertura ---"
+LOADED_COUNT=0
+MISSING_FILES=()
+for FNAME in $FNAME_LIST; do
+    CNT=$(rows_in_db "$FNAME")
+    if [ "${CNT:-0}" -gt 0 ]; then
+        LOADED_COUNT=$((LOADED_COUNT + 1))
+    else
+        MISSING_FILES+=("$FNAME")
+    fi
+done
+EXPECTED_COUNT=14
+log "Archivos con datos: $LOADED_COUNT / $EXPECTED_COUNT"
+if [ "${#MISSING_FILES[@]}" -gt 0 ]; then
+    log "ADVERTENCIA — archivos sin datos cargados:"
+    for F in "${MISSING_FILES[@]}"; do log "  - $F"; done
+    exit 1
+else
+    log "Cobertura completa: todos los $EXPECTED_COUNT archivos cargados"
+fi

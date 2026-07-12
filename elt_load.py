@@ -1,6 +1,6 @@
 """
 elt_load.py - DataMart SIS - carga incremental por batches
-Procesa cada CSV en lotes de 50K filas. Hace COMMIT después de cada lote,
+Procesa cada CSV en lotes de 500K filas. Hace COMMIT después de cada lote,
 así los datos son visibles progresivamente en la DB.
 """
 

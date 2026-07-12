@@ -49,3 +49,11 @@ COMMENT ON COLUMN datamart_sis.FACT_ATENCIONES_SIS.CANTIDAD_ATENCIONES IS
 
 COMMENT ON COLUMN datamart_sis.FACT_ATENCIONES_SIS.FUENTE_ARCHIVO IS
     'Nombre del archivo CSV fuente del que proviene el registro (trazabilidad ETL)';
+
+-- Clave natural única: cada combinación de dimensiones ocurre una sola vez
+-- (la función fn_load_staging ya agrega con SUM antes de insertar)
+ALTER TABLE datamart_sis.FACT_ATENCIONES_SIS
+    ADD CONSTRAINT uq_fact_grain UNIQUE (
+        ID_TIEMPO, COD_UBIGEO, COD_IPRESS, NIVEL_EESS, COD_PLAN_SEGURO,
+        COD_SERVICIO, SEXO, GRUPO_EDAD
+    );

@@ -99,6 +99,7 @@ BEGIN
     SELECT DISTINCT ON (cod_ubigeo)
         cod_ubigeo, distrito, provincia, LEFT(cod_ubigeo, 4), region, LEFT(cod_ubigeo, 2)
     FROM tmp_norm
+    ORDER BY cod_ubigeo
     ON CONFLICT (cod_ubigeo) DO NOTHING;
 
     -- DIM_IPRESS
@@ -107,6 +108,7 @@ BEGIN
     SELECT DISTINCT ON (cod_ipress)
         cod_ipress, nombre_ipress, cod_unidad_ejecutora, desc_unidad_ejecutora
     FROM tmp_norm
+    ORDER BY cod_ipress
     ON CONFLICT (cod_ipress) DO NOTHING;
 
     -- DIM_NIVEL_IPRESS (red de seguridad; I/II/III/0 ya sembrados en 06_seed_dims.sql)
@@ -136,6 +138,7 @@ BEGIN
     SELECT DISTINCT ON (cod_servicio)
         cod_servicio, desc_servicio, NULL
     FROM tmp_norm
+    ORDER BY cod_servicio
     ON CONFLICT (cod_servicio) DO NOTHING;
 
     -- DIM_SEXO (MASCULINO/FEMENINO ya sembrados; red de seguridad)
@@ -150,14 +153,16 @@ BEGIN
     FROM tmp_norm
     ON CONFLICT (grupo_edad) DO NOTHING;
 
-    -- FACT
+    -- FACT — agrega filas con misma clave natural (la fuente puede tener duplicados)
     INSERT INTO datamart_sis.fact_atenciones_sis
         (id_tiempo, cod_ubigeo, cod_ipress, nivel_eess, cod_plan_seguro,
          cod_servicio, sexo, grupo_edad, cantidad_atenciones, fuente_archivo)
     SELECT
         id_tiempo, cod_ubigeo, cod_ipress, nivel_eess, cod_plan_seguro,
-        cod_servicio, sexo, grupo_edad, cantidad_atenciones, p_fuente
-    FROM tmp_norm;
+        cod_servicio, sexo, grupo_edad, SUM(cantidad_atenciones), p_fuente
+    FROM tmp_norm
+    GROUP BY id_tiempo, cod_ubigeo, cod_ipress, nivel_eess, cod_plan_seguro,
+             cod_servicio, sexo, grupo_edad;
 
     GET DIAGNOSTICS v_filas = ROW_COUNT;
 
