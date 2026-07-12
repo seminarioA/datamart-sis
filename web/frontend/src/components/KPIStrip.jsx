@@ -23,8 +23,8 @@ const KPI_META = {
     tip: 'IPRESS: Institución Prestadora de Servicios de Salud. Son los establecimientos (centros de salud, puestos de salud, hospitales, clínicas) que registraron atenciones a asegurados SIS. El nivel I corresponde a atención primaria; III a hospitales de alta complejidad.',
   },
   'kpi-servicios': {
-    label: 'Tipos de Servicio',
-    tip: 'Cantidad de tipos de servicio distintos registrados. Ejemplos: Medicina General, Odontología, Laboratorio Clínico, Farmacia, CRED (Control del Niño Sano), Planificación Familiar. Cada atención pertenece a un único tipo de servicio.',
+    label: 'Tipos de Prestación',
+    tip: 'Cantidad de tipos de prestación distintos registrados. Ejemplos: Medicina General, Odontología, Laboratorio Clínico, Farmacia, CRED (Control del Niño Sano), Planificación Familiar. Cada atención pertenece a un único tipo de prestación.',
   },
   'kpi-planes': {
     label: 'Planes de Seguro',
@@ -53,7 +53,7 @@ function KPICell({ meta, value, onClick }) {
           </Tooltip>
         </div>
         <div
-          className="font-heading font-bold text-2xl tabular-nums leading-tight mt-1 transition-colors duration-200"
+          className="font-heading font-bold text-2xl tabular-nums leading-tight mt-1 transition-colors duration-200 whitespace-nowrap"
           style={{
             color: isLoading ? 'transparent' : (meta.accent ? 'var(--accent-c)' : 'hsl(var(--primary))'),
             background: isLoading ? 'hsl(var(--muted))' : 'transparent',

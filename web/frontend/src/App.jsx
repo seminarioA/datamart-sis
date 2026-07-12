@@ -183,18 +183,18 @@ export default function App() {
             <FilterBar force />
             <div className="flex-1 p-3 grid grid-cols-2 gap-2 overflow-y-auto">
               <div className="h-[340px]">
-                <ChartPanel type="donut" title="Atenciones por Sexo"
+                <ChartPanel type="donut" title="Asegurados por Sexo"
                   labels={charts?.sexo?.map(d => d.sexo) ?? []}
                   values={charts?.sexo?.map(d => Number(d.atenciones)) ?? []}
                   colors={[c[0], c[4]]} dark={dark} loading={loading || !charts?.sexo?.length}
-                  onExpand={() => expand('Atenciones por Sexo', 'donut', charts?.sexo?.map(d => d.sexo), charts?.sexo?.map(d => Number(d.atenciones)), [c[0], c[4]])} />
+                  onExpand={() => expand('Asegurados por Sexo', 'donut', charts?.sexo?.map(d => d.sexo), charts?.sexo?.map(d => Number(d.atenciones)), [c[0], c[4]])} />
               </div>
               <div className="h-[340px]">
-                <ChartPanel type="hbar" title="Por Grupo de Edad"
+                <ChartPanel type="hbar" title="Por Grupo Etario"
                   labels={charts?.edad?.map(d => d.grupo_edad) ?? []}
                   values={charts?.edad?.map(d => Number(d.atenciones)) ?? []}
                   colors={c[2]} dark={dark} loading={loading || !charts?.edad?.length}
-                  onExpand={() => expand('Por Grupo de Edad', 'hbar', charts?.edad?.map(d => d.grupo_edad), charts?.edad?.map(d => Number(d.atenciones)), c[2])} />
+                  onExpand={() => expand('Por Grupo Etario', 'hbar', charts?.edad?.map(d => d.grupo_edad), charts?.edad?.map(d => Number(d.atenciones)), c[2])} />
               </div>
             </div>
           </div>
@@ -213,11 +213,11 @@ export default function App() {
                   onExpand={() => expand(`Top ${filterTopN} Regiones`, 'hbar', charts?.region?.slice(0, filterTopN).map(d => d.region), charts?.region?.slice(0, filterTopN).map(d => Number(d.atenciones)), c[0])} />
               </div>
               <div className="h-[380px]">
-                <ChartPanel type="hbar" title="Por Nivel EESS"
+                <ChartPanel type="hbar" title="Por Nivel de EESS"
                   labels={charts?.nivel?.map(d => d.nivel || d.nivel_eess) ?? []}
                   values={charts?.nivel?.map(d => Number(d.atenciones)) ?? []}
                   colors={[c[0], c[1], c[2], c[4]]} dark={dark} loading={loading || !charts?.nivel?.length}
-                  onExpand={() => expand('Por Nivel EESS', 'hbar', charts?.nivel?.map(d => d.nivel || d.nivel_eess), charts?.nivel?.map(d => Number(d.atenciones)), [c[0], c[1], c[2], c[4]])} />
+                  onExpand={() => expand('Por Nivel de EESS', 'hbar', charts?.nivel?.map(d => d.nivel || d.nivel_eess), charts?.nivel?.map(d => Number(d.atenciones)), [c[0], c[1], c[2], c[4]])} />
               </div>
             </div>
           </div>
@@ -229,18 +229,18 @@ export default function App() {
             <FilterBar force />
             <div className="flex-1 p-3 grid grid-cols-2 gap-2 overflow-y-auto">
               <div className="h-[380px]">
-                <ChartPanel type="hbar" title={`Top ${filterTopN} Servicios`}
+                <ChartPanel type="hbar" title={`Top ${filterTopN} Prestaciones`}
                   labels={charts?.servicios?.slice(0, filterTopN).map(d => trunc(d.servicio || d.cod_servicio, 30)) ?? []}
                   values={charts?.servicios?.slice(0, filterTopN).map(d => Number(d.atenciones)) ?? []}
                   colors={c[1]} dark={dark} loading={loading || !charts?.servicios?.length}
-                  onExpand={() => expand(`Top ${filterTopN} Servicios`, 'hbar', charts?.servicios?.slice(0, filterTopN).map(d => trunc(d.servicio || d.cod_servicio, 40)), charts?.servicios?.slice(0, filterTopN).map(d => Number(d.atenciones)), c[1])} />
+                  onExpand={() => expand(`Top ${filterTopN} Prestaciones`, 'hbar', charts?.servicios?.slice(0, filterTopN).map(d => trunc(d.servicio || d.cod_servicio, 40)), charts?.servicios?.slice(0, filterTopN).map(d => Number(d.atenciones)), c[1])} />
               </div>
               <div className="h-[380px]">
-                <ChartPanel type="donut" title="Por Plan de Seguro"
+                <ChartPanel type="donut" title="Por Plan SIS"
                   labels={charts?.plan?.map(d => d.desc_plan_seguro || d.cod_plan_seguro) ?? []}
                   values={charts?.plan?.map(d => Number(d.atenciones)) ?? []}
                   colors={c} dark={dark} loading={loading || !charts?.plan?.length}
-                  onExpand={() => expand('Por Plan de Seguro', 'donut', charts?.plan?.map(d => d.desc_plan_seguro || d.cod_plan_seguro), charts?.plan?.map(d => Number(d.atenciones)), c)} />
+                  onExpand={() => expand('Por Plan SIS', 'donut', charts?.plan?.map(d => d.desc_plan_seguro || d.cod_plan_seguro), charts?.plan?.map(d => Number(d.atenciones)), c)} />
               </div>
             </div>
           </div>
@@ -253,11 +253,11 @@ export default function App() {
             <FilterBar force />
             <div className="flex-1 p-3 overflow-y-auto">
               <div className="h-[400px]">
-                <ChartPanel type="line" title="Evolución de Atenciones por Año"
+                <ChartPanel type="line" title="Evolución de Atenciones SIS"
                   labels={anioData?.map(d => String(d.anio)) ?? []}
                   values={anioData?.map(d => Number(d.atenciones)) ?? []}
                   colors={[c[0]]} dark={dark} loading={loading || !charts?.anio?.length}
-                  onExpand={() => expand('Evolución por Año', 'line', anioData?.map(d => String(d.anio)), anioData?.map(d => Number(d.atenciones)), [c[0]])} />
+                  onExpand={() => expand('Evolución de Atenciones SIS', 'line', anioData?.map(d => String(d.anio)), anioData?.map(d => Number(d.atenciones)), [c[0]])} />
               </div>
             </div>
           </div>
@@ -325,23 +325,23 @@ export default function App() {
 
               <div className="flex-1 flex flex-col gap-1.5 min-h-0">
                 <div className="flex-[0_0_52%] min-h-0">
-                  <ChartPanel type="line" title="Atenciones por Año"
+                  <ChartPanel type="line" title="Evolución de Atenciones SIS"
                     labels={applyYearFilter(charts?.anio)?.map(d => String(d.anio)) ?? []}
                     values={applyYearFilter(charts?.anio)?.map(d => Number(d.atenciones)) ?? []}
                     colors={[c[0]]} dark={dark} loading={loading || !charts?.anio?.length}
-                    onExpand={() => expand('Atenciones por Año', 'line', applyYearFilter(charts?.anio)?.map(d => String(d.anio)), applyYearFilter(charts?.anio)?.map(d => Number(d.atenciones)), [c[0]])} />
+                    onExpand={() => expand('Evolución de Atenciones SIS', 'line', applyYearFilter(charts?.anio)?.map(d => String(d.anio)), applyYearFilter(charts?.anio)?.map(d => Number(d.atenciones)), [c[0]])} />
                 </div>
                 <div className="flex-1 grid grid-cols-2 gap-1.5 min-h-0">
-                  <ChartPanel type="donut" title="Por Sexo"
+                  <ChartPanel type="donut" title="Asegurados por Sexo"
                     labels={charts?.sexo?.map(d => d.sexo) ?? []}
                     values={charts?.sexo?.map(d => Number(d.atenciones)) ?? []}
                     colors={[c[0], c[4]]} dark={dark} loading={loading || !charts?.sexo?.length}
-                    onExpand={() => expand('Por Sexo', 'donut', charts?.sexo?.map(d => d.sexo), charts?.sexo?.map(d => Number(d.atenciones)), [c[0], c[4]])} />
-                  <ChartPanel type="hbar" title="Por Nivel EESS"
+                    onExpand={() => expand('Asegurados por Sexo', 'donut', charts?.sexo?.map(d => d.sexo), charts?.sexo?.map(d => Number(d.atenciones)), [c[0], c[4]])} />
+                  <ChartPanel type="hbar" title="Por Nivel de EESS"
                     labels={charts?.nivel?.map(d => d.nivel || d.nivel_eess) ?? []}
                     values={charts?.nivel?.map(d => Number(d.atenciones)) ?? []}
                     colors={[c[0], c[1], c[2], c[4]]} dark={dark} loading={loading || !charts?.nivel?.length}
-                    onExpand={() => expand('Por Nivel EESS', 'hbar', charts?.nivel?.map(d => d.nivel || d.nivel_eess), charts?.nivel?.map(d => Number(d.atenciones)), [c[0], c[1], c[2], c[4]])} />
+                    onExpand={() => expand('Por Nivel de EESS', 'hbar', charts?.nivel?.map(d => d.nivel || d.nivel_eess), charts?.nivel?.map(d => Number(d.atenciones)), [c[0], c[1], c[2], c[4]])} />
                 </div>
               </div>
             </div>
@@ -349,10 +349,10 @@ export default function App() {
             {/* Quick nav */}
             <div className="no-print px-3 pb-3 flex gap-2 flex-wrap">
               {[
-                ['Geografía',   'geography',    Map],
-                ['Servicios',   'services',     Stethoscope],
-                ['Demografía',  'demographics', Users],
-                ['Tendencia',   'trends',       TrendingUp],
+                ['Red Prestacional', 'geography',    Map],
+                ['Prestaciones',     'services',     Stethoscope],
+                ['Perfil Asegurado', 'demographics', Users],
+                ['Evolución',        'trends',       TrendingUp],
               ].map(([label, id, Icon]) => (
                 <Button
                   key={id}

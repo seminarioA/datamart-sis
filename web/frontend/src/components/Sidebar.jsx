@@ -8,16 +8,16 @@ import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
 
 export const MODULES = [
-  { id:'overview',     icon:LayoutDashboard, label:'Resumen',      desc:'Vista general del dashboard' },
-  { id:'map',          icon:Map,             label:'Mapa',         desc:'Distribución geográfica' },
-  { id:'demographics', icon:Users,           label:'Demografía',   desc:'Por sexo y grupo de edad' },
-  { id:'geography',    icon:Building2,       label:'Geografía',    desc:'Por región y nivel EESS' },
-  { id:'services',     icon:Stethoscope,     label:'Servicios',    desc:'Top servicios y planes' },
-  { id:'trends',       icon:CalendarDays,    label:'Tendencia',    desc:'Evolución anual' },
-  { id:'predicciones', icon:TrendingUp,      label:'Predicciones', desc:'Forecasting OLS 2026-2028' },
-  { id:'acciones',     icon:Target,          label:'Acciones',     desc:'Recomendaciones' },
-  { id:'cuadre',       icon:ShieldCheck,     label:'Cuadre',       desc:'Integridad de carga 1:1' },
-  { id:'glosario',     icon:BookOpen,        label:'Glosario',     desc:'Términos y definiciones' },
+  { id:'overview',     icon:LayoutDashboard, label:'Resumen',              desc:'Panel de atenciones SIS' },
+  { id:'map',          icon:Map,             label:'Cobertura',            desc:'Distribución territorial' },
+  { id:'demographics', icon:Users,           label:'Perfil del Asegurado', desc:'Sexo y grupo etario' },
+  { id:'geography',    icon:Building2,       label:'Red Prestacional',     desc:'Regiones y nivel EESS' },
+  { id:'services',     icon:Stethoscope,     label:'Prestaciones',         desc:'Top prestaciones y planes SIS' },
+  { id:'trends',       icon:CalendarDays,    label:'Evolución',            desc:'Tendencia de atenciones' },
+  { id:'predicciones', icon:TrendingUp,      label:'Proyecciones',         desc:'Pronóstico OLS 2026-2028' },
+  { id:'acciones',     icon:Target,          label:'Intervenciones',       desc:'Estrategias recomendadas' },
+  { id:'cuadre',       icon:ShieldCheck,     label:'Conciliación',         desc:'Trazabilidad ETL de la carga' },
+  { id:'glosario',     icon:BookOpen,        label:'Glosario SIS',         desc:'Términos y definiciones' },
 ]
 
 function NavItem({ m, active, onModule, collapsed }) {

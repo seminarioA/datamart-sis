@@ -54,11 +54,11 @@ export default function Cuadre({ dark }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-heading font-bold text-base text-foreground">
-            Cuadre de Integridad — Libro Mayor
+            Conciliación de Registros ETL
           </h2>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Cada atención que entró del CSV debe aparecer exactamente una vez en FACT.
-            Ambas columnas deben sumar lo mismo.
+            Cada atención registrada por MINSA en el archivo fuente debe aparecer
+            exactamente una vez en FACT_ATENCIONES_SIS. Ambas partidas deben totalizar lo mismo.
           </p>
         </div>
         <div className={`flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg ${
@@ -67,7 +67,7 @@ export default function Cuadre({ dark }) {
             : 'bg-destructive/10 text-destructive'
         }`}>
           {cuadra
-            ? <><CheckCircle2 size={15} /> CUADRADO</>
+            ? <><CheckCircle2 size={15} /> CONCILIADO</>
             : <><AlertCircle size={15} /> DESCUADRE</>
           }
         </div>
@@ -81,7 +81,7 @@ export default function Cuadre({ dark }) {
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-muted/30">
             <FileArchive size={13} className="text-primary" />
             <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Archivos fuente (CSV → FACT)
+              Origen — Archivos MINSA (CSV)
             </span>
           </div>
           <table className="w-full text-[11px]">
@@ -128,7 +128,7 @@ export default function Cuadre({ dark }) {
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-muted/30">
             <CalendarDays size={13} className="text-primary" />
             <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Dimensión temporal (FACT → DIM_TIEMPO)
+              Destino — DIM_TIEMPO (por año de atención)
             </span>
           </div>
           <table className="w-full text-[11px]">
@@ -189,13 +189,13 @@ export default function Cuadre({ dark }) {
       }`}>
         <div className="space-y-0.5">
           <div className="font-semibold text-foreground">
-            {cuadra ? 'Los totales cuadran' : 'Descuadre detectado'}
+            {cuadra ? 'Registros conciliados — sin diferencia' : 'Brecha de conciliación detectada'}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Izquierda (archivos): <span className="tabular-nums font-medium">{num(totalFuente)}</span>
+            Origen MINSA: <span className="tabular-nums font-medium">{num(totalFuente)}</span>
             {' '}=={' '}
-            Derecha (años): <span className="tabular-nums font-medium">{num(totalAnio)}</span>
-            {' '}→ diferencia: <span className="tabular-nums font-medium">{num(Math.abs(totalFuente - totalAnio))}</span>
+            FACT por año: <span className="tabular-nums font-medium">{num(totalAnio)}</span>
+            {' '}· diferencia: <span className="tabular-nums font-medium">{num(Math.abs(totalFuente - totalAnio))}</span>
           </div>
         </div>
         {cuadra
@@ -207,16 +207,17 @@ export default function Cuadre({ dark }) {
       {/* Nota metodológica */}
       <div className="text-[10px] text-muted-foreground space-y-1 border-t border-border/40 pt-3">
         <p>
-          <strong>Copia 1:1:</strong> cada fila del CSV origen se convierte en exactamente un registro en
+          <strong>Trazabilidad ETL:</strong> cada registro del CSV MINSA se carga directamente en
           <code className="mx-1 px-1 rounded bg-muted">FACT_ATENCIONES_SIS</code>
-          con su <code className="mx-1 px-1 rounded bg-muted">cantidad_atenciones</code> original.
-          Los datos MINSA ya vienen pre-agregados por (período · ubigeo · IPRESS · plan · servicio · sexo · edad).
+          conservando el valor original de <code className="mx-1 px-1 rounded bg-muted">cantidad_atenciones</code>.
+          Los archivos MINSA/SIS ya publican los datos pre-agregados por grano dimensional
+          (período · ubigeo · IPRESS · plan SIS · prestación · sexo · grupo etario).
         </p>
         <p>
-          <strong>Verificación de muestra:</strong> TABLESAMPLE 1% (~712K filas) → 0 claves naturales duplicadas.
-          Ratio medio: {data.total_filas > 0
+          <strong>Validación de unicidad:</strong> TABLESAMPLE 1% (~712K registros) → 0 granos dimensionales duplicados.
+          Promedio: {data.total_filas > 0
             ? (data.por_fuente.reduce((s,r)=>s+Number(r.atenciones),0)/data.total_filas).toFixed(1)
-            : '—'} atenciones / fila.
+            : '—'} atenciones por registro de FACT.
         </p>
       </div>
     </div>
