@@ -83,7 +83,7 @@ export default function Acerca() {
              className="text-primary hover:underline">
             Universidad Tecnológica del Perú (UTP)
           </a><br/>
-          <strong className="text-foreground">Período:</strong> 2025 – 2026
+          <strong className="text-foreground">Período:</strong> 2026
         </div>
       </div>
 

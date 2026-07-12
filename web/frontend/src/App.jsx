@@ -405,7 +405,7 @@ export default function App() {
         <div className="flex justify-between">
           <div>
             <strong>Autores:</strong> Alejandro Seminario Medina · Sigidiego Ortega Vilela · Sergio Mena Delgado<br />
-            <strong>Docente:</strong> Balcazar Chumacero, Oscar Eduardo | <strong>Curso:</strong> Inteligencia de Negocios | Universidad Tecnológica del Perú — 2025–2026
+            <strong>Docente:</strong> Balcazar Chumacero, Oscar Eduardo | <strong>Curso:</strong> Inteligencia de Negocios | Universidad Tecnológica del Perú — 2026
           </div>
           <div className="text-right">
             <strong>Fuente:</strong> SIS — MINSA · datosabiertos.gob.pe · ODC-By<br />
