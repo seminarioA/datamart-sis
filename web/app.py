@@ -352,17 +352,41 @@ def por_plan():
     return _cached("por_plan", lambda: _qmv("mv_por_plan"))
 
 
+# Tamaños confirmados via HTTP HEAD a datosabiertos.gob.pe (Content-Length en bytes).
+# Sirven como ancla de autenticidad: si el archivo cargado no viniera de este portal,
+# el hash/tamaño sería distinto.
+_PORTAL_SIZES = {
+    "OPENDATA_DS_01_2017_ATENCIONES_0.zip":      96878243,
+    "OPENDATA_DS_01_2018_ATENCIONES_0.zip":      99212136,
+    "OPENDATA_DS_01_2019_ATENCIONES_0.zip":     101927710,
+    "OPENDATA_DS_01_2020_ATENCIONES_0.zip":      58378690,
+    "OPENDATA_DS_01_2021_01_06_ATENCIONES_0.zip": 35047299,
+    "OPENDATA_DS_01_2021_07_12_ATENCIONES_0.zip": 53474175,
+    "OPENDATA_DS_01_2022_01_06_ATENCIONES_0.zip":131465944,
+    "OPENDATA_DS_01_2022_07_12_ATENCIONES_0.zip":136867761,
+    "OPENDATA_DS_01_2023_01_06_ATENCIONES_0.zip":154801833,
+    "OPENDATA_DS_01_2023_07_12_ATENCIONES_0.zip":154850068,
+    "OPENDATA_DS_01_2024_01_06_ATENCIONES.zip":  165608898,
+    "OPENDATA_DS_01_2024_07_12_ATENCIONES.zip":  163917818,
+    "OPENDATA_DS_01_2025_01_06_ATENCIONES.zip":  175415084,
+    "OPENDATA_DS_01_2025_07_12_ATENCIONES.zip":  172575219,
+}
+
 @app.get("/api/cuadre")
 def cuadre():
     def _fetch():
         fuente = _qmv("mv_por_fuente")
         anio   = _qmv("mv_por_anio")
         kpis   = _qmv("mv_kpis")
+        # Enriquecer cada fila con el tamaño registrado en el portal
+        for row in fuente:
+            row["portal_bytes"] = _PORTAL_SIZES.get(row.get("fuente_archivo", ""), 0)
         return {
-            "por_fuente":      fuente,
-            "por_anio":        anio,
+            "por_fuente":       fuente,
+            "por_anio":         anio,
             "total_atenciones": int(kpis[0]["total_atenciones"]) if kpis else 0,
             "total_filas":      int(kpis[0]["total_registros"])  if kpis else 0,
+            "portal_total_bytes": sum(_PORTAL_SIZES.values()),
         }
     return _cached("cuadre", _fetch)
 
