@@ -218,6 +218,14 @@ _MV_SQLS = {
         JOIN datamart_sis.dim_tiempo t ON t.id_tiempo = f.id_tiempo
         GROUP BY t.anio, t.mes ORDER BY t.anio, t.mes
     """,
+    "mv_por_fuente": """
+        SELECT fuente_archivo,
+               COUNT(*)                   AS filas,
+               SUM(cantidad_atenciones)   AS atenciones
+        FROM datamart_sis.fact_atenciones_sis
+        GROUP BY fuente_archivo
+        ORDER BY fuente_archivo
+    """,
 }
 
 _MV_READY: dict[str, bool] = {k: False for k in _MV_SQLS}
@@ -342,6 +350,21 @@ def por_nivel():
 @app.get("/api/por-plan")
 def por_plan():
     return _cached("por_plan", lambda: _qmv("mv_por_plan"))
+
+
+@app.get("/api/cuadre")
+def cuadre():
+    def _fetch():
+        fuente = _qmv("mv_por_fuente")
+        anio   = _qmv("mv_por_anio")
+        kpis   = _qmv("mv_kpis")
+        return {
+            "por_fuente":      fuente,
+            "por_anio":        anio,
+            "total_atenciones": int(kpis[0]["total_atenciones"]) if kpis else 0,
+            "total_filas":      int(kpis[0]["total_registros"])  if kpis else 0,
+        }
+    return _cached("cuadre", _fetch)
 
 
 # ── Endpoint bundled: devuelve todo en 1 llamada (evita 8 round-trips por cloudflared) ──

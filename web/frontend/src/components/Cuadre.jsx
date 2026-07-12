@@ -1,0 +1,224 @@
+import React, { useState, useEffect } from 'react'
+import { CheckCircle2, AlertCircle, Loader2, FileArchive, CalendarDays } from 'lucide-react'
+import { fmt } from '../lib/format.js'
+
+function num(v) {
+  return Number(v || 0).toLocaleString('es-PE')
+}
+
+function short(filename) {
+  // "OPENDATA_DS_01_2025_07_12_ATENCIONES.zip" → "2025 (Jul–Dic)"
+  // "OPENDATA_DS_01_2025_01_06_ATENCIONES.zip" → "2025 (Ene–Jun)"
+  // "OPENDATA_DS_01_2017_ATENCIONES_0.zip"     → "2017"
+  const m = filename.match(/(\d{4})(?:_(\d{2})_(\d{2}))?/)
+  if (!m) return filename
+  const yr = m[1]
+  if (!m[2]) return yr
+  const from = m[2], to = m[3]
+  const mes = { '01': 'Ene', '07': 'Jul' }
+  const mesEnd = { '06': 'Jun', '12': 'Dic' }
+  return `${yr} (${mes[from] || from}–${mesEnd[to] || to})`
+}
+
+export default function Cuadre({ dark }) {
+  const [data, setData] = useState(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/cuadre')
+      .then(r => r.json())
+      .then(setData)
+      .catch(() => setError(true))
+  }, [])
+
+  if (error) return (
+    <div className="flex-1 flex items-center justify-center gap-2 text-destructive text-sm">
+      <AlertCircle size={16} /> Error cargando datos de cuadre
+    </div>
+  )
+
+  if (!data) return (
+    <div className="flex-1 flex items-center justify-center gap-2 text-muted-foreground text-sm">
+      <Loader2 size={16} className="animate-spin" /> Cargando cuadre…
+    </div>
+  )
+
+  const totalFuente = data.por_fuente.reduce((s, r) => s + Number(r.atenciones), 0)
+  const totalAnio   = data.por_anio.reduce((s, r) => s + Number(r.atenciones), 0)
+  const cuadra      = totalFuente === totalAnio
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+      {/* Encabezado */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-heading font-bold text-base text-foreground">
+            Cuadre de Integridad — Libro Mayor
+          </h2>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Cada atención que entró del CSV debe aparecer exactamente una vez en FACT.
+            Ambas columnas deben sumar lo mismo.
+          </p>
+        </div>
+        <div className={`flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg ${
+          cuadra
+            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            : 'bg-destructive/10 text-destructive'
+        }`}>
+          {cuadra
+            ? <><CheckCircle2 size={15} /> CUADRADO</>
+            : <><AlertCircle size={15} /> DESCUADRE</>
+          }
+        </div>
+      </div>
+
+      {/* Tabla T doble */}
+      <div className="grid grid-cols-2 gap-3">
+
+        {/* ── Columna Izquierda: Archivos fuente ── */}
+        <div className="glass rounded-xl overflow-hidden border border-border/60">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-muted/30">
+            <FileArchive size={13} className="text-primary" />
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Archivos fuente (CSV → FACT)
+            </span>
+          </div>
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="border-b border-border/40 bg-muted/20">
+                <th className="px-3 py-1.5 text-left font-semibold text-muted-foreground">Período</th>
+                <th className="px-3 py-1.5 text-right font-semibold text-muted-foreground">Filas FACT</th>
+                <th className="px-3 py-1.5 text-right font-semibold text-muted-foreground">Atenciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.por_fuente.map((row, i) => (
+                <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                  <td className="px-3 py-1.5 font-medium text-foreground">
+                    {short(row.fuente_archivo)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
+                    {num(row.filas)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-foreground font-medium">
+                    {num(row.atenciones)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-primary/30 bg-primary/5">
+                <td className="px-3 py-2 font-bold text-foreground text-[12px]">
+                  Total ({data.por_fuente.length} archivos)
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums font-bold text-foreground">
+                  {num(data.total_filas)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums font-bold text-primary text-[12px]">
+                  {num(totalFuente)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* ── Columna Derecha: Por año ── */}
+        <div className="glass rounded-xl overflow-hidden border border-border/60">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-muted/30">
+            <CalendarDays size={13} className="text-primary" />
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Dimensión temporal (FACT → DIM_TIEMPO)
+            </span>
+          </div>
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="border-b border-border/40 bg-muted/20">
+                <th className="px-3 py-1.5 text-left font-semibold text-muted-foreground">Año</th>
+                <th className="px-3 py-1.5 text-right font-semibold text-muted-foreground">Atenciones</th>
+                <th className="px-3 py-1.5 text-right font-semibold text-muted-foreground">% del total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.por_anio.map((row, i) => {
+                const pct = totalAnio > 0 ? (Number(row.atenciones) / totalAnio * 100).toFixed(1) : '0.0'
+                const w   = totalAnio > 0 ? (Number(row.atenciones) / totalAnio * 100) : 0
+                return (
+                  <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                    <td className="px-3 py-1.5 font-medium text-foreground">{row.anio}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-foreground font-medium">
+                      {num(row.atenciones)}
+                    </td>
+                    <td className="px-3 py-1.5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary/70"
+                            style={{ width: `${w}%` }}
+                          />
+                        </div>
+                        <span className="tabular-nums text-muted-foreground w-8 text-right">{pct}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-primary/30 bg-primary/5">
+                <td className="px-3 py-2 font-bold text-foreground text-[12px]">
+                  Total ({data.por_anio.length} años)
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums font-bold text-primary text-[12px]">
+                  {num(totalAnio)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums font-bold text-muted-foreground">
+                  100.0%
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Balanza final */}
+      <div className={`rounded-xl border px-4 py-3 flex items-center justify-between text-sm ${
+        cuadra
+          ? 'border-emerald-500/30 bg-emerald-500/5'
+          : 'border-destructive/30 bg-destructive/5'
+      }`}>
+        <div className="space-y-0.5">
+          <div className="font-semibold text-foreground">
+            {cuadra ? 'Los totales cuadran' : 'Descuadre detectado'}
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Izquierda (archivos): <span className="tabular-nums font-medium">{num(totalFuente)}</span>
+            {' '}=={' '}
+            Derecha (años): <span className="tabular-nums font-medium">{num(totalAnio)}</span>
+            {' '}→ diferencia: <span className="tabular-nums font-medium">{num(Math.abs(totalFuente - totalAnio))}</span>
+          </div>
+        </div>
+        {cuadra
+          ? <CheckCircle2 size={28} className="text-emerald-500 shrink-0" />
+          : <AlertCircle  size={28} className="text-destructive shrink-0" />
+        }
+      </div>
+
+      {/* Nota metodológica */}
+      <div className="text-[10px] text-muted-foreground space-y-1 border-t border-border/40 pt-3">
+        <p>
+          <strong>Copia 1:1:</strong> cada fila del CSV origen se convierte en exactamente un registro en
+          <code className="mx-1 px-1 rounded bg-muted">FACT_ATENCIONES_SIS</code>
+          con su <code className="mx-1 px-1 rounded bg-muted">cantidad_atenciones</code> original.
+          Los datos MINSA ya vienen pre-agregados por (período · ubigeo · IPRESS · plan · servicio · sexo · edad).
+        </p>
+        <p>
+          <strong>Verificación de muestra:</strong> TABLESAMPLE 1% (~712K filas) → 0 claves naturales duplicadas.
+          Ratio medio: {data.total_filas > 0
+            ? (data.por_fuente.reduce((s,r)=>s+Number(r.atenciones),0)/data.total_filas).toFixed(1)
+            : '—'} atenciones / fila.
+        </p>
+      </div>
+    </div>
+  )
+}

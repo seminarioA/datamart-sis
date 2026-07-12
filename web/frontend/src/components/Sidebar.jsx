@@ -2,7 +2,7 @@ import React from 'react'
 import {
   LayoutDashboard, Map, Users, Building2,
   Stethoscope, CalendarDays, TrendingUp,
-  BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight, Target,
+  BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight, Target, ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -16,6 +16,7 @@ export const MODULES = [
   { id:'trends',       icon:CalendarDays,    label:'Tendencia',    desc:'Evolución anual' },
   { id:'predicciones', icon:TrendingUp,      label:'Predicciones', desc:'Forecasting OLS 2026-2028' },
   { id:'acciones',     icon:Target,          label:'Acciones',     desc:'Recomendaciones' },
+  { id:'cuadre',       icon:ShieldCheck,     label:'Cuadre',       desc:'Integridad de carga 1:1' },
   { id:'glosario',     icon:BookOpen,        label:'Glosario',     desc:'Términos y definiciones' },
 ]
 
