@@ -1,0 +1,48 @@
+name: UI QA — Antipatrones de diseño
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/frontend/src/**'
+      - 'scripts/ui-qa.mjs'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/frontend/src/**'
+      - 'scripts/ui-qa.mjs'
+
+jobs:
+  design-patterns:
+    name: Verificar antipatrones UI
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Ejecutar UI QA
+        run: node scripts/ui-qa.mjs
+
+      # Si el paso anterior falla (exit 1), este step explica el bloqueo
+      - name: Resumen de fallo
+        if: failure()
+        run: |
+          echo "## UI QA bloqueó el push" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Se detectaron antipatrones de diseño en los componentes JSX." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Reglas activas:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-pill-badge\`: badge circular (\`rounded-full\`) con \`background\` inline dinámico" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-border-side-inline\`: \`borderLeft\`/\`borderRight\` como inline style con template literal" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-hex-in-style\` (warning): color hexadecimal hardcodeado en \`style\` prop" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Para suprimir un caso excepcional justificado, agrega la línea anterior:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`jsx" >> $GITHUB_STEP_SUMMARY
+          echo "{/* ui-qa-disable: <rule-id> — razón obligatoria */}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          node scripts/ui-qa.mjs 2>&1 || true

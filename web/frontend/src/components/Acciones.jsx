@@ -120,6 +120,7 @@ function InsightCard({ insight }) {
   const sv   = SEVERITY[insight.severity]
 
   return (
+    // ui-qa-disable: no-border-side-inline — indicador de severidad, elemento único no replicado en lista
     <div className="island overflow-hidden" style={{ borderLeft: `3px solid ${sv.color}` }}>
       <button
         className="w-full text-left px-4 py-3.5 flex items-start gap-3 hover:bg-muted/30 transition-colors"

@@ -16,36 +16,28 @@ function ArchCard({ arq }) {
   const Icon = ICONS[arq.id] || Users
 
   return (
-    <div
-      className="island flex flex-col overflow-hidden"
-      style={{ borderLeft: `4px solid ${arq.color}` }}
-    >
-      {/* Cabecera */}
-      <div className="px-4 pt-4 pb-3 flex-1">
-        <div className="flex items-start gap-3 mb-2.5">
-          <div
-            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: arq.color + '22' }}
-          >
-            <Icon size={18} style={{ color: arq.color }} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-heading font-bold text-[13px] text-foreground leading-tight">
-              {arq.nombre}
-            </h3>
-            <span className="text-[10px] font-semibold text-muted-foreground">{arq.rango}</span>
-          </div>
-          <div className="text-right shrink-0">
-            <div
-              className="font-heading font-bold text-[20px] tabular-nums leading-none"
-              style={{ color: arq.color }}
-            >
-              {arq.pct_total}%
-            </div>
-            <div className="text-[9px] text-muted-foreground">del total</div>
-          </div>
+    <div className="island overflow-hidden flex flex-col">
+      {/* Cabecera coloreada — diferenciador visual contenido, no borde lateral */}
+      <div className="px-4 py-3 flex items-center gap-3" style={{ background: arq.color }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/20 shrink-0">
+          <Icon size={15} className="text-white" />
         </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-heading font-bold text-[13px] text-white leading-tight truncate">
+            {arq.nombre}
+          </h3>
+          <span className="text-[10px] text-white/65">{arq.rango}</span>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="font-heading font-bold text-[22px] tabular-nums text-white leading-none">
+            {arq.pct_total}%
+          </div>
+          <div className="text-[9px] text-white/60">del total</div>
+        </div>
+      </div>
 
+      {/* Cuerpo */}
+      <div className="px-4 pt-3 pb-3 flex-1">
         <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
           {arq.descripcion}
         </p>
@@ -75,13 +67,12 @@ function ArchCard({ arq }) {
           </div>
         </div>
 
-        {/* Etiquetas de foco */}
+        {/* Etiquetas de foco — neutras, sin color dinámico en pill */}
         <div className="flex flex-wrap gap-1 mb-3">
           {(arq.foco || []).map(f => (
             <span
               key={f}
-              className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: arq.color + '18', color: arq.color }}
+              className="text-[9px] font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground"
             >
               {f}
             </span>
@@ -89,15 +80,15 @@ function ArchCard({ arq }) {
         </div>
 
         {/* Barra de participación */}
-        <div className="h-1 bg-muted rounded-full overflow-hidden">
+        <div className="h-0.5 bg-muted rounded-full overflow-hidden">
           <div
             className="h-full rounded-full"
             style={{ width: `${Math.min(arq.pct_total * 3.5, 100)}%`, background: arq.color }}
           />
         </div>
-        <div className="flex justify-between mt-1">
+        <div className="flex justify-between mt-1.5">
           <span className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)} atenciones</span>
-          <span className="text-[9px] text-muted-foreground">{arq.pct_total}% SIS total</span>
+          <span className="text-[9px] text-muted-foreground">{arq.pct_total}% del total</span>
         </div>
       </div>
     </div>
@@ -183,7 +174,7 @@ export default function Arquetipos({ dark }) {
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
                         style={{ background: arq.color }}
                       />
                       <span className="font-semibold text-foreground">{arq.nombre}</span>
@@ -200,13 +191,8 @@ export default function Arquetipos({ dark }) {
                   <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
                     {arq.pct_femenino}%
                   </td>
-                  <td className="px-3 py-2.5 text-center">
-                    <span
-                      className="font-bold px-2 py-0.5 rounded text-[10px]"
-                      style={{ background: arq.color + '22', color: arq.color }}
-                    >
-                      Nivel {arq.nivel_predominante}
-                    </span>
+                  <td className="px-3 py-2.5 text-center text-muted-foreground">
+                    Nivel {arq.nivel_predominante}
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground">{arq.plan_predominante}</td>
                 </tr>

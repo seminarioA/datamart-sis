@@ -203,8 +203,7 @@ export default function Predicciones({ dark }) {
       </div>
 
       {/* Interpretación */}
-      <div className="island flex items-start gap-2.5 px-4 py-3 text-[12px] text-foreground leading-relaxed"
-           style={{ borderLeft: `3px solid ${creciente ? 'var(--green)' : 'hsl(var(--accent))'}` }}>
+      <div className="island flex items-start gap-2.5 px-4 py-3 text-[12px] text-foreground leading-relaxed">
         {creciente
           ? <TrendingUp size={15} className="shrink-0 mt-0.5" style={{ color: 'var(--green)' }} />
           : <TrendingDown size={15} className="text-accent shrink-0 mt-0.5" />}
