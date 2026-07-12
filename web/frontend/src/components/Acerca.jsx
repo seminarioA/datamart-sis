@@ -1,13 +1,19 @@
 import React from 'react'
-import { ExternalLink, Database, Server, Code2, BarChart3, Users } from 'lucide-react'
+import { ExternalLink, Database, Users } from 'lucide-react'
+import {
+  Postgresql, Python, Fastapi, ApacheAirflow,
+  React as ReactIcon, Vitejs, Oracle, Cloudflare,
+} from '@thesvg/react'
 
 const STACK = [
-  { icon: Database,  label:'PostgreSQL 16',      desc:'DataMart dimensional (star schema)' },
-  { icon: Code2,     label:'Python + FastAPI',    desc:'ELT en batches + API REST con cache 3 capas' },
-  { icon: BarChart3, label:'Apache Airflow 2.9',  desc:'Orquestación de DAGs (ELT + refresh MVs)' },
-  { icon: Code2,     label:'React 18 + Vite',     desc:'Frontend SPA con ApexCharts y Leaflet' },
-  { icon: Server,    label:'Oracle Cloud VPS',    desc:'Ubuntu 24.04 — 1GB RAM, 50GB SSD (Always Free)' },
-  { icon: Server,    label:'Cloudflare Tunnel',   desc:'Acceso público sin puertos expuestos' },
+  { icon: Postgresql,   label:'PostgreSQL 16',      desc:'DataMart dimensional (star schema)' },
+  { icon: Python,       label:'Python + FastAPI',    desc:'ELT en batches + API REST con cache 3 capas',
+    icon2: Fastapi },
+  { icon: ApacheAirflow,label:'Apache Airflow 2.9',  desc:'Orquestación de DAGs (ELT + refresh MVs)' },
+  { icon: ReactIcon,    label:'React 18 + Vite',     desc:'Frontend SPA con ApexCharts y Leaflet',
+    icon2: Vitejs },
+  { icon: Oracle,       label:'Oracle Cloud VPS',    desc:'Ubuntu 24.04 — 1GB RAM, 50GB SSD (Always Free)' },
+  { icon: Cloudflare,   label:'Cloudflare Tunnel',   desc:'Acceso público sin puertos expuestos' },
 ]
 
 const AUTHORS = [
@@ -91,11 +97,15 @@ export default function Acerca() {
         <SectionTitle>Stack tecnológico</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
           {STACK.map(s => {
-            const Icon = s.icon
+            const Icon  = s.icon
+            const Icon2 = s.icon2
             return (
               <div key={s.label}
-                   className="flex gap-2.5 items-start bg-muted/30 rounded-lg px-3 py-2.5 border border-border/40">
-                <Icon size={15} className="text-primary shrink-0 mt-0.5" />
+                   className="flex gap-2.5 items-center bg-muted/30 rounded-lg px-3 py-2.5 border border-border/40">
+                <div className="flex items-center gap-1 shrink-0">
+                  <Icon width={18} height={18} className="text-foreground" />
+                  {Icon2 && <Icon2 width={16} height={16} className="text-foreground opacity-70" />}
+                </div>
                 <div>
                   <div className="text-[12px] font-semibold text-foreground">{s.label}</div>
                   <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{s.desc}</div>
