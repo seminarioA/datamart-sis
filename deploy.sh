@@ -29,6 +29,15 @@ AIRFLOW_HOME=/home/ubuntu/datamart-sis/airflow
 AIRFLOW_BIN=/home/ubuntu/airflow-venv/bin/airflow
 AIRFLOW_ENV="AIRFLOW_HOME=$AIRFLOW_HOME AIRFLOW__CORE__LOAD_EXAMPLES=False AIRFLOW__CORE__EXECUTOR=LocalExecutor AIRFLOW__CORE__PARALLELISM=2 AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG=1 AIRFLOW__WEBSERVER__SECRET_KEY=sis-datamart-2024 AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=$AIRFLOW_DB_URL AIRFLOW__WEBSERVER__WORKERS=1 AIRFLOW__WEBSERVER__WORKER_CLASS=sync AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT=120 AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session PATH=/home/ubuntu/airflow-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+# ── 0.5. Dependencias del sistema ────────────────────────────────────────────
+if ! command -v pdflatex &>/dev/null; then
+  log "Instalando pdflatex para reportes PDF..."
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
+    texlive-latex-base texlive-fonts-recommended texlive-latex-recommended \
+    > /dev/null 2>&1
+  log "pdflatex listo"
+fi
+
 # ── 1. Servidor web (uvicorn) ────────────────────────────────────────────────
 log "Reiniciando uvicorn..."
 pkill -9 -f 'uvicorn app:app' 2>/dev/null || true

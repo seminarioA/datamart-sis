@@ -131,10 +131,6 @@ function InsightCard({ insight }) {
             <span className="text-[10px] font-bold font-heading uppercase tracking-wider text-muted-foreground">
               {insight.tipo}
             </span>
-            <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: sv.color, color: '#fff' }}>
-              {sv.label}
-            </span>
           </div>
           <div className="text-[13px] font-semibold text-foreground leading-snug">{insight.titulo}</div>
           <div className="text-[12px] text-muted-foreground leading-relaxed mt-1">{insight.hallazgo}</div>

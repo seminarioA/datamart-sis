@@ -2,7 +2,7 @@ import React from 'react'
 import {
   LayoutDashboard, Map, Users, Building2,
   Stethoscope, CalendarDays, TrendingUp,
-  BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight, Target, ShieldCheck,
+  BookOpen, Info, ExternalLink, ChevronLeft, ChevronRight, Target, ShieldCheck, Fingerprint,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
@@ -14,9 +14,10 @@ export const MODULES = [
   { id:'geography',    icon:Building2,       label:'Red Prestacional',     desc:'Regiones y nivel EESS' },
   { id:'services',     icon:Stethoscope,     label:'Prestaciones',         desc:'Top prestaciones y planes SIS' },
   { id:'trends',       icon:CalendarDays,    label:'Evolución',            desc:'Tendencia de atenciones' },
-  { id:'predicciones', icon:TrendingUp,      label:'Proyecciones',         desc:'Pronóstico OLS 2026-2028' },
+  { id:'predicciones', icon:TrendingUp,      label:'Proyecciones',         desc:'Forecast 2026-2028' },
+  { id:'arquetipos',   icon:Fingerprint,     label:'Arquetipos',           desc:'Perfiles de asegurado SIS' },
   { id:'acciones',     icon:Target,          label:'Intervenciones',       desc:'Estrategias recomendadas' },
-  { id:'cuadre',       icon:ShieldCheck,     label:'Conciliación',         desc:'Trazabilidad ETL de la carga' },
+  { id:'cuadre',       icon:ShieldCheck,     label:'Conciliación',         desc:'Trazabilidad de la carga' },
   { id:'glosario',     icon:BookOpen,        label:'Glosario SIS',         desc:'Términos y definiciones' },
 ]
 

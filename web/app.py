@@ -5,15 +5,18 @@ Reinicio = respuesta instantánea desde JSON (sin esperar re-build de MVs).
 """
 import json
 import math
+import subprocess
+import tempfile
 import threading
 import time
+from datetime import date
 from pathlib import Path
 
 import psycopg2
 import psycopg2.extras
 import psycopg2.pool
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import os
@@ -146,9 +149,9 @@ def _q(sql: str, params=None) -> list[dict]:
 async def cache_headers(request: Request, call_next):
     response = await call_next(request)
     path = request.url.path
-    if path.startswith("/api/") and path not in ("/api/status",):
+    if path.startswith("/api/") and path not in ("/api/status", "/api/export/pdf"):
         response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=60"
-    elif path == "/api/status":
+    elif path in ("/api/status", "/api/export/pdf"):
         response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -225,6 +228,21 @@ _MV_SQLS = {
         FROM datamart_sis.fact_atenciones_sis
         GROUP BY fuente_archivo
         ORDER BY fuente_archivo
+    """,
+    "mv_arquetipos": """
+        SELECT
+            f.grupo_edad,
+            f.sexo,
+            f.nivel_eess,
+            f.cod_plan_seguro,
+            COALESCE(p.desc_plan_seguro, f.cod_plan_seguro) AS desc_plan_seguro,
+            SUM(f.cantidad_atenciones) AS atenciones
+        FROM datamart_sis.fact_atenciones_sis f
+        LEFT JOIN datamart_sis.dim_plan_seguro p
+               ON p.cod_plan_seguro = f.cod_plan_seguro
+        GROUP BY f.grupo_edad, f.sexo, f.nivel_eess,
+                 f.cod_plan_seguro, p.desc_plan_seguro
+        ORDER BY f.grupo_edad, atenciones DESC
     """,
 }
 
@@ -475,44 +493,55 @@ def predicciones():
     def _fetch():
         try:
             import numpy as np
-            from sklearn.linear_model import LinearRegression
-            from sklearn.metrics import r2_score, mean_squared_error
-            from sklearn.preprocessing import PolynomialFeatures
-            from sklearn.pipeline import make_pipeline
         except ImportError:
-            return {"error": "numpy/sklearn no instalados"}
+            return {"error": "numpy no instalado"}
 
-        # ── 1. Forecast anual (Regresión Lineal OLS) ─────────────────────────
         anio_data = _qmv("mv_por_anio")
         if not anio_data:
             return {"error": "Datos no disponibles aún"}
 
-        X = np.array([int(d["anio"]) for d in anio_data]).reshape(-1, 1)
-        y = np.array([float(d["atenciones"]) for d in anio_data])
-
-        # Regresión lineal simple (robusta con 9 puntos)
-        lin = LinearRegression().fit(X, y)
-        y_pred_hist = lin.predict(X)
-        r2   = r2_score(y, y_pred_hist)
-        rmse = math.sqrt(mean_squared_error(y, y_pred_hist))
-        std  = float(np.std(y - y_pred_hist))
-
-        max_anio = int(max(d["anio"] for d in anio_data))
+        anios        = [int(d["anio"]) for d in anio_data]
+        y            = np.array([float(d["atenciones"]) for d in anio_data])
+        max_anio     = max(anios)
         future_years = list(range(max_anio + 1, max_anio + 4))
-        X_fut = np.array(future_years).reshape(-1, 1)
-        y_fut = lin.predict(X_fut)
+
+        # ── 1. Holt-Winters Double Exp. Smoothing (tendencia aditiva) ─────────
+        try:
+            from statsmodels.tsa.holtwinters import ExponentialSmoothing
+            hw = ExponentialSmoothing(
+                y, trend="add", seasonal=None, initialization_method="estimated"
+            ).fit(optimized=True, use_brute=False)
+            y_pred_hist = np.array(hw.fittedvalues)
+            y_fut       = np.array(hw.forecast(3))
+            modelo_nombre = "Holt-Winters (suavizado exponencial doble)"
+        except ImportError:
+            # Fallback OLS si statsmodels aún no instalado en el entorno
+            from sklearn.linear_model import LinearRegression
+            X = np.array(anios).reshape(-1, 1)
+            lin = LinearRegression().fit(X, y)
+            y_pred_hist = lin.predict(X)
+            X_fut = np.array(future_years).reshape(-1, 1)
+            y_fut = lin.predict(X_fut)
+            modelo_nombre = "Regresión Lineal OLS (fallback)"
+
+        resid     = y - y_pred_hist
+        resid_std = float(np.std(resid, ddof=1)) if len(resid) > 1 else float(np.std(resid))
+        r2        = float(1 - np.sum(resid ** 2) / max(np.sum((y - np.mean(y)) ** 2), 1e-10))
+        rmse      = float(np.sqrt(np.mean(resid ** 2)))
+        slope     = float(np.mean(np.diff(y_pred_hist))) if len(y_pred_hist) > 1 else 0.0
 
         historico = [
             {"anio": int(d["anio"]), "atenciones": int(d["atenciones"]),
              "tendencia": round(float(p)), "tipo": "real"}
             for d, p in zip(anio_data, y_pred_hist)
         ]
+        # PI crece con sqrt(horizonte): honesto sobre la incertidumbre acumulada
         prediccion_anual = [
             {"anio": yr, "atenciones": round(float(v)),
-             "lower": round(max(0.0, float(v) - 1.645 * std)),
-             "upper": round(float(v) + 1.645 * std),
+             "lower": round(max(0.0, float(v) - 1.645 * resid_std * math.sqrt(h + 1))),
+             "upper": round(float(v) + 1.645 * resid_std * math.sqrt(h + 1)),
              "tipo": "prediccion"}
-            for yr, v in zip(future_years, y_fut)
+            for h, (yr, v) in enumerate(zip(future_years, y_fut))
         ]
 
         # ── 2. Estacionalidad mensual ─────────────────────────────────────────
@@ -525,14 +554,12 @@ def predicciones():
                 mes_sums[int(d["mes"])].append(float(d["atenciones"]))
             promedios = {m: float(np.mean(vals)) for m, vals in mes_sums.items()}
             media_global = float(np.mean(list(promedios.values()))) or 1.0
-            nombres = ["","Ene","Feb","Mar","Abr","May","Jun",
-                       "Jul","Ago","Sep","Oct","Nov","Dic"]
+            nombres = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+                       "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
             estacionalidad = [
-                {
-                    "mes": m, "nombre": nombres[m],
-                    "promedio": round(promedios[m]),
-                    "indice": round(promedios[m] / media_global * 100),
-                }
+                {"mes": m, "nombre": nombres[m],
+                 "promedio": round(promedios[m]),
+                 "indice": round(promedios[m] / media_global * 100)}
                 for m in sorted(promedios)
             ]
 
@@ -540,41 +567,481 @@ def predicciones():
         region_data = _qmv("mv_por_region")
         regiones_proy = []
         if region_data:
-            total = sum(float(d["atenciones"]) for d in region_data) or 1
-            # Tasa de crecimiento anual compuesta del modelo global
-            cagr = float(lin.coef_[0]) / float(np.mean(y))
+            total_r = sum(float(d["atenciones"]) for d in region_data) or 1
+            cagr    = slope / float(np.mean(y)) if np.mean(y) > 0 else 0.0
             regiones_proy = [
-                {
-                    "region": d["region"],
-                    "atenciones": int(float(d["atenciones"])),
-                    "proyeccion_2026": round(float(d["atenciones"]) * (1 + cagr)),
-                    "crecimiento_pct": round(cagr * 100, 1),
-                    "share_pct": round(float(d["atenciones"]) / total * 100, 1),
-                }
+                {"region": d["region"],
+                 "atenciones": int(float(d["atenciones"])),
+                 "proyeccion_2026": round(float(d["atenciones"]) * (1 + cagr)),
+                 "crecimiento_pct": round(cagr * 100, 1),
+                 "share_pct": round(float(d["atenciones"]) / total_r * 100, 1)}
                 for d in region_data[:10]
             ]
 
-        # ── 4. Resumen del modelo ─────────────────────────────────────────────
-        slope = float(lin.coef_[0])
         return {
             "forecast_anual": {
                 "historico": historico,
                 "prediccion": prediccion_anual,
-                "modelo": "Regresion Lineal OLS",
+                "modelo": modelo_nombre,
                 "r2": round(r2, 3),
                 "rmse": round(rmse),
                 "pendiente_anual": round(slope),
                 "tendencia": "creciente" if slope > 0 else "decreciente",
                 "interpretacion": (
-                    f"El modelo explica el {round(r2*100,1)}% de la varianza histórica. "
+                    f"Modelo: {modelo_nombre}. "
                     f"Se proyecta un {'aumento' if slope > 0 else 'descenso'} de "
-                    f"{abs(round(slope/1e6,2))}M atenciones por año."
+                    f"{abs(round(slope / 1e6, 2))}M atenciones por año. "
+                    "Los intervalos de confianza al 90% se amplían con el horizonte de proyección."
                 ),
             },
             "estacionalidad": estacionalidad,
             "regiones_proyeccion": regiones_proy,
         }
     return _cached("predicciones", _fetch)
+
+
+# ── Arquetipos SIS ───────────────────────────────────────────────────────────
+_ARQUETIPOS_DEF = [
+    {
+        "id": "primera_infancia", "nombre": "Primera Infancia",
+        "rango": "00 – 04 años", "edad_prefix": "00", "color": "#1A67A3",
+        "descripcion": (
+            "Etapa de mayor vulnerabilidad. Atención centrada en CRED, vacunación y control "
+            "nutricional. Prácticamente cubierta en su totalidad por el SIS Gratuito "
+            "materno-infantil."
+        ),
+        "foco": ["CRED", "Vacunación", "Nutrición"],
+    },
+    {
+        "id": "ninez_escolar", "nombre": "Niñez Escolar",
+        "rango": "05 – 11 años", "edad_prefix": "05", "color": "#1E7BBF",
+        "descripcion": (
+            "Continuidad de la atención preventiva. Incorpora salud bucal, control de talla "
+            "y detección temprana de problemas visuales y auditivos. Mayor presencia en "
+            "postas vinculadas a centros educativos."
+        ),
+        "foco": ["Odontología", "Control de crecimiento", "Salud visual"],
+    },
+    {
+        "id": "adolescente", "nombre": "Adolescente",
+        "rango": "12 – 17 años", "edad_prefix": "12", "color": "#2386C8",
+        "descripcion": (
+            "Transición a servicios diferenciados: salud reproductiva, salud mental y "
+            "atención integral. Grupo con mayor tasa de abandono al seguimiento preventivo "
+            "y menor uso relativo del sistema."
+        ),
+        "foco": ["Salud reproductiva", "Salud mental", "Atención diferenciada"],
+    },
+    {
+        "id": "adulto_joven", "nombre": "Adulto Joven",
+        "rango": "18 – 29 años", "edad_prefix": "18", "color": "#2E6CA6",
+        "descripcion": (
+            "Dominado por mujeres en edad fértil: atenciones materno-perinatales, "
+            "planificación familiar y CRED de neonatos. En varones, creciente uso de "
+            "servicios de urgencia y emergencia."
+        ),
+        "foco": ["Atención materno-perinatal", "Planificación familiar", "Urgencias"],
+    },
+    {
+        "id": "adulto_productivo", "nombre": "Adulto en Actividad",
+        "rango": "30 – 59 años", "edad_prefix": "30", "color": "#1F4F7B",
+        "descripcion": (
+            "Inicio de enfermedades crónicas: hipertensión, diabetes, dislipidemia. "
+            "Mayor uso de Nivel II y III. Presencia de planes contributivos especialmente "
+            "en Lima Metropolitana."
+        ),
+        "foco": ["Enfermedades crónicas", "Diagnóstico temprano", "Adherencia al tratamiento"],
+    },
+    {
+        "id": "adulto_mayor", "nombre": "Adulto Mayor",
+        "rango": "60 años a más", "edad_prefix": "60", "color": "#103E6E",
+        "descripcion": (
+            "Mayor carga de comorbilidades y complejidad de atención. Alta demanda de "
+            "Nivel III. Costo por atención más elevado del sistema. Dependencia casi "
+            "total del SIS Gratuito ante la baja formalización laboral en este grupo."
+        ),
+        "foco": ["Comorbilidades crónicas", "Hospitalización", "Rehabilitación"],
+    },
+]
+
+
+@app.get("/api/arquetipos")
+def arquetipos():
+    def _fetch():
+        arq_raw  = _qmv("mv_arquetipos")
+        edad_raw = _qmv("mv_por_edad")
+        if not arq_raw or not edad_raw:
+            return {"error": "Datos no disponibles aún"}
+
+        total_global = sum(float(d["atenciones"]) for d in edad_raw) or 1
+
+        result = []
+        for defn in _ARQUETIPOS_DEF:
+            pfx = defn["edad_prefix"]
+            # Filas de la MV que pertenecen a este grupo etario (match por prefijo)
+            rows = [r for r in arq_raw if str(r.get("grupo_edad", ""))[:2].strip() == pfx]
+            total = sum(float(r["atenciones"]) for r in rows) or 1
+
+            # % Femenino
+            fem    = sum(float(r["atenciones"]) for r in rows
+                         if str(r.get("sexo", "")).upper().startswith("F"))
+            pct_fem = round(fem / total * 100, 1)
+
+            # Nivel EESS predominante
+            nivel_acc: dict[str, float] = {}
+            for r in rows:
+                k = str(r.get("nivel_eess") or "?").strip()
+                nivel_acc[k] = nivel_acc.get(k, 0.0) + float(r["atenciones"])
+            nivel_pred = max(nivel_acc, key=nivel_acc.get) if nivel_acc else "?"
+
+            # Plan predominante (nombre corto)
+            plan_acc: dict[str, float] = {}
+            for r in rows:
+                k = str(r.get("desc_plan_seguro") or r.get("cod_plan_seguro") or "?").strip()
+                plan_acc[k] = plan_acc.get(k, 0.0) + float(r["atenciones"])
+            plan_full = max(plan_acc, key=plan_acc.get) if plan_acc else "?"
+            # Abreviar: "SIS Gratuito — Ley N°..." → "Gratuito"
+            plan_short = (plan_full
+                          .replace("SIS ", "").replace("Sis ", "")
+                          .split("—")[0].split("-")[0].split("(")[0]
+                          .strip()[:20])
+
+            result.append({
+                **{k: v for k, v in defn.items() if k != "edad_prefix"},
+                "atenciones":       round(total),
+                "pct_total":        round(total / total_global * 100, 1),
+                "pct_femenino":     pct_fem,
+                "nivel_predominante": nivel_pred,
+                "plan_predominante":  plan_short,
+            })
+
+        return {"arquetipos": result, "total_global": round(total_global)}
+
+    return _cached("arquetipos", _fetch)
+
+
+# ── Helpers para generación de PDF LaTeX ─────────────────────────────────────
+def _esc(s) -> str:
+    """Escapa caracteres especiales de LaTeX preservando UTF-8."""
+    if not isinstance(s, str):
+        s = str(s) if s is not None else ""
+    s = s.replace("\\", r"\textbackslash{}")
+    for c, r in [
+        ("&", r"\&"), ("%", r"\%"), ("$", r"\$"), ("#", r"\#"),
+        ("{", r"\{"), ("}", r"\}"), ("~", r"\textasciitilde{}"),
+        ("^", r"\textasciicircum{}"), ("_", r"\_"),
+    ]:
+        s = s.replace(c, r)
+    return s
+
+
+def _fmtn(n, decimals: int = 0) -> str:
+    """Formatea número con separador de miles en estilo peruano (punto)."""
+    try:
+        v = float(n)
+        formatted = f"{v:,.{decimals}f}" if decimals else f"{int(v):,}"
+        return formatted.replace(",", ".")
+    except Exception:
+        return str(n)
+
+
+def _bartex(val: float, max_val: float, max_cm: float = 5.5) -> str:
+    if max_val <= 0:
+        return ""
+    frac = min(val / max_val, 1.0)
+    w    = max(frac * max_cm, 0.05)
+    return r"\textcolor{sisblue}{\rule{" + f"{w:.2f}cm" + r"}{4pt}}"
+
+
+def _build_latex(kd, anio_d, reg_d, edad_d, sexo_d, plan_d, nivel_d, pred_d, arq_d) -> str:
+    fecha_str   = date.today().strftime("%d/%m/%Y")
+    total_a     = int(kd.get("total_atenciones", 0))
+    anio_ini    = int(kd.get("anio_inicio", 2017))
+    anio_fin    = int(kd.get("anio_fin", 2025))
+    regiones    = int(kd.get("regiones", 0))
+    ipress      = int(kd.get("ipress", 0))
+    planes      = int(kd.get("planes", 0))
+
+    # ── Tabla anual
+    max_a   = max((float(d["atenciones"]) for d in anio_d), default=1)
+    prev_a  = None
+    rows_a  = []
+    for d in anio_d:
+        v   = float(d["atenciones"])
+        var = f"\\(+\\){round((v-prev_a)/prev_a*100,1)}\\%" if prev_a and v > prev_a \
+              else (f"\\(-\\){round((prev_a-v)/prev_a*100,1)}\\%" if prev_a else "---")
+        rows_a.append(f"    {_esc(str(d['anio']))} & {_fmtn(v)} & {_esc(var)} & {_bartex(v,max_a)} \\\\")
+        prev_a = v
+
+    # ── Tabla regional top 10
+    total_r = sum(float(d["atenciones"]) for d in reg_d) or 1
+    max_r   = float(reg_d[0]["atenciones"]) if reg_d else 1
+    rows_r  = []
+    for i, d in enumerate(reg_d[:10], 1):
+        v   = float(d["atenciones"])
+        pct = round(v / total_r * 100, 1)
+        rows_r.append(
+            f"    {i} & {_esc(str(d['region']))} & {_fmtn(v)} & {_esc(str(pct))}\\% & {_bartex(v,max_r,4.5)} \\\\"
+        )
+
+    # ── Tabla edad
+    max_e  = max((float(d["atenciones"]) for d in edad_d), default=1)
+    rows_e = []
+    for d in edad_d:
+        v   = float(d["atenciones"])
+        pct = round(v / total_a * 100, 1) if total_a else 0
+        rows_e.append(
+            f"    {_esc(str(d['grupo_edad']))} & {_fmtn(v)} & {_esc(str(pct))}\\% & {_bartex(v,max_e,4.5)} \\\\"
+        )
+
+    # ── Tabla planes
+    rows_p = []
+    for d in plan_d[:6]:
+        v   = float(d["atenciones"])
+        pct = round(v / total_a * 100, 1) if total_a else 0
+        rows_p.append(
+            f"    {_esc(str(d['desc_plan_seguro']))} & {_fmtn(v)} & {_esc(str(pct))}\\% \\\\"
+        )
+
+    # ── Tabla proyecciones
+    rows_pred = []
+    fa = pred_d.get("forecast_anual", {}) if isinstance(pred_d, dict) else {}
+    for d in fa.get("prediccion", []):
+        rows_pred.append(
+            f"    {d['anio']} & {_fmtn(d['atenciones'])} & {_fmtn(d['lower'])} & {_fmtn(d['upper'])} \\\\"
+        )
+    modelo_pred = _esc(fa.get("modelo", "—"))
+
+    # ── Tabla arquetipos
+    rows_arq = []
+    for a in (arq_d.get("arquetipos", []) if isinstance(arq_d, dict) else []):
+        rows_arq.append(
+            f"    {_esc(a['nombre'])} & {_esc(a['rango'])} & "
+            f"{_fmtn(a['atenciones'])} & {_esc(str(a['pct_total']))}\\% & "
+            f"{_esc(str(a['pct_femenino']))}\\% & "
+            f"{_esc('Nivel ' + str(a['nivel_predominante']))} & "
+            f"{_esc(str(a['plan_predominante']))} \\\\"
+        )
+
+    rows_a_str   = "\n".join(rows_a)
+    rows_r_str   = "\n".join(rows_r)
+    rows_e_str   = "\n".join(rows_e)
+    rows_p_str   = "\n".join(rows_p)
+    rows_pred_str = "\n".join(rows_pred) if rows_pred else "    \\multicolumn{4}{c}{No disponible} \\\\"
+    rows_arq_str = "\n".join(rows_arq)   if rows_arq  else "    \\multicolumn{7}{c}{No disponible} \\\\"
+
+    return r"""
+\documentclass[a4paper,10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[top=2cm,bottom=2cm,left=2.5cm,right=2.5cm,headheight=15pt]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{array}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{microtype}
+
+\definecolor{sisblue}{HTML}{1A67A3}
+\definecolor{sisdark}{HTML}{103E6E}
+\definecolor{rowalt}{HTML}{EBF3FA}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\lhead{\small\textbf{\textcolor{sisblue}{DataMart SIS}}}
+\rhead{\small\textcolor{gray}{Seguro Integral de Salud --- Per\'{u}}}
+\cfoot{\small\thepage}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\newcommand{\sisec}[1]{%
+  \vspace{10pt}%
+  {\Large\bfseries\textcolor{sisblue}{#1}}\par%
+  \noindent{\color{sisblue}\rule{\linewidth}{0.6pt}}\vspace{4pt}%
+}
+
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+
+\begin{document}
+
+%% ── Portada ────────────────────────────────────────────────────────────────
+\begin{titlepage}
+\vspace*{2.5cm}
+\begin{center}
+{\color{sisblue}\rule{\linewidth}{1.5pt}}\\[0.9cm]
+{\Huge\bfseries\textcolor{sisdark}{Informe de Atenciones SIS}}\\[0.45cm]
+{\large\textcolor{sisblue}{Seguro Integral de Salud --- Per\'{u}}}\\[0.3cm]
+{\large\textcolor{gray}{""" + f"{anio_ini}--{anio_fin}" + r"""}}\\[0.9cm]
+{\color{sisblue}\rule{\linewidth}{1.5pt}}\\[1.8cm]
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{L{9cm}R{5cm}}
+\textbf{Total de atenciones} & \textbf{\textcolor{sisblue}{""" + _fmtn(total_a) + r"""}} \\
+\textbf{Per\'{i}odo cubierto}  & """ + f"{anio_ini}--{anio_fin}" + r""" \\
+\textbf{Regiones}             & """ + str(regiones) + r""" \\
+\textbf{IPRESS activas}       & """ + _fmtn(ipress) + r""" \\
+\textbf{Planes de seguro}     & """ + str(planes) + r""" \\
+\textbf{Generado el}          & """ + fecha_str + r""" \\
+\end{tabular}
+\vfill
+{\small\textcolor{gray}{Fuente: Plataforma Nacional de Datos Abiertos del Per\'{u} --- datosabiertos.gob.pe}\\
+Seguro Integral de Salud --- Ministerio de Salud del Per\'{u}}
+\end{center}
+\end{titlepage}
+
+%% ── Sección 1: Evolución Anual ──────────────────────────────────────────────
+\sisec{1. Evolución Anual de Atenciones}
+
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{R{1.5cm} R{3.8cm} R{2cm} L{6.5cm}}
+\toprule
+\textbf{A\~no} & \textbf{Atenciones} & \textbf{Var.\,\%} & \textbf{Proporción} \\
+\midrule
+\endhead
+""" + rows_a_str + r"""
+\bottomrule
+\end{longtable}
+
+%% ── Sección 2: Distribución Regional ───────────────────────────────────────
+\sisec{2. Distribución Regional (Top 10)}
+
+\begin{longtable}{R{0.8cm} L{5.5cm} R{3.5cm} R{2cm} L{4.5cm}}
+\toprule
+\textbf{N\textsuperscript{o}} & \textbf{Región} & \textbf{Atenciones} & \textbf{\% Total} & \textbf{Proporción} \\
+\midrule
+\endhead
+""" + rows_r_str + r"""
+\bottomrule
+\end{longtable}
+
+%% ── Sección 3: Perfil Demográfico ──────────────────────────────────────────
+\sisec{3. Perfil Demográfico por Grupo Etario}
+
+\begin{longtable}{L{4cm} R{4cm} R{2cm} L{5.5cm}}
+\toprule
+\textbf{Grupo de Edad} & \textbf{Atenciones} & \textbf{\% Total} & \textbf{Proporción} \\
+\midrule
+\endhead
+""" + rows_e_str + r"""
+\bottomrule
+\end{longtable}
+
+%% ── Sección 4: Planes de Seguro ────────────────────────────────────────────
+\sisec{4. Planes de Seguro SIS}
+
+\begin{longtable}{L{8cm} R{4cm} R{2cm}}
+\toprule
+\textbf{Plan de Seguro} & \textbf{Atenciones} & \textbf{\% Total} \\
+\midrule
+\endhead
+""" + rows_p_str + r"""
+\bottomrule
+\end{longtable}
+
+%% ── Sección 5: Proyecciones ─────────────────────────────────────────────────
+\sisec{5. Proyecciones 2026--2028}
+
+Modelo: """ + modelo_pred + r""".
+Los intervalos de confianza al 90\,\% se amplían con el horizonte de proyección.
+
+\begin{longtable}{R{2cm} R{3.5cm} R{3.5cm} R{3.5cm}}
+\toprule
+\textbf{A\~no} & \textbf{Proyección} & \textbf{L\'imite inf. (90\,\%)} & \textbf{L\'imite sup. (90\,\%)} \\
+\midrule
+\endhead
+""" + rows_pred_str + r"""
+\bottomrule
+\end{longtable}
+
+%% ── Sección 6: Arquetipos ──────────────────────────────────────────────────
+\sisec{6. Arquetipos de Asegurado SIS}
+
+Seis perfiles derivados de los grupos etarios del Diccionario de Datos SIS (DS-01).
+
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{L{3cm} L{2.5cm} R{3cm} R{1.8cm} R{1.5cm} C{1.5cm} L{2.5cm}}
+\toprule
+\textbf{Arquetipo} & \textbf{Rango} & \textbf{Atenciones} & \textbf{\% Total} & \textbf{\% Fem.} & \textbf{Nivel} & \textbf{Plan} \\
+\midrule
+\endhead
+""" + rows_arq_str + r"""
+\bottomrule
+\end{longtable}
+
+%% ── Sección 7: Notas Metodológicas ─────────────────────────────────────────
+\sisec{7. Notas Metodológicas}
+
+\begin{itemize}
+  \item \textbf{Fuente de datos:} Plataforma Nacional de Datos Abiertos del Per\'{u}
+        (datosabiertos.gob.pe), conjunto DS-01 Atenciones SIS, archivos ZIP verificados
+        por tama\~no en el portal oficial.
+  \item \textbf{Modelo predictivo:} """ + modelo_pred + r""".
+        Las proyecciones asumen continuidad de la tendencia hist\'{o}rica y no incorporan
+        cambios de pol\'{i}tica sanitaria ni eventos externos.
+  \item \textbf{Intervalo de confianza:} 90\,\%, con amplitud creciente en funci\'{o}n
+        del horizonte de proyecci\'{o}n (\(\propto \sqrt{h}\)).
+  \item \textbf{IPRESS:} Institución Prestadora de Servicios de Salud. Nivel I =
+        atenci\'{o}n primaria; Nivel III = alta complejidad.
+  \item \textbf{Arquetipos:} Agrupaciones basadas en el campo \texttt{GRUPO\_EDAD}
+        del diccionario de datos SIS. Calculados sobre el universo completo 2017--""" + str(anio_fin) + r""".
+\end{itemize}
+
+\end{document}
+"""
+
+
+@app.get("/api/export/pdf")
+def export_pdf():
+    """Genera un informe PDF compilando LaTeX con pdflatex en el servidor."""
+    # Recoger datos (sin esperar caché — siempre frescos)
+    kd      = _cached("kpis",        lambda: {})
+    anio_d  = _qmv("mv_por_anio")
+    reg_d   = _qmv("mv_por_region")
+    edad_d  = _qmv("mv_por_edad")
+    sexo_d  = _qmv("mv_por_sexo")
+    plan_d  = _qmv("mv_por_plan")
+    nivel_d = _qmv("mv_por_nivel")
+    pred_d  = _cached("predicciones", lambda: {})
+    arq_d   = _cached("arquetipos",   lambda: {})
+
+    if not anio_d:
+        return JSONResponse({"error": "Datos aún no disponibles"}, status_code=503)
+
+    tex_source = _build_latex(kd, anio_d, reg_d, edad_d, sexo_d,
+                               plan_d, nivel_d, pred_d, arq_d)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tex_path = Path(tmpdir) / "informe.tex"
+        tex_path.write_text(tex_source, encoding="utf-8")
+
+        for _ in range(2):   # dos pasadas para referencias internas
+            result = subprocess.run(
+                ["pdflatex", "-interaction=nonstopmode",
+                 "-output-directory", tmpdir, str(tex_path)],
+                capture_output=True, timeout=90,
+            )
+            if result.returncode != 0 and b"Emergency stop" in result.stdout:
+                log_tail = result.stdout.decode("utf-8", errors="replace")[-3000:]
+                return JSONResponse({"error": "pdflatex error", "log": log_tail},
+                                    status_code=500)
+
+        pdf_path = Path(tmpdir) / "informe.pdf"
+        if not pdf_path.exists():
+            return JSONResponse({"error": "PDF no generado — pdflatex no instalado"},
+                                status_code=500)
+
+        pdf_bytes = pdf_path.read_bytes()
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=informe_sis.pdf"},
+    )
 
 
 # ── SPA catch-all — serves React static files (logo, etc.) ──────────────────

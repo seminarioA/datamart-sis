@@ -1,11 +1,32 @@
-import React from 'react'
-import { Sun, Moon } from 'lucide-react'
+import React, { useState } from 'react'
+import { Sun, Moon, FileDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export default function Navbar({ dark, onToggleTheme, status }) {
   const isError   = status === 'Error'
   const isLoading = status === 'Cargando…'
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  const handlePdf = async () => {
+    setPdfLoading(true)
+    try {
+      const resp = await fetch('/api/export/pdf')
+      if (!resp.ok) throw new Error(await resp.text())
+      const blob = await resp.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = 'informe_sis.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('PDF export failed:', e)
+      alert('No se pudo generar el PDF. Verifique que pdflatex esté instalado en el servidor.')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   return (
     <header className="island shrink-0 flex items-center px-5 py-3.5 gap-3 z-50">
@@ -32,6 +53,20 @@ export default function Navbar({ dark, onToggleTheme, status }) {
           {status}
         </span>
       )}
+
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handlePdf}
+        disabled={pdfLoading}
+        title="Exportar informe en PDF (LaTeX nativo)"
+        className="no-print shrink-0 rounded-xl bg-white/60 dark:bg-white/10 backdrop-blur border-border/50 hover:bg-white/80 gap-1.5 text-[11px]"
+      >
+        {pdfLoading
+          ? <Loader2 size={13} className="animate-spin" />
+          : <FileDown size={13} />}
+        PDF
+      </Button>
 
       <Button
         variant="outline"

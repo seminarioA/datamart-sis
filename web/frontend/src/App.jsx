@@ -12,6 +12,7 @@ import Glosario     from './components/Glosario.jsx'
 import Acciones     from './components/Acciones.jsx'
 import Onboarding   from './components/Onboarding.jsx'
 import Cuadre       from './components/Cuadre.jsx'
+import Arquetipos   from './components/Arquetipos.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
 import { resolveChartSeries } from './lib/chartColors.js'
 import { SlidersHorizontal, X, Map, Stethoscope, Users, TrendingUp, ArrowRight } from 'lucide-react'
@@ -168,6 +169,7 @@ export default function App() {
       case 'glosario':     return <Glosario />
       case 'acciones':     return <Acciones dark={dark} />
       case 'predicciones': return <Predicciones dark={dark} />
+      case 'arquetipos':   return <Arquetipos dark={dark} />
       case 'cuadre':       return <Cuadre dark={dark} />
 
       case 'map':

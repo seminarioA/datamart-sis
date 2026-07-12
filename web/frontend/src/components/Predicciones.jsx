@@ -72,13 +72,18 @@ function ForecastChart({ historico, prediccion, dark }) {
     const allData = [...historico, ...prediccion]
     const cats    = allData.map(d => d.anio)
 
+    const lastH = historico[historico.length - 1]
+    const bridgedPred = prediccion?.length && lastH
+      ? [{ x: lastH.anio, y: lastH.atenciones }, ...prediccion.map(d => ({ x: d.anio, y: d.atenciones }))]
+      : prediccion.map(d => ({ x: d.anio, y: d.atenciones }))
+
     const opts = {
       chart: { type: 'line', height: '100%', toolbar: { show: false }, background: 'transparent', animations: { speed: 400 }, fontFamily: "'Signika', sans-serif" },
       theme: { mode: dark ? 'dark' : 'light' },
       series: [
         { name: 'Atenciones reales',    type: 'line', data: historico.map(d => ({ x: d.anio, y: d.atenciones })) },
-        { name: 'Tendencia lineal',     type: 'line', data: historico.map(d => ({ x: d.anio, y: d.tendencia })) },
-        { name: 'Proyección 2026–2028', type: 'line', data: prediccion.map(d => ({ x: d.anio, y: d.atenciones })) },
+        { name: 'Tendencia ajustada',   type: 'line', data: historico.map(d => ({ x: d.anio, y: d.tendencia })) },
+        { name: 'Proyección 2026–2028', type: 'line', data: bridgedPred },
       ],
       xaxis: { categories: cats, labels: { style: { colors: tick, fontSize: '11px' } }, axisBorder: { show: false }, axisTicks: { show: false } },
       yaxis: { labels: { style: { colors: tick, fontSize: '10px' }, formatter: v => fmt(v) } },
@@ -172,9 +177,9 @@ export default function Predicciones({ dark }) {
       <div className="island flex items-start gap-2.5 px-4 py-3 text-[11px] text-muted-foreground">
         <Info size={13} className="shrink-0 mt-0.5" />
         <span>
-          <strong className="text-foreground">Modelo:</strong> Regresión Lineal OLS sobre datos anuales {Math.min(...fa.historico.map(d => d.anio))}–{Math.max(...fa.historico.map(d => d.anio))}.
+          <strong className="text-foreground">Modelo:</strong> {fa.modelo} · datos anuales {Math.min(...fa.historico.map(d => d.anio))}–{Math.max(...fa.historico.map(d => d.anio))}.
           Las proyecciones asumen continuidad de la tendencia histórica y no incorporan cambios de política sanitaria ni eventos externos.
-          Intervalo de confianza al 90%.
+          Intervalo de confianza al 90%, amplitud creciente con el horizonte.
         </span>
       </div>
 
