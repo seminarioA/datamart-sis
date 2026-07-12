@@ -174,7 +174,7 @@ export default function Predicciones({ dark }) {
         <span>
           <strong className="text-foreground">Modelo:</strong> Regresión Lineal OLS sobre datos anuales {Math.min(...fa.historico.map(d => d.anio))}–{Math.max(...fa.historico.map(d => d.anio))}.
           Las proyecciones asumen continuidad de la tendencia histórica y no incorporan cambios de política sanitaria ni eventos externos.
-          IC 90%: ±1.645σ de los residuos históricos.
+          Intervalo de confianza al 90%.
         </span>
       </div>
 
@@ -183,7 +183,7 @@ export default function Predicciones({ dark }) {
         <MetricCard label="R² del modelo" value={fa.r2} sub="Bondad de ajuste"
           tip="R² (coeficiente de determinación): porción de la varianza histórica explicada por el modelo. 1.0 = ajuste perfecto." />
         <MetricCard label="RMSE" value={fmt(fa.rmse)} sub="Error medio histórico"
-          tip="Root Mean Square Error: error cuadrático medio del modelo sobre datos históricos. Menor es mejor." />
+          tip="Error cuadrático medio del modelo sobre los datos históricos. Indica cuántas atenciones se desvía la proyección en promedio. Menor es mejor." />
         <MetricCard
           label={`Proyección ${nextYear?.anio ?? '2026'}`}
           value={fmt(nextYear?.atenciones)} accent
@@ -193,7 +193,7 @@ export default function Predicciones({ dark }) {
         <MetricCard
           label="Tendencia anual" value={`${creciente ? '+' : ''}${fmt(fa.pendiente_anual)}`}
           sub={creciente ? 'Tendencia creciente' : 'Tendencia decreciente'}
-          tip="Incremento absoluto de atenciones proyectado por año según la pendiente de la regresión lineal."
+          tip="Incremento absoluto de atenciones proyectado por año según la tendencia histórica."
         />
       </div>
 

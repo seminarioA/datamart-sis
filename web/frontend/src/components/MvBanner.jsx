@@ -8,7 +8,7 @@ export default function MvBanner({ ready, total }) {
       <div className="flex items-center gap-2.5 px-5 py-2 text-[11px] text-primary">
         <span className="inline-block w-3 h-3 shrink-0 rounded-full border-2 border-primary/30 border-t-primary animate-spin-slow" />
         <span>
-          Construyendo vistas ({ready}/{total})…
+          Preparando datos ({ready}/{total})…
         </span>
         <div className="flex-1 max-w-[120px] h-1 bg-primary/15 rounded-full overflow-hidden">
           <div

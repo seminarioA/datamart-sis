@@ -56,11 +56,11 @@ export default function Cuadre({ dark }) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-heading font-bold text-base text-foreground">
-            Conciliación de Registros ETL
+            Conciliación de Registros
           </h2>
           <p className="text-[11px] text-muted-foreground mt-0.5">
-            Cada atención registrada por MINSA en el archivo fuente debe aparecer
-            exactamente una vez en FACT_ATENCIONES_SIS. Ambas partidas deben totalizar lo mismo.
+            Cada atención publicada por MINSA debe quedar registrada exactamente una vez
+            en la base de datos. Ambas partidas deben totalizar lo mismo.
           </p>
         </div>
         <div className={`flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg ${
@@ -83,7 +83,7 @@ export default function Cuadre({ dark }) {
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-muted/30">
             <FileArchive size={13} className="text-primary" />
             <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Origen — Archivos MINSA (CSV)
+              Origen — Archivos publicados por MINSA
             </span>
           </div>
           <table className="w-full text-[11px]">
@@ -133,7 +133,7 @@ export default function Cuadre({ dark }) {
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-muted/30">
             <CalendarDays size={13} className="text-primary" />
             <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Destino — DIM_TIEMPO (por año de atención)
+              Destino — Por año de atención
             </span>
           </div>
           <table className="w-full text-[11px]">
@@ -197,9 +197,9 @@ export default function Cuadre({ dark }) {
             {cuadra ? 'Registros conciliados — sin diferencia' : 'Brecha de conciliación detectada'}
           </div>
           <div className="text-[11px] text-muted-foreground">
-            Origen MINSA: <span className="tabular-nums font-medium">{num(totalFuente)}</span>
-            {' '}=={' '}
-            FACT por año: <span className="tabular-nums font-medium">{num(totalAnio)}</span>
+            Archivos MINSA: <span className="tabular-nums font-medium">{num(totalFuente)}</span>
+            {' '}={' '}
+            Total por año: <span className="tabular-nums font-medium">{num(totalAnio)}</span>
             {' '}· diferencia: <span className="tabular-nums font-medium">{num(Math.abs(totalFuente - totalAnio))}</span>
           </div>
         </div>
@@ -214,7 +214,7 @@ export default function Cuadre({ dark }) {
         <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-muted/30">
           <Globe size={13} className="text-primary" />
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Fuente de verdad — datosabiertos.gob.pe (HTTP HEAD)
+            Fuente de verdad — datosabiertos.gob.pe
           </span>
           {allPortalSizes && (
             <span className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -224,10 +224,9 @@ export default function Cuadre({ dark }) {
         </div>
         <div className="p-3 space-y-2">
           <p className="text-[10px] text-muted-foreground">
-            Se consultó el tamaño de cada archivo ZIP directamente en el portal del gobierno mediante
-            solicitudes HTTP HEAD (sin descargar el contenido). Los 14 archivos responden con
-            <code className="mx-1 px-1 rounded bg-muted">Content-Length</code> — confirman que la URL de origen existe
-            y que el peso coincide con lo cargado al datamart.
+            Se verificó el tamaño de cada archivo ZIP directamente en el portal del gobierno,
+            sin necesidad de descargarlos. Los 14 archivos están disponibles y su peso
+            coincide con lo registrado en la base de datos.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-[10px]">
@@ -235,7 +234,7 @@ export default function Cuadre({ dark }) {
                 <tr className="border-b border-border/40">
                   <th className="px-2 py-1 text-left font-semibold text-muted-foreground">Archivo en portal</th>
                   <th className="px-2 py-1 text-right font-semibold text-muted-foreground">Peso (MB)</th>
-                  <th className="px-2 py-1 text-right font-semibold text-muted-foreground">Atenciones en FACT</th>
+                  <th className="px-2 py-1 text-right font-semibold text-muted-foreground">Atenciones registradas</th>
                   <th className="px-2 py-1 text-center font-semibold text-muted-foreground">Estado</th>
                 </tr>
               </thead>
@@ -263,7 +262,7 @@ export default function Cuadre({ dark }) {
               <tfoot>
                 <tr className="border-t border-border/40 bg-muted/10">
                   <td className="px-2 py-1.5 font-semibold text-muted-foreground">
-                    Total · www.datosabiertos.gob.pe/sites/default/files/
+                    Total · Portal datosabiertos.gob.pe
                   </td>
                   <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{portalTotalMB} MB</td>
                   <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-primary">{num(totalFuente)}</td>
@@ -283,23 +282,20 @@ export default function Cuadre({ dark }) {
       {/* Nota metodológica */}
       <div className="text-[10px] text-muted-foreground space-y-1 border-t border-border/40 pt-3">
         <p>
-          <strong>Trazabilidad ETL:</strong> cada registro del CSV MINSA se carga directamente en
-          <code className="mx-1 px-1 rounded bg-muted">FACT_ATENCIONES_SIS</code>
-          conservando el valor original de <code className="mx-1 px-1 rounded bg-muted">cantidad_atenciones</code>.
-          Los archivos MINSA/SIS ya publican los datos pre-agregados por grano dimensional
-          (período · ubigeo · IPRESS · plan SIS · prestación · sexo · grupo etario).
+          <strong>Trazabilidad de carga:</strong> cada atención publicada por MINSA se carga
+          conservando el valor original sin modificaciones. Los archivos SIS ya vienen
+          pre-agregados por período, establecimiento, plan, prestación, sexo y grupo etario.
         </p>
         <p>
-          <strong>Validación de unicidad:</strong> TABLESAMPLE 1% (~712K registros) → 0 granos dimensionales duplicados.
-          Promedio: {data.total_filas > 0
+          <strong>Sin duplicados:</strong> muestra aleatoria del 1% de los registros (≈712K)
+          no encontró ningún duplicado. Promedio de {data.total_filas > 0
             ? (data.por_fuente.reduce((s,r)=>s+Number(r.atenciones),0)/data.total_filas).toFixed(1)
-            : '—'} atenciones por registro de FACT.
+            : '—'} atenciones por registro.
         </p>
         <p>
-          <strong>Validación externa:</strong> tamaños de archivo obtenidos via HTTP HEAD a
-          <code className="mx-1 px-1 rounded bg-muted">datosabiertos.gob.pe</code> el 2026-07-12.
-          El portal no expone conteos de filas por API; el tamaño del ZIP sirve como huella de autenticidad
-          del archivo fuente.
+          <strong>Validación con el portal:</strong> los tamaños de archivo fueron verificados
+          directamente en datosabiertos.gob.pe el 12 de julio de 2026. El portal no publica
+          conteos de filas; el peso del archivo sirve como huella de autenticidad del origen.
         </p>
       </div>
     </div>

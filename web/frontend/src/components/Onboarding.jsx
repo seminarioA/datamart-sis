@@ -24,14 +24,14 @@ const STEPS = [
   },
   {
     icon: TrendingUp,
-    title: 'Módulo Predicciones',
-    desc: 'Analítica predictiva con regresión lineal OLS: forecast de atenciones 2026–2028, índice de estacionalidad mensual y proyección regional.',
-    hint: 'El modelo tiene R²=1.0 con 2 años de datos — mejorará conforme se carguen más años.',
+    title: 'Módulo Proyecciones',
+    desc: 'Forecast de atenciones 2026–2028 basado en la tendencia histórica, índice de estacionalidad mensual y proyección por región.',
+    hint: 'Las proyecciones asumen continuidad de la tendencia — no incorporan cambios de política sanitaria.',
   },
   {
     icon: BookOpen,
     title: 'Glosario de términos',
-    desc: 'En el módulo Glosario encontrarás definiciones de todos los términos técnicos: IPRESS, Nivel EESS, Plan de Seguro, MV, ELT, DAG y más.',
+    desc: 'En el módulo Glosario encontrarás definiciones de los términos del sector: IPRESS, Nivel EESS, Plan de Seguro SIS, grupo etario y más.',
     hint: '¡Listo! Cierra esta guía y empieza a explorar.',
   },
 ]

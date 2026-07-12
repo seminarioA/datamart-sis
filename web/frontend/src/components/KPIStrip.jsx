@@ -8,15 +8,15 @@ import { Button } from '@/components/ui/button'
 const KPI_META = {
   'kpi-atenciones': {
     label: 'Total Atenciones', accent: true, showEvolution: true,
-    tip: 'Suma de todas las prestaciones de salud registradas en el datamart. Incluye consultas externas, procedimientos, hospitalizaciones y emergencias de asegurados SIS en todos los años cargados.',
+    tip: 'Suma de todas las prestaciones de salud registradas. Incluye consultas externas, procedimientos, hospitalizaciones y emergencias de asegurados SIS en todos los años disponibles.',
   },
   'kpi-periodo': {
     label: 'Periodo', showEvolution: true,
-    tip: 'Rango de años efectivamente cargados en el datamart. El SIS publica los datos en la Plataforma Nacional de Datos Abiertos del Perú (datosabiertos.gob.pe) como archivos ZIP anuales y semestrales.',
+    tip: 'Rango de años disponibles en el sistema. El SIS publica los datos en la Plataforma Nacional de Datos Abiertos del Perú (datosabiertos.gob.pe) en entregas anuales y semestrales.',
   },
   'kpi-regiones': {
     label: 'Regiones',
-    tip: 'Cantidad de regiones (departamentos) con al menos una atención registrada. El Perú tiene 25 regiones más la Provincia Constitucional del Callao (26 en total). El datamart usa el código UBIGEO de 6 dígitos para identificarlas.',
+    tip: 'Cantidad de regiones (departamentos) con al menos una atención registrada. El Perú tiene 25 regiones más la Provincia Constitucional del Callao (26 en total), identificadas por código UBIGEO.',
   },
   'kpi-ipress': {
     label: 'IPRESS Activas',
