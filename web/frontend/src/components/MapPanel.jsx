@@ -5,6 +5,8 @@ import { fmt, fmtFull, norm } from '../lib/format.js'
 import { resolveMapStops } from '../lib/chartColors.js'
 import { cn } from '@/lib/utils'
 
+const LEGEND_LABELS = ['0–20 %', '20–40 %', '40–60 %', '60–80 %', '80–100 %']
+
 const TILE = {
   light:     'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
   dark:      'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
@@ -39,6 +41,97 @@ function buildLookup(regionRows) {
     else { detail[key].atenciones += at; detail[key].ipress += Number(d.ipress||0); detail[key].pct += at/total }
   })
   return { lookup, detail }
+}
+
+function FullscreenPanel({ selected, regionData, onClose }) {
+  const stops = resolveMapStops()
+  const totalAll = (regionData || []).reduce((s, d) => s + Number(d.atenciones), 0)
+  const avgPerRegion = regionData?.length ? totalAll / regionData.length : 1
+
+  return (
+    <div className="island overflow-hidden" style={{
+      position: 'absolute', bottom: 10, right: 10, zIndex: 810, minWidth: 230, maxWidth: 270,
+    }}>
+      {/* Leyenda de color */}
+      <div className="px-3 pt-2.5 pb-2 border-b border-border/50">
+        <div className="text-[9px] font-bold uppercase tracking-[.07em] text-muted-foreground mb-1.5">Atenciones</div>
+        <div className="space-y-1">
+          {LEGEND_LABELS.map((l, i) => (
+            <div key={l} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-sm border border-border/40 shrink-0"
+                   style={{ background: stops[i] }} />
+              <span className="text-[10px] text-muted-foreground">{l}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Detalle de región seleccionada */}
+      {selected ? (
+        <div className="px-3 pt-2.5 pb-3">
+          <div className="flex items-start justify-between mb-2.5">
+            <div>
+              <div className="font-bold text-[13px] text-foreground uppercase tracking-tight leading-tight">
+                {selected.name}
+              </div>
+              <div className="text-[9px] text-muted-foreground mt-0.5">Región del Perú</div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md text-primary-foreground"
+                    style={{ background: 'var(--navy)' }}>#{selected.rank}</span>
+              <button onClick={onClose} aria-label="Cerrar"
+                className="text-muted-foreground hover:text-foreground bg-transparent border-0 cursor-pointer text-base leading-none">×</button>
+            </div>
+          </div>
+
+          <div className="text-[24px] font-bold tabular-nums text-foreground leading-none mb-0.5">
+            {fmtFull(selected.atenciones)}
+          </div>
+          <div className="text-[10px] text-muted-foreground mb-2.5">atenciones totales</div>
+
+          {/* Barra porcentual */}
+          <div className="mb-3">
+            <div className="flex justify-between text-[10px] mb-1">
+              <span className="text-muted-foreground">% del total nacional</span>
+              <span className="font-semibold text-foreground">{(selected.pct * 100).toFixed(1)}%</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-full rounded-full bg-primary/70 transition-[width] duration-500"
+                   style={{ width: `${Math.min(selected.pct * 100 * 5, 100)}%` }} />
+            </div>
+          </div>
+
+          {/* Métricas secundarias */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="bg-muted/50 rounded-lg px-2.5 py-2 text-center">
+              <div className="text-[12px] font-bold text-foreground">
+                {selected.ipress ? fmtFull(selected.ipress) : '—'}
+              </div>
+              <div className="text-[9px] text-muted-foreground">IPRESS activas</div>
+            </div>
+            <div className="bg-muted/50 rounded-lg px-2.5 py-2 text-center">
+              {(() => {
+                const vsAvg = Math.round((selected.atenciones - avgPerRegion) / avgPerRegion * 100)
+                const pos = vsAvg >= 0
+                return (
+                  <>
+                    <div className={`text-[12px] font-bold ${pos ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      {pos ? '+' : ''}{vsAvg}%
+                    </div>
+                    <div className="text-[9px] text-muted-foreground">vs. promedio</div>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="px-3 py-2.5 text-[10px] text-muted-foreground">
+          Haz clic en un departamento para ver detalle
+        </div>
+      )}
+    </div>
+  )
 }
 
 function RegionCard({ info, onClose }) {
@@ -81,6 +174,7 @@ function RegionCard({ info, onClose }) {
 }
 
 export default function MapPanel({ regionData, dark }) {
+  // regionData forwarded to FullscreenPanel for avg computation
   const containerRef  = useRef(null)
   const mapRef        = useRef(null)
   const leafletRef    = useRef(null)
@@ -231,7 +325,14 @@ export default function MapPanel({ regionData, dark }) {
       {/* El mapa Leaflet necesita position:relative + flex:1 para llenarse correctamente */}
       <div className="flex-1 relative min-h-0">
         <div ref={mapRef} className="absolute inset-0" />
-        <RegionCard info={selected} onClose={()=>setSelected(null)} />
+        {!fullscreen && <RegionCard info={selected} onClose={()=>setSelected(null)} />}
+        {fullscreen && (
+          <FullscreenPanel
+            selected={selected}
+            regionData={regionData}
+            onClose={() => setSelected(null)}
+          />
+        )}
       </div>
     </div>
   )

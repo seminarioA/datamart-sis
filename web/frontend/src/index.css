@@ -245,6 +245,11 @@
     border-radius: 0 !important;
     background: hsl(var(--card));
   }
+  /* Oculta la leyenda Leaflet en fullscreen — la reemplaza FullscreenPanel */
+  .chart-panel-wrap:fullscreen .leaflet-bottom.leaflet-right,
+  .chart-panel-wrap:-webkit-full-screen .leaflet-bottom.leaflet-right {
+    display: none !important;
+  }
 
   /* ── Transición de módulo (clase añadida en App.jsx) ──────────── */
   .module-enter {

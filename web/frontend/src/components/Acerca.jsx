@@ -1,19 +1,29 @@
 import React from 'react'
-import { ExternalLink, Database, Users } from 'lucide-react'
+import { ExternalLink, Database, Users, Globe } from 'lucide-react'
 import {
-  Postgresql, Python, Fastapi, ApacheAirflow,
+  Postgresql, Python, Fastapi,
   React as ReactIcon, Vitejs, Oracle, Cloudflare,
 } from '@thesvg/react'
 
+function PrefectIcon({ width = 18, height = 18 }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="24" rx="5" fill="#6E3FF3"/>
+      <path d="M7 6h5.5a3.5 3.5 0 0 1 0 7H7V6Z" fill="white"/>
+      <path d="M7 13h3v5H7v-5Z" fill="white" opacity=".7"/>
+    </svg>
+  )
+}
+
 const STACK = [
-  { icon: Postgresql,   label:'PostgreSQL 16',      desc:'DataMart dimensional (star schema)' },
-  { icon: Python,       label:'Python + FastAPI',    desc:'ELT en batches + API REST con cache 3 capas',
-    icon2: Fastapi },
-  { icon: ApacheAirflow,label:'Apache Airflow 2.9',  desc:'Orquestación de DAGs (ELT + refresh MVs)' },
-  { icon: ReactIcon,    label:'React 18 + Vite',     desc:'Frontend SPA con ApexCharts y Leaflet',
-    icon2: Vitejs },
-  { icon: Oracle,       label:'Oracle Cloud VPS',    desc:'Ubuntu 24.04 — 1GB RAM, 50GB SSD (Always Free)' },
-  { icon: Cloudflare,   label:'Cloudflare Tunnel',   desc:'Acceso público sin puertos expuestos' },
+  { icon: Postgresql, label: 'PostgreSQL 16',    desc: 'DataMart dimensional (star schema)' },
+  { icon: Python,     label: 'Python 3.12',      desc: 'Carga ELT batch + scripts de análisis' },
+  { icon: Fastapi,    label: 'FastAPI',           desc: 'API REST con caché de 3 capas' },
+  { icon: PrefectIcon,label: 'Prefect 3',         desc: 'Orquestación de flujos (ELT + refresh MVs)' },
+  { icon: ReactIcon,  label: 'React 18',          desc: 'Frontend SPA con ApexCharts y Leaflet' },
+  { icon: Vitejs,     label: 'Vite',              desc: 'Build tool con HMR instantáneo' },
+  { icon: Oracle,     label: 'Oracle Cloud VPS',  desc: 'Ubuntu 24.04 — 1GB RAM, 50GB SSD (Always Free)' },
+  { icon: Cloudflare, label: 'Cloudflare Tunnel', desc: 'Acceso público sin puertos expuestos' },
 ]
 
 const AUTHORS = [
@@ -43,6 +53,10 @@ export default function Acerca() {
           y los presenta en un dashboard interactivo con análisis predictivo.
         </p>
         <div className="flex gap-2 mt-4 flex-wrap">
+          <a href="https://datamart-sis.vercel.app" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[12px] text-primary font-semibold no-underline border border-border/60 rounded-lg px-3 py-1.5 bg-muted/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors">
+            <Globe size={13} /> Ver Dashboard
+          </a>
           <a href="https://github.com/seminarioA/datamart-sis" target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-[12px] text-primary font-semibold no-underline border border-border/60 rounded-lg px-3 py-1.5 bg-muted/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors">
             ↗ Ver en GitHub
@@ -97,14 +111,12 @@ export default function Acerca() {
         <SectionTitle>Stack tecnológico</SectionTitle>
         <div className="grid grid-cols-2 gap-2">
           {STACK.map(s => {
-            const Icon  = s.icon
-            const Icon2 = s.icon2
+            const Icon = s.icon
             return (
               <div key={s.label}
                    className="flex gap-2.5 items-center bg-muted/30 rounded-lg px-3 py-2.5 border border-border/40">
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="shrink-0">
                   <Icon width={18} height={18} className="text-foreground" />
-                  {Icon2 && <Icon2 width={16} height={16} className="text-foreground opacity-70" />}
                 </div>
                 <div>
                   <div className="text-[12px] font-semibold text-foreground">{s.label}</div>
