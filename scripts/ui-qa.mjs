@@ -70,14 +70,13 @@ const RULES = [
     hint:    'Eliminar el borde y diferenciar con color de icono, punto cuadrado (rounded-sm) o cabecera coloreada.',
     /**
      * Detecta: style={{ borderLeft: ... }} o style={{ borderRight: ... }}
-     * con template literal o variable (no valor estático como "1px solid #eee").
+     * con cualquier valor — estático o dinámico. Ambos generan la "pestaña".
      */
     check(lines, disabledLines) {
       const violations = []
       lines.forEach((line, i) => {
         if (disabledLines.has(i + 1)) return
-        if (/style=\{[^}]*border(Left|Right)\s*:/i.test(line) &&
-            /[`$]/.test(line)) {          // solo flagea estilos dinámicos
+        if (/style=\{[^}]*border(Left|Right)\s*:/i.test(line)) {
           violations.push({ line: i + 1, snippet: line.trim().slice(0, 100) })
         }
       })

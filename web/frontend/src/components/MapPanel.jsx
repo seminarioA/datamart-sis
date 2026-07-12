@@ -44,8 +44,7 @@ function RegionCard({ info, onClose }) {
     <div className="island overflow-hidden" style={{
       position: 'absolute', top: 12, left: 12, zIndex: 800, minWidth: 190,
     }}>
-      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/60 bg-muted/40"
-           style={{ borderLeft: '3px solid var(--navy)' }}>
+      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/60 bg-muted/40">
         <span className="text-[11px] font-bold uppercase tracking-[.04em] text-foreground">
           {info.name}
         </span>
