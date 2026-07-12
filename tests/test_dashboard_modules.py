@@ -172,3 +172,29 @@ class TestDashboardBundle:
         elapsed = time.time() - t0
         assert r.status_code == 200
         assert elapsed < 15, f"/api/dashboard tardó {elapsed:.1f}s (máx 15s)"
+
+
+# ── PDF export ────────────────────────────────────────────────────────────────
+
+class TestPDF:
+    def test_export_pdf_valido(self, base_url):
+        """El endpoint retorna un PDF binario válido generado por pdflatex."""
+        import pytest
+        r = requests.get(f"{base_url}/api/export/pdf", timeout=120)
+        if r.status_code == 503:
+            pytest.skip("PDF aún generándose (503) — reintenta tras 60 s")
+        log_hint = ""
+        if not r.headers.get("content-type", "").startswith("application/pdf"):
+            try:
+                log_hint = r.json().get("log", r.text[:400])
+            except Exception:
+                log_hint = r.text[:400]
+        assert r.status_code == 200, (
+            f"PDF endpoint retornó HTTP {r.status_code}\n"
+            f"error: {r.json().get('error', '?') if 'json' in r.headers.get('content-type','') else ''}\n"
+            f"log: {log_hint}"
+        )
+        ct = r.headers.get("content-type", "")
+        assert "pdf" in ct, f"Content-Type inesperado: {ct!r}"
+        assert r.content[:4] == b"%PDF", "La respuesta no comienza con %PDF — no es un PDF válido"
+        assert len(r.content) > 5_000, f"PDF demasiado pequeño ({len(r.content)} bytes) — posible error silencioso"

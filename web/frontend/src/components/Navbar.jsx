@@ -16,6 +16,10 @@ export default function Navbar({ dark, onToggleTheme, status }) {
     const timer = setTimeout(() => controller.abort(), 120_000)
     try {
       const resp = await fetch('/api/export/pdf', { signal: controller.signal })
+      if (resp.status === 503) {
+        const body = await resp.json().catch(() => ({}))
+        throw new Error(body.error || 'PDF generándose, intenta en 60 segundos')
+      }
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
         throw new Error(body.error || body.detail || `HTTP ${resp.status}`)

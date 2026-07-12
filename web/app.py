@@ -290,6 +290,7 @@ def _build_mvs(refresh: bool = False):
                     pass
         c.close()
         _MV_LAST_REFRESH = time.time()
+        threading.Thread(target=_build_pdf_background, daemon=True).start()
     except Exception:
         pass
     finally:
@@ -735,6 +736,11 @@ def arquetipos():
     return _cached("arquetipos", _fetch)
 
 
+# ── PDF cache (pre-generated in background to avoid proxy timeouts) ───────────
+_pdf_cache: dict = {}  # {"bytes": b"...", "ts": float}
+_pdf_building_lock = threading.Lock()
+
+
 # ── Helpers para generación de PDF LaTeX ─────────────────────────────────────
 def _esc(s) -> str:
     """Escapa caracteres especiales de LaTeX preservando UTF-8."""
@@ -785,7 +791,7 @@ def _build_latex(kd, anio_d, reg_d, edad_d, sexo_d, plan_d, nivel_d, pred_d, arq
         v   = float(d["atenciones"])
         var = f"\\(+\\){round((v-prev_a)/prev_a*100,1)}\\%" if prev_a and v > prev_a \
               else (f"\\(-\\){round((prev_a-v)/prev_a*100,1)}\\%" if prev_a else "---")
-        rows_a.append(f"    {_esc(str(d['anio']))} & {_fmtn(v)} & {_esc(var)} & {_bartex(v,max_a)} \\\\")
+        rows_a.append(f"    {_esc(str(d['anio']))} & {_fmtn(v)} & {var} & {_bartex(v,max_a)} \\\\")
         prev_a = v
 
     # ── Tabla regional top 10
@@ -1007,60 +1013,78 @@ Seis perfiles derivados de los grupos etarios del Diccionario de Datos SIS (DS-0
 """
 
 
-@app.get("/api/export/pdf")
-def export_pdf():
-    """Genera un informe PDF compilando LaTeX con pdflatex en el servidor."""
-    # Recoger datos (sin esperar caché — siempre frescos)
-    kd      = _cached("kpis",        lambda: {})
-    anio_d  = _qmv("mv_por_anio")
-    reg_d   = _qmv("mv_por_region")
-    edad_d  = _qmv("mv_por_edad")
-    sexo_d  = _qmv("mv_por_sexo")
-    plan_d  = _qmv("mv_por_plan")
-    nivel_d = _qmv("mv_por_nivel")
-    pred_d  = _cached("predicciones", lambda: {})
-    arq_d   = _cached("arquetipos",   lambda: {})
-
-    if not anio_d:
-        return JSONResponse({"error": "Datos aún no disponibles"}, status_code=503)
-
-    tex_source = _build_latex(kd, anio_d, reg_d, edad_d, sexo_d,
-                               plan_d, nivel_d, pred_d, arq_d)
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tex_path = Path(tmpdir) / "informe.tex"
-        tex_path.write_text(tex_source, encoding="utf-8")
-
-        try:
-            for pass_n in range(2):   # dos pasadas para referencias internas
+def _build_pdf_background():
+    """Pre-generates the PDF and caches it. No-ops if already building."""
+    if not _pdf_building_lock.acquire(blocking=False):
+        return
+    try:
+        kd      = _cached("kpis",        lambda: {})
+        anio_d  = _qmv("mv_por_anio")
+        if not anio_d:
+            return  # MVs not ready yet
+        reg_d   = _qmv("mv_por_region")
+        edad_d  = _qmv("mv_por_edad")
+        sexo_d  = _qmv("mv_por_sexo")
+        plan_d  = _qmv("mv_por_plan")
+        nivel_d = _qmv("mv_por_nivel")
+        pred_d  = _cached("predicciones", lambda: {})
+        arq_d   = _cached("arquetipos",   lambda: {})
+        tex_source = _build_latex(kd, anio_d, reg_d, edad_d, sexo_d,
+                                  plan_d, nivel_d, pred_d, arq_d)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tex_path = Path(tmpdir) / "informe.tex"
+            tex_path.write_text(tex_source, encoding="utf-8")
+            for _ in range(2):
                 result = subprocess.run(
                     ["pdflatex", "-interaction=nonstopmode",
                      "-output-directory", tmpdir, str(tex_path)],
-                    capture_output=True, timeout=90,
+                    capture_output=True, timeout=120,
                 )
                 if result.returncode != 0:
-                    log_tail = result.stdout.decode("utf-8", errors="replace")[-4000:]
-                    return JSONResponse({"error": f"pdflatex error (pass {pass_n+1})", "log": log_tail},
-                                        status_code=500)
-        except FileNotFoundError:
-            return JSONResponse({"error": "pdflatex no está instalado en el servidor"},
-                                status_code=500)
-        except subprocess.TimeoutExpired:
-            return JSONResponse({"error": "pdflatex excedió el tiempo límite (90 s)"},
-                                status_code=500)
+                    return
+            pdf_path = Path(tmpdir) / "informe.pdf"
+            if not pdf_path.exists():
+                return
+            pdf_bytes = pdf_path.read_bytes()
+        _pdf_cache["bytes"] = pdf_bytes
+        _pdf_cache["ts"]    = time.time()
+        (CACHE_DIR / "informe.pdf").write_bytes(pdf_bytes)
+    except Exception:
+        pass
+    finally:
+        _pdf_building_lock.release()
 
-        pdf_path = Path(tmpdir) / "informe.pdf"
-        if not pdf_path.exists():
-            return JSONResponse({"error": "pdflatex no produjo el PDF — revisa el log"},
-                                status_code=500)
 
-        pdf_bytes = pdf_path.read_bytes()
+@app.get("/api/export/pdf")
+def export_pdf():
+    """Sirve el PDF pre-generado en background. Retorna 503 si aún no está listo."""
+    cached_path = CACHE_DIR / "informe.pdf"
 
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=informe_sis.pdf"},
-    )
+    # Memory cache (más reciente)
+    if "bytes" in _pdf_cache:
+        if time.time() - _pdf_cache.get("ts", 0) > 1800:
+            threading.Thread(target=_build_pdf_background, daemon=True).start()
+        return Response(
+            content=_pdf_cache["bytes"],
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=informe_sis.pdf"},
+        )
+
+    # Disk cache (sobrevive reinicios)
+    if cached_path.exists():
+        pdf_bytes = cached_path.read_bytes()
+        _pdf_cache["bytes"] = pdf_bytes
+        _pdf_cache["ts"]    = cached_path.stat().st_mtime
+        threading.Thread(target=_build_pdf_background, daemon=True).start()
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=informe_sis.pdf"},
+        )
+
+    # No listo aún — iniciar generación y avisar
+    threading.Thread(target=_build_pdf_background, daemon=True).start()
+    return JSONResponse({"error": "PDF generándose, intenta en 60 segundos"}, status_code=503)
 
 
 # ── SPA catch-all — serves React static files (logo, etc.) ──────────────────

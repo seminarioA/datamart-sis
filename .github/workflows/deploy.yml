@@ -36,14 +36,14 @@ jobs:
               - 'web/frontend/vercel.json'
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Backend + Frontend VPS: corre si cambió backend O frontend.
-  # Siempre compila React aquí y lo copia a VPS vía rsync (dist está en
-  # .gitignore, así que git pull en VPS nunca lo actualiza solo).
+  # Backend VPS: corre SOLO si cambió código de backend.
+  # El frontend va a Vercel (job verify-and-release); VPS solo necesita el
+  # dist actualizado cuando también cambia el backend.
   # ────────────────────────────────────────────────────────────────────────────
   deploy-backend:
     name: Deploy Backend (VPS)
     needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     outputs:
       dashboard_url: ${{ steps.get_urls.outputs.dashboard_url }}
@@ -51,13 +51,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build React frontend
+      - name: Build React frontend (para VPS)
         run: |
           cd web/frontend
           npm ci --legacy-peer-deps --quiet
           npm run build
 
-      - name: Copy React dist → VPS
+      - name: Copy React dist + instalar pdflatex → VPS
         run: |
           echo "${{ secrets.VPS_SSH_KEY }}" > /tmp/k
           chmod 600 /tmp/k
@@ -72,7 +72,6 @@ jobs:
           rm -f /tmp/k
 
       - name: Pull + restart backend + Prefect
-        if: needs.changes.outputs.backend == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -163,7 +162,7 @@ jobs:
           pip install -r tests/requirements-test.txt
           pytest tests/test_dashboard_modules.py \
             --base-url "${{ env.DASH_URL }}" \
-            -v --tb=short --timeout=30 \
+            -v --tb=short --timeout=130 \
             || echo "Algunos tests fallaron"
 
       - name: Deploy to Vercel (frontend)
