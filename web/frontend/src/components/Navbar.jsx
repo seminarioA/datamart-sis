@@ -18,7 +18,7 @@ export default function Navbar({ dark, onToggleTheme, status }) {
       const resp = await fetch('/api/export/pdf', { signal: controller.signal })
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${resp.status}`)
+        throw new Error(body.error || body.detail || `HTTP ${resp.status}`)
       }
       const blob = await resp.blob()
       const url  = URL.createObjectURL(blob)

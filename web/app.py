@@ -838,15 +838,12 @@ def _build_latex(kd, anio_d, reg_d, edad_d, sexo_d, plan_d, nivel_d, pred_d, arq
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{xcolor}
-\usepackage{colortbl}
 \usepackage{array}
 \usepackage{fancyhdr}
 \usepackage{parskip}
-\usepackage{microtype}
 
 \definecolor{sisblue}{HTML}{1A67A3}
 \definecolor{sisdark}{HTML}{103E6E}
-\definecolor{rowalt}{HTML}{EBF3FA}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -1019,20 +1016,27 @@ def export_pdf():
         tex_path = Path(tmpdir) / "informe.tex"
         tex_path.write_text(tex_source, encoding="utf-8")
 
-        for pass_n in range(2):   # dos pasadas para referencias internas
-            result = subprocess.run(
-                ["pdflatex", "-interaction=nonstopmode",
-                 "-output-directory", tmpdir, str(tex_path)],
-                capture_output=True, timeout=90,
-            )
-            if result.returncode != 0:
-                log_tail = result.stdout.decode("utf-8", errors="replace")[-4000:]
-                return JSONResponse({"error": f"pdflatex error (pass {pass_n+1})", "log": log_tail},
-                                    status_code=500)
+        try:
+            for pass_n in range(2):   # dos pasadas para referencias internas
+                result = subprocess.run(
+                    ["pdflatex", "-interaction=nonstopmode",
+                     "-output-directory", tmpdir, str(tex_path)],
+                    capture_output=True, timeout=90,
+                )
+                if result.returncode != 0:
+                    log_tail = result.stdout.decode("utf-8", errors="replace")[-4000:]
+                    return JSONResponse({"error": f"pdflatex error (pass {pass_n+1})", "log": log_tail},
+                                        status_code=500)
+        except FileNotFoundError:
+            return JSONResponse({"error": "pdflatex no está instalado en el servidor"},
+                                status_code=500)
+        except subprocess.TimeoutExpired:
+            return JSONResponse({"error": "pdflatex excedió el tiempo límite (90 s)"},
+                                status_code=500)
 
         pdf_path = Path(tmpdir) / "informe.pdf"
         if not pdf_path.exists():
-            return JSONResponse({"error": "PDF no generado — pdflatex no instalado"},
+            return JSONResponse({"error": "pdflatex no produjo el PDF — revisa el log"},
                                 status_code=500)
 
         pdf_bytes = pdf_path.read_bytes()
