@@ -76,7 +76,7 @@ export default function Cuadre({ dark }) {
       </div>
 
       {/* Tabla T doble */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 items-start">
 
         {/* ── Columna Izquierda: Archivos fuente ── */}
         <div className="glass rounded-xl overflow-hidden border border-border/60">

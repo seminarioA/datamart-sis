@@ -399,7 +399,7 @@ export default function App() {
           <div data-tour="kpi">
             <KPIStrip data={kpis} rawData={charts} onDrawerOpen={() => setCollapsed(true)} />
           </div>
-          <div data-tour="content" key={moduleKey} className="animate-fade-slide-up flex-1 flex flex-col overflow-hidden min-h-0">
+          <div data-tour="content" key={moduleKey} className="module-enter flex-1 flex flex-col overflow-hidden min-h-0">
             {moduleContent()}
           </div>
         </div>

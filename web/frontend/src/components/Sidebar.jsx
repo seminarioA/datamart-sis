@@ -59,11 +59,24 @@ export default function Sidebar({ active, onModule, collapsed, onToggle, airflow
           'flex items-center gap-2.5 shrink-0 py-4 min-h-[60px]',
           collapsed ? 'justify-center px-0' : 'px-4',
         )}>
-          <img src="/sis_logo.png" alt="SIS" className="h-7 shrink-0" />
+          {collapsed ? (
+            /* Collapsed: muestra solo el escudo (crop al bbox izquierdo del PNG) */
+            <div className="w-8 h-8 shrink-0 overflow-hidden rounded-md flex items-center justify-start">
+              <img src="/sis_logo.png" alt="SIS" style={{ height: '32px', width: 'auto', minWidth: 'max-content' }} />
+            </div>
+          ) : (
+            /* Expanded: logo completo a altura fija sin deformar */
+            <img src="/sis_logo.png" alt="SIS" style={{ height: '28px', width: 'auto' }} className="shrink-0" />
+          )}
           {!collapsed && (
-            <span className="font-heading font-bold text-[13px] text-primary whitespace-nowrap tracking-tight">
-              DataMart SIS
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="font-heading font-bold text-[13px] text-primary whitespace-nowrap tracking-tight">
+                DataMart SIS
+              </span>
+              <span className="text-[9px] text-muted-foreground font-mono tracking-widest mt-0.5">
+                v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.2.0'}
+              </span>
+            </div>
           )}
         </div>
 

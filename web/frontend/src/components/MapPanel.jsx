@@ -1,12 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Maximize2, Minimize2, Layers } from 'lucide-react'
 import { fmt, fmtFull, norm } from '../lib/format.js'
 import { resolveMapStops } from '../lib/chartColors.js'
+import { cn } from '@/lib/utils'
 
 const TILE = {
-  light: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
-  dark:  'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+  light:     'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+  dark:      'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+  satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  sat_labels:'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+}
+const TILE_ATTR = {
+  default:   '&copy; OSM, CARTO',
+  satellite: '&copy; Esri, Maxar, USGS',
 }
 
 function mapColor(v, max, stops) {
@@ -74,16 +81,18 @@ function RegionCard({ info, onClose }) {
 }
 
 export default function MapPanel({ regionData, dark }) {
-  const containerRef = useRef(null)
-  const mapRef      = useRef(null)
-  const leafletRef  = useRef(null)
-  const tileRef     = useRef(null)
-  const geoLayerRef = useRef(null)
-  const legendRef   = useRef(null)
-  const selectedRef = useRef(null)
-  const [geojson, setGeojson]     = useState(null)
-  const [selected, setSelected]   = useState(null)
+  const containerRef  = useRef(null)
+  const mapRef        = useRef(null)
+  const leafletRef    = useRef(null)
+  const tileRef       = useRef(null)
+  const satLabelRef   = useRef(null)
+  const geoLayerRef   = useRef(null)
+  const legendRef     = useRef(null)
+  const selectedRef   = useRef(null)
+  const [geojson, setGeojson]       = useState(null)
+  const [selected, setSelected]     = useState(null)
   const [fullscreen, setFullscreen] = useState(false)
+  const [tileMode, setTileMode]     = useState('auto')
 
   useEffect(() => {
     const handler = () => {
@@ -121,9 +130,15 @@ export default function MapPanel({ regionData, dark }) {
 
   useEffect(() => {
     if (!leafletRef.current) return
+    const isSat = tileMode === 'satellite'
+    const url = isSat ? TILE.satellite : (dark ? TILE.dark : TILE.light)
     if (tileRef.current) leafletRef.current.removeLayer(tileRef.current)
-    tileRef.current = L.tileLayer(dark ? TILE.dark : TILE.light, { attribution:'&copy; OSM, CARTO' }).addTo(leafletRef.current)
-  }, [dark])
+    if (satLabelRef.current) { leafletRef.current.removeLayer(satLabelRef.current); satLabelRef.current = null }
+    tileRef.current = L.tileLayer(url, { attribution: isSat ? TILE_ATTR.satellite : TILE_ATTR.default }).addTo(leafletRef.current)
+    if (isSat) {
+      satLabelRef.current = L.tileLayer(TILE.sat_labels, { attribution: '' }).addTo(leafletRef.current)
+    }
+  }, [dark, tileMode])
 
   useEffect(() => {
     if (!leafletRef.current || !geojson || !regionData?.length) return
@@ -192,6 +207,19 @@ export default function MapPanel({ regionData, dark }) {
           Atenciones por Departamento
         </span>
         <div className="flex-1" />
+        {/* Toggle satélite / normal */}
+        <button
+          onClick={() => setTileMode(m => m === 'satellite' ? 'auto' : 'satellite')}
+          title={tileMode === 'satellite' ? 'Vista normal' : 'Vista satélite'}
+          className={cn(
+            'p-1 rounded-md transition-colors mr-0.5',
+            tileMode === 'satellite'
+              ? 'text-primary bg-primary/10'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+          )}
+        >
+          <Layers size={13} />
+        </button>
         <button
           onClick={toggleFullscreen}
           title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
