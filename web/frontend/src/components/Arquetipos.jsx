@@ -123,15 +123,23 @@ function ArchTimeline({ arquetipos }) {
 
   return (
     <div className="island">
-      {/* Track horizontal */}
-      <div className="px-6 pt-5 pb-3 overflow-x-auto">
-        <div className="relative min-w-[560px]">
+      {/* Track */}
+      <div className="px-5 pt-4 pb-2 overflow-x-auto">
+        <div className="relative min-w-[520px]">
 
-          {/* Línea conectora */}
-          <div className="absolute top-[52px] left-[8.33%] right-[8.33%] h-px bg-border" />
+          {/* Barra segmentada proporcional — cada segmento representa el % real de cada etapa */}
+          <div className="absolute top-[34px] left-[8.33%] right-[8.33%] h-[4px] flex rounded-full overflow-hidden">
+            {arquetipos.map((a, i) => (
+              <div
+                key={a.id}
+                className="transition-all duration-300"
+                style={{ flex: a.pct_total, background: selected === i ? a.color : a.color + '38' }}
+              />
+            ))}
+          </div>
 
           {/* Nodos */}
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid grid-cols-6">
             {arquetipos.map((a, i) => {
               const Icon = ICONS[a.id] || User
               const active = selected === i
@@ -139,40 +147,41 @@ function ArchTimeline({ arquetipos }) {
                 <button
                   key={a.id}
                   onClick={() => setSelected(i)}
-                  className="flex flex-col items-center gap-1.5 group focus:outline-none"
+                  className="flex flex-col items-center gap-1 group focus:outline-none"
                 >
                   {/* Porcentaje */}
                   <div
-                    className="font-heading font-bold text-[15px] tabular-nums leading-none transition-all"
-                    style={{ color: a.color, opacity: active ? 1 : 0.5 }}
+                    className="font-heading font-bold text-[12px] tabular-nums leading-none transition-all"
+                    style={{ color: a.color, opacity: active ? 1 : 0.45 }}
                   >
                     {a.pct_total}%
                   </div>
 
-                  {/* Dot / icono */}
+                  {/* Círculo — fondo opaco (hsl card) para que la barra no perfore */}
                   <div
                     className={cn(
-                      'w-[52px] h-[52px] rounded-full flex items-center justify-center border-2 z-10 transition-all duration-200',
+                      'w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200',
                       active
-                        ? 'shadow-lg scale-110'
-                        : 'opacity-60 group-hover:opacity-90 group-hover:scale-105'
+                        ? 'scale-110 shadow-md'
+                        : 'opacity-55 group-hover:opacity-85 group-hover:scale-105'
                     )}
                     style={{
-                      background: active ? a.color + '18' : 'hsl(var(--muted))',
-                      borderColor: active ? a.color : 'hsl(var(--border))',
+                      background: 'hsl(var(--card))',
+                      border: active ? `2.5px solid ${a.color}` : '1.5px solid hsl(var(--border))',
+                      boxShadow: active ? `0 0 0 4px ${a.color}22` : undefined,
                     }}
                   >
-                    <Icon size={20} style={{ color: a.color }} />
+                    <Icon size={16} style={{ color: a.color }} />
                   </div>
 
                   {/* Rango etario */}
-                  <div className="text-[9px] font-mono text-muted-foreground leading-none">
+                  <div className="text-[8px] font-mono text-muted-foreground leading-none">
                     {a.rango}
                   </div>
 
                   {/* Nombre */}
                   <div
-                    className="text-[10px] font-bold text-center leading-tight px-1 transition-colors"
+                    className="text-[9px] font-bold text-center leading-tight px-0.5 transition-colors"
                     style={{ color: active ? a.color : undefined }}
                   >
                     {a.nombre}
@@ -184,49 +193,54 @@ function ArchTimeline({ arquetipos }) {
         </div>
       </div>
 
-      {/* Detalle del arquetipo seleccionado */}
+      {/* Detalle compacto */}
       {arq && (
-        <div className="border-t border-border/50 mx-4 pt-4 pb-5">
-          <div className="flex gap-4 flex-wrap">
-            {/* Columna izquierda: descripción */}
-            <div className="flex-1 min-w-[200px]">
-              <p className="text-[12px] text-muted-foreground leading-relaxed mb-3">
-                {arq.descripcion}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {(arq.foco || []).map(f => (
-                  <span key={f} className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
-                        style={{ background: arq.color + '18', color: arq.color }}>
-                    {f}
-                  </span>
-                ))}
-              </div>
-            </div>
+        <div className="border-t border-border/50 px-4 pt-3 pb-3">
+          {/* Barra de distribución real: muestra el peso proporcional de cada etapa */}
+          <div className="h-1.5 flex rounded-full overflow-hidden mb-1">
+            {arquetipos.map((a) => (
+              <div
+                key={a.id}
+                className="transition-all duration-500"
+                style={{ flex: a.pct_total, background: a.id === arq.id ? a.color : a.color + '28' }}
+              />
+            ))}
+          </div>
+          <div className="flex justify-between mb-3">
+            <span className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)} atenciones</span>
+            <span className="text-[9px] font-semibold" style={{ color: arq.color }}>
+              {arq.pct_total}% del total
+            </span>
+          </div>
 
-            {/* Columna derecha: métricas */}
-            <div className="flex gap-2 flex-wrap shrink-0">
+          <div className="flex gap-3 flex-wrap">
+            <p className="text-[11px] text-muted-foreground leading-relaxed flex-1 min-w-[160px]">
+              {arq.descripcion}
+            </p>
+            <div className="flex gap-1.5 flex-wrap shrink-0">
               {[
-                { label: 'Atenciones', val: fmt(arq.atenciones) },
                 { label: 'Femenino', val: arq.pct_femenino + '%' },
-                { label: 'Nivel EESS', val: 'Nivel ' + arq.nivel_predominante },
-                { label: 'Plan SIS', val: arq.plan_predominante },
+                { label: 'EESS',     val: 'Nv. ' + arq.nivel_predominante },
+                { label: 'Plan',     val: arq.plan_predominante },
               ].map(({ label, val }) => (
-                <div key={label} className="bg-muted/50 rounded-lg px-3 py-2 text-center min-w-[80px]">
-                  <div className="text-[12px] font-bold text-foreground tabular-nums truncate" title={val}>{val}</div>
-                  <div className="text-[9px] text-muted-foreground mt-0.5">{label}</div>
+                <div key={label} className="bg-muted/50 rounded-md px-2.5 py-1.5 text-center min-w-[60px]">
+                  <div className="text-[11px] font-bold text-foreground truncate" title={val}>{val}</div>
+                  <div className="text-[9px] text-muted-foreground">{label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Barra de progreso */}
-          <div className="mt-4 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500"
-                 style={{ width: `${Math.min(arq.pct_total * 3.5, 100)}%`, background: arq.color }} />
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)} atenciones</span>
-            <span className="text-[9px] text-muted-foreground">{arq.pct_total}% del total</span>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {(arq.foco || []).map(f => (
+              <span
+                key={f}
+                className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: arq.color + '18', color: arq.color }}
+              >
+                {f}
+              </span>
+            ))}
           </div>
         </div>
       )}
