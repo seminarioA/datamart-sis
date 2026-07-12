@@ -229,20 +229,28 @@ _MV_SQLS = {
         GROUP BY fuente_archivo
         ORDER BY fuente_archivo
     """,
-    "mv_arquetipos": """
-        SELECT
-            f.grupo_edad,
-            f.sexo,
-            f.nivel_eess,
-            f.cod_plan_seguro,
-            COALESCE(p.desc_plan_seguro, f.cod_plan_seguro) AS desc_plan_seguro,
-            SUM(f.cantidad_atenciones) AS atenciones
+    # Tres MVs pequeñas (2 dims c/u) para el módulo Arquetipos.
+    # La MV combinada original (5 dims × 629M filas) agotaba memoria en el VPS.
+    "mv_arq_sexo": """
+        SELECT grupo_edad, sexo,
+               SUM(cantidad_atenciones) AS atenciones
+        FROM datamart_sis.fact_atenciones_sis
+        GROUP BY grupo_edad, sexo
+    """,
+    "mv_arq_nivel": """
+        SELECT grupo_edad, nivel_eess,
+               SUM(cantidad_atenciones) AS atenciones
+        FROM datamart_sis.fact_atenciones_sis
+        GROUP BY grupo_edad, nivel_eess
+    """,
+    "mv_arq_plan": """
+        SELECT f.grupo_edad,
+               f.cod_plan_seguro,
+               COALESCE(p.desc_plan_seguro, f.cod_plan_seguro) AS desc_plan_seguro,
+               SUM(f.cantidad_atenciones) AS atenciones
         FROM datamart_sis.fact_atenciones_sis f
-        LEFT JOIN datamart_sis.dim_plan_seguro p
-               ON p.cod_plan_seguro = f.cod_plan_seguro
-        GROUP BY f.grupo_edad, f.sexo, f.nivel_eess,
-                 f.cod_plan_seguro, p.desc_plan_seguro
-        ORDER BY f.grupo_edad, atenciones DESC
+        LEFT JOIN datamart_sis.dim_plan_seguro p ON p.cod_plan_seguro = f.cod_plan_seguro
+        GROUP BY f.grupo_edad, f.cod_plan_seguro, p.desc_plan_seguro
     """,
 }
 
@@ -668,39 +676,46 @@ _ARQUETIPOS_DEF = [
 @app.get("/api/arquetipos")
 def arquetipos():
     def _fetch():
-        arq_raw  = _qmv("mv_arquetipos")
-        edad_raw = _qmv("mv_por_edad")
-        if not arq_raw or not edad_raw:
+        edad_raw  = _qmv("mv_por_edad")
+        if not edad_raw:
             return {"error": "Datos no disponibles aún"}
+
+        # MVs auxiliares — pueden estar vacías si aún no se crearon (degradación parcial)
+        sexo_raw  = _qmv("mv_arq_sexo")
+        nivel_raw = _qmv("mv_arq_nivel")
+        plan_raw  = _qmv("mv_arq_plan")
 
         total_global = sum(float(d["atenciones"]) for d in edad_raw) or 1
 
         result = []
         for defn in _ARQUETIPOS_DEF:
             pfx = defn["edad_prefix"]
-            # Filas de la MV que pertenecen a este grupo etario (match por prefijo)
-            rows = [r for r in arq_raw if str(r.get("grupo_edad", ""))[:2].strip() == pfx]
-            total = sum(float(r["atenciones"]) for r in rows) or 1
+
+            # Total del grupo etario
+            edad_rows = [r for r in edad_raw if str(r.get("grupo_edad", ""))[:2].strip() == pfx]
+            total = sum(float(r["atenciones"]) for r in edad_rows) or 1
 
             # % Femenino
-            fem    = sum(float(r["atenciones"]) for r in rows
-                         if str(r.get("sexo", "")).upper().startswith("F"))
+            sexo_rows = [r for r in sexo_raw if str(r.get("grupo_edad", ""))[:2].strip() == pfx]
+            fem = sum(float(r["atenciones"]) for r in sexo_rows
+                      if str(r.get("sexo", "")).upper().startswith("F"))
             pct_fem = round(fem / total * 100, 1)
 
             # Nivel EESS predominante
+            nivel_rows = [r for r in nivel_raw if str(r.get("grupo_edad", ""))[:2].strip() == pfx]
             nivel_acc: dict[str, float] = {}
-            for r in rows:
+            for r in nivel_rows:
                 k = str(r.get("nivel_eess") or "?").strip()
                 nivel_acc[k] = nivel_acc.get(k, 0.0) + float(r["atenciones"])
             nivel_pred = max(nivel_acc, key=nivel_acc.get) if nivel_acc else "?"
 
             # Plan predominante (nombre corto)
+            plan_rows = [r for r in plan_raw if str(r.get("grupo_edad", ""))[:2].strip() == pfx]
             plan_acc: dict[str, float] = {}
-            for r in rows:
+            for r in plan_rows:
                 k = str(r.get("desc_plan_seguro") or r.get("cod_plan_seguro") or "?").strip()
                 plan_acc[k] = plan_acc.get(k, 0.0) + float(r["atenciones"])
             plan_full = max(plan_acc, key=plan_acc.get) if plan_acc else "?"
-            # Abreviar: "SIS Gratuito — Ley N°..." → "Gratuito"
             plan_short = (plan_full
                           .replace("SIS ", "").replace("Sis ", "")
                           .split("—")[0].split("-")[0].split("(")[0]
@@ -708,9 +723,9 @@ def arquetipos():
 
             result.append({
                 **{k: v for k, v in defn.items() if k != "edad_prefix"},
-                "atenciones":       round(total),
-                "pct_total":        round(total / total_global * 100, 1),
-                "pct_femenino":     pct_fem,
+                "atenciones":         round(total),
+                "pct_total":          round(total / total_global * 100, 1),
+                "pct_femenino":       pct_fem,
                 "nivel_predominante": nivel_pred,
                 "plan_predominante":  plan_short,
             })
