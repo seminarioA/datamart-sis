@@ -272,6 +272,7 @@ export default function App() {
             {/* Toolbar */}
             <div className="no-print px-3 pt-1.5 flex items-center justify-end gap-2">
               <Button
+                data-tour="filters"
                 size="sm"
                 variant={showFilters ? 'default' : 'outline'}
                 onClick={() => setShowFilters(v => !v)}
@@ -379,13 +380,15 @@ export default function App() {
       {showOnboarding && <Onboarding onClose={closeOnboarding} />}
       {expandedChart && <ChartModal chart={expandedChart} dark={dark} onClose={() => setExpandedChart(null)} />}
 
-      <Sidebar
-        active={module}
-        onModule={m => { setModule(m); setModuleKey(k => k + 1) }}
-        collapsed={collapsed}
-        onToggle={() => setCollapsed(v => !v)}
-        airflowUrl={null}
-      />
+      <div data-tour="sidebar">
+        <Sidebar
+          active={module}
+          onModule={m => { setModule(m); setModuleKey(k => k + 1) }}
+          collapsed={collapsed}
+          onToggle={() => setCollapsed(v => !v)}
+          airflowUrl={null}
+        />
+      </div>
 
       <div className="flex-1 min-w-0 flex flex-col gap-3 overflow-hidden min-h-0">
         <Navbar dark={dark} onToggleTheme={() => setDark(d => !d)} status={status} />
@@ -393,8 +396,10 @@ export default function App() {
         {/* Main content island */}
         <div className="flex-1 glass rounded-2xl flex flex-col overflow-hidden min-h-0">
           <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
-          <KPIStrip data={kpis} rawData={charts} onDrawerOpen={() => setCollapsed(true)} />
-          <div key={moduleKey} className="animate-fade-slide-up flex-1 flex flex-col overflow-hidden min-h-0">
+          <div data-tour="kpi">
+            <KPIStrip data={kpis} rawData={charts} onDrawerOpen={() => setCollapsed(true)} />
+          </div>
+          <div data-tour="content" key={moduleKey} className="animate-fade-slide-up flex-1 flex flex-col overflow-hidden min-h-0">
             {moduleContent()}
           </div>
         </div>

@@ -1019,15 +1019,15 @@ def export_pdf():
         tex_path = Path(tmpdir) / "informe.tex"
         tex_path.write_text(tex_source, encoding="utf-8")
 
-        for _ in range(2):   # dos pasadas para referencias internas
+        for pass_n in range(2):   # dos pasadas para referencias internas
             result = subprocess.run(
                 ["pdflatex", "-interaction=nonstopmode",
                  "-output-directory", tmpdir, str(tex_path)],
                 capture_output=True, timeout=90,
             )
-            if result.returncode != 0 and b"Emergency stop" in result.stdout:
-                log_tail = result.stdout.decode("utf-8", errors="replace")[-3000:]
-                return JSONResponse({"error": "pdflatex error", "log": log_tail},
+            if result.returncode != 0:
+                log_tail = result.stdout.decode("utf-8", errors="replace")[-4000:]
+                return JSONResponse({"error": f"pdflatex error (pass {pass_n+1})", "log": log_tail},
                                     status_code=500)
 
         pdf_path = Path(tmpdir) / "informe.pdf"

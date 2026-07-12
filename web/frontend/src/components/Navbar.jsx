@@ -7,14 +7,17 @@ export default function Navbar({ dark, onToggleTheme, status }) {
   const isError   = status === 'Error'
   const isLoading = status === 'Cargando…'
   const [pdfLoading, setPdfLoading] = useState(false)
-  const [pdfError,   setPdfError]   = useState(false)
+  const [pdfError,   setPdfError]   = useState(null)
 
   const handlePdf = async () => {
     setPdfLoading(true)
     setPdfError(false)
     try {
       const resp = await fetch('/api/export/pdf')
-      if (!resp.ok) throw new Error()
+      if (!resp.ok) {
+        const body = await resp.json().catch(() => ({}))
+        throw new Error(body.error || `HTTP ${resp.status}`)
+      }
       const blob = await resp.blob()
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
@@ -22,9 +25,9 @@ export default function Navbar({ dark, onToggleTheme, status }) {
       a.download = 'informe_sis.pdf'
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
-      setPdfError(true)
-      setTimeout(() => setPdfError(false), 4000)
+    } catch (e) {
+      setPdfError(e.message || 'Error')
+      setTimeout(() => setPdfError(null), 5000)
     } finally {
       setPdfLoading(false)
     }
@@ -56,7 +59,7 @@ export default function Navbar({ dark, onToggleTheme, status }) {
         </span>
       )}
 
-      <div className="no-print relative shrink-0">
+      <div className="no-print relative shrink-0" data-tour="pdf">
         <Button
           variant="outline"
           size="sm"
@@ -74,8 +77,9 @@ export default function Navbar({ dark, onToggleTheme, status }) {
           PDF
         </Button>
         {pdfError && (
-          <div className="absolute right-0 top-full mt-1.5 w-52 z-50 rounded-lg border border-destructive/30 bg-background/95 backdrop-blur px-3 py-2 text-[11px] text-destructive shadow-md">
-            Error al generar el PDF. Intenta de nuevo en unos segundos.
+          <div className="absolute right-0 top-full mt-1.5 w-64 z-50 rounded-lg border border-destructive/30 bg-background/95 backdrop-blur px-3 py-2 text-[11px] text-destructive shadow-md">
+            <span className="font-semibold block mb-0.5">Error al generar el PDF</span>
+            <span className="text-muted-foreground">{pdfError}</span>
           </div>
         )}
       </div>

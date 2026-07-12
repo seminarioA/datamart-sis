@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react'
-import { Heart, BookOpen, User, Users, Briefcase, Activity, Info, BarChart2, LayoutGrid, List } from 'lucide-react'
+import {
+  Baby, School, GraduationCap, User, Briefcase, HeartPulse,
+  Info, BarChart2, LayoutGrid, List, GitCommitHorizontal,
+} from 'lucide-react'
 import { fmt } from '../lib/format.js'
 import { cn } from '@/lib/utils'
 
 const ICONS = {
-  primera_infancia:  Heart,
-  ninez_escolar:     BookOpen,
-  adolescente:       User,
-  adulto_joven:      Users,
+  primera_infancia:  Baby,
+  ninez_escolar:     School,
+  adolescente:       GraduationCap,
+  adulto_joven:      User,
   adulto_productivo: Briefcase,
-  adulto_mayor:      Activity,
+  adulto_mayor:      HeartPulse,
 }
 
+// ── Componente de tarjeta individual (grilla) ──────────────────────────────────
 function ArchCardGrid({ arq }) {
-  const Icon = ICONS[arq.id] || Users
+  const Icon = ICONS[arq.id] || User
   return (
     <div className="island flex flex-col">
       <div className="px-4 pt-4 pb-3 flex items-start gap-3">
@@ -77,8 +81,9 @@ function ArchCardGrid({ arq }) {
   )
 }
 
+// ── Componente de fila lista ───────────────────────────────────────────────────
 function ArchCardList({ arq }) {
-  const Icon = ICONS[arq.id] || Users
+  const Icon = ICONS[arq.id] || User
   return (
     <div className="island px-4 py-3 flex items-center gap-3">
       <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
@@ -111,11 +116,130 @@ function ArchCardList({ arq }) {
   )
 }
 
+// ── Vista timeline ─────────────────────────────────────────────────────────────
+function ArchTimeline({ arquetipos }) {
+  const [selected, setSelected] = useState(0)
+  const arq = arquetipos[selected]
+
+  return (
+    <div className="island overflow-hidden">
+      {/* Track horizontal */}
+      <div className="px-6 pt-5 pb-3 overflow-x-auto">
+        <div className="relative min-w-[560px]">
+
+          {/* Línea conectora */}
+          <div className="absolute top-[52px] left-[8.33%] right-[8.33%] h-px bg-border" />
+
+          {/* Nodos */}
+          <div className="grid grid-cols-6 gap-1">
+            {arquetipos.map((a, i) => {
+              const Icon = ICONS[a.id] || User
+              const active = selected === i
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => setSelected(i)}
+                  className="flex flex-col items-center gap-1.5 group focus:outline-none"
+                >
+                  {/* Porcentaje */}
+                  <div
+                    className="font-heading font-bold text-[15px] tabular-nums leading-none transition-all"
+                    style={{ color: a.color, opacity: active ? 1 : 0.5 }}
+                  >
+                    {a.pct_total}%
+                  </div>
+
+                  {/* Dot / icono */}
+                  <div
+                    className={cn(
+                      'w-[52px] h-[52px] rounded-full flex items-center justify-center border-2 z-10 transition-all duration-200',
+                      active
+                        ? 'shadow-lg scale-110'
+                        : 'opacity-60 group-hover:opacity-90 group-hover:scale-105'
+                    )}
+                    style={{
+                      background: active ? a.color + '18' : 'hsl(var(--muted))',
+                      borderColor: active ? a.color : 'hsl(var(--border))',
+                    }}
+                  >
+                    <Icon size={20} style={{ color: a.color }} />
+                  </div>
+
+                  {/* Rango etario */}
+                  <div className="text-[9px] font-mono text-muted-foreground leading-none">
+                    {a.rango}
+                  </div>
+
+                  {/* Nombre */}
+                  <div
+                    className="text-[10px] font-bold text-center leading-tight px-1 transition-colors"
+                    style={{ color: active ? a.color : undefined }}
+                  >
+                    {a.nombre}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Detalle del arquetipo seleccionado */}
+      {arq && (
+        <div className="border-t border-border/50 mx-4 pt-4 pb-5">
+          <div className="flex gap-4 flex-wrap">
+            {/* Columna izquierda: descripción */}
+            <div className="flex-1 min-w-[200px]">
+              <p className="text-[12px] text-muted-foreground leading-relaxed mb-3">
+                {arq.descripcion}
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {(arq.foco || []).map(f => (
+                  <span key={f} className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
+                        style={{ background: arq.color + '18', color: arq.color }}>
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Columna derecha: métricas */}
+            <div className="flex gap-2 flex-wrap shrink-0">
+              {[
+                { label: 'Atenciones', val: fmt(arq.atenciones) },
+                { label: 'Femenino', val: arq.pct_femenino + '%' },
+                { label: 'Nivel EESS', val: 'Nivel ' + arq.nivel_predominante },
+                { label: 'Plan SIS', val: arq.plan_predominante },
+              ].map(({ label, val }) => (
+                <div key={label} className="bg-muted/50 rounded-lg px-3 py-2 text-center min-w-[80px]">
+                  <div className="text-[12px] font-bold text-foreground tabular-nums truncate" title={val}>{val}</div>
+                  <div className="text-[9px] text-muted-foreground mt-0.5">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Barra de progreso */}
+          <div className="mt-4 h-1.5 bg-muted rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500"
+                 style={{ width: `${Math.min(arq.pct_total * 3.5, 100)}%`, background: arq.color }} />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)} atenciones</span>
+            <span className="text-[9px] text-muted-foreground">{arq.pct_total}% del total</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Módulo principal ────────────────────────────────────────────────────────────
 export default function Arquetipos({ dark }) {
   const [data, setData]    = useState(null)
   const [loading, setLoad] = useState(true)
   const [error, setError]  = useState(null)
-  const [view, setView]    = useState('grid')
+  const [view, setView]    = useState('timeline')
 
   useEffect(() => {
     fetch('/api/arquetipos')
@@ -142,7 +266,7 @@ export default function Arquetipos({ dark }) {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto gap-3 p-3 min-h-0">
 
-      {/* Header con descripción y toggle */}
+      {/* Header con descripción y toggle de vistas */}
       <div className="island flex items-start gap-2.5 px-4 py-3">
         <Info size={13} className="shrink-0 mt-0.5 text-primary" />
         <span className="text-[11px] text-muted-foreground flex-1">
@@ -151,35 +275,36 @@ export default function Arquetipos({ dark }) {
           <strong className="text-foreground">{fmt(total_global)}</strong> atenciones (2017–2025).
         </span>
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => setView('grid')}
-            title="Vista en grilla"
-            className={cn(
-              'p-1.5 rounded-md transition-colors',
-              view === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-            )}
-          >
-            <LayoutGrid size={14} />
-          </button>
-          <button
-            onClick={() => setView('list')}
-            title="Vista en lista"
-            className={cn(
-              'p-1.5 rounded-md transition-colors',
-              view === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-            )}
-          >
-            <List size={14} />
-          </button>
+          {[
+            { id: 'timeline', icon: GitCommitHorizontal, title: 'Línea de vida' },
+            { id: 'grid',     icon: LayoutGrid,          title: 'Vista en grilla' },
+            { id: 'list',     icon: List,                title: 'Vista en lista' },
+          ].map(({ id, icon: Icon, title }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              title={title}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                view === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              )}
+            >
+              <Icon size={14} />
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Cards o Lista */}
-      {view === 'grid' ? (
+      {/* Contenido según vista */}
+      {view === 'timeline' && <ArchTimeline arquetipos={arquetipos} />}
+
+      {view === 'grid' && (
         <div className="grid grid-cols-3 gap-3">
           {arquetipos.map(arq => <ArchCardGrid key={arq.id} arq={arq} />)}
         </div>
-      ) : (
+      )}
+
+      {view === 'list' && (
         <div className="flex flex-col gap-2">
           {arquetipos.map(arq => <ArchCardList key={arq.id} arq={arq} />)}
         </div>
