@@ -122,7 +122,7 @@ function ArchTimeline({ arquetipos }) {
   const arq = arquetipos[selected]
 
   return (
-    <div className="island overflow-hidden">
+    <div className="island">
       {/* Track horizontal */}
       <div className="px-6 pt-5 pb-3 overflow-x-auto">
         <div className="relative min-w-[560px]">

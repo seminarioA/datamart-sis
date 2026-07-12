@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { fmt, fmtFull, norm } from '../lib/format.js'
 import { resolveMapStops } from '../lib/chartColors.js'
 
@@ -73,14 +74,33 @@ function RegionCard({ info, onClose }) {
 }
 
 export default function MapPanel({ regionData, dark }) {
+  const containerRef = useRef(null)
   const mapRef      = useRef(null)
   const leafletRef  = useRef(null)
   const tileRef     = useRef(null)
   const geoLayerRef = useRef(null)
   const legendRef   = useRef(null)
   const selectedRef = useRef(null)
-  const [geojson, setGeojson]   = useState(null)
-  const [selected, setSelected] = useState(null)
+  const [geojson, setGeojson]     = useState(null)
+  const [selected, setSelected]   = useState(null)
+  const [fullscreen, setFullscreen] = useState(false)
+
+  useEffect(() => {
+    const handler = () => {
+      setFullscreen(!!document.fullscreenElement)
+      setTimeout(() => leafletRef.current?.invalidateSize(), 150)
+    }
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [])
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen()
+    } else {
+      document.exitFullscreen()
+    }
+  }
 
   useEffect(() => {
     if (leafletRef.current || !mapRef.current) return
@@ -166,11 +186,19 @@ export default function MapPanel({ regionData, dark }) {
   }, [geojson, regionData, dark])
 
   return (
-    <div className="chart-panel-wrap">
+    <div ref={containerRef} className="chart-panel-wrap">
       <div className="flex items-center px-3 py-2.5 shrink-0 border-b border-border/60">
         <span className="font-heading text-[10px] font-bold uppercase tracking-[.07em] text-primary">
           Atenciones por Departamento
         </span>
+        <div className="flex-1" />
+        <button
+          onClick={toggleFullscreen}
+          title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          {fullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+        </button>
       </div>
       {/* El mapa Leaflet necesita position:relative + flex:1 para llenarse correctamente */}
       <div className="flex-1 relative min-h-0">

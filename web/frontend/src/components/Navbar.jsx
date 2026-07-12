@@ -11,9 +11,11 @@ export default function Navbar({ dark, onToggleTheme, status }) {
 
   const handlePdf = async () => {
     setPdfLoading(true)
-    setPdfError(false)
+    setPdfError(null)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 120_000)
     try {
-      const resp = await fetch('/api/export/pdf')
+      const resp = await fetch('/api/export/pdf', { signal: controller.signal })
       if (!resp.ok) {
         const body = await resp.json().catch(() => ({}))
         throw new Error(body.error || `HTTP ${resp.status}`)
@@ -26,9 +28,11 @@ export default function Navbar({ dark, onToggleTheme, status }) {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      setPdfError(e.message || 'Error')
-      setTimeout(() => setPdfError(null), 5000)
+      const msg = e.name === 'AbortError' ? 'Tiempo de espera agotado (>2 min)' : (e.message || 'Error')
+      setPdfError(msg)
+      setTimeout(() => setPdfError(null), 6000)
     } finally {
+      clearTimeout(timer)
       setPdfLoading(false)
     }
   }
