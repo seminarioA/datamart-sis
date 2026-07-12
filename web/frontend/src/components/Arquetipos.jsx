@@ -15,6 +15,18 @@ const ICONS = {
   adulto_mayor:      HeartPulse,
 }
 
+// Paleta SIS — refleja exactamente las CSS vars de index.css
+// (--primary, --lblue, --green, --orange, --accent, --navy2)
+const ARCHETYPE_COLORS = {
+  primera_infancia:  '#5b6fb3',  // --primary / navy SIS
+  ninez_escolar:     '#57c4f2',  // --lblue
+  adolescente:       '#afcc46',  // --green
+  adulto_joven:      '#f6a64a',  // --orange
+  adulto_productivo: '#dc388d',  // --accent / rosa SIS
+  adulto_mayor:      '#4a61a1',  // --navy2
+}
+const ac = (arq) => ARCHETYPE_COLORS[arq.id] || arq.color
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function statVal(raw, suffix = '') {
   return raw !== '?' && raw !== undefined ? `${raw}${suffix}` : '—'
@@ -27,7 +39,7 @@ function ArchCardGrid({ arq }) {
     <div className="island flex flex-col">
       <div className="px-4 pt-4 pb-3 flex items-start gap-3">
         <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-          <Icon size={16} style={{ color: arq.color }} />
+          <Icon size={16} style={{ color: ac(arq) }} />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-heading font-bold text-[13px] text-foreground leading-tight truncate">
@@ -37,7 +49,7 @@ function ArchCardGrid({ arq }) {
         </div>
         <div className="text-right shrink-0">
           <div className="font-heading font-bold text-[22px] tabular-nums leading-none"
-               style={{ color: arq.color }}>
+               style={{ color: ac(arq) }}>
             {arq.pct_total}%
           </div>
           <div className="text-[9px] text-muted-foreground">del total</div>
@@ -79,7 +91,7 @@ function ArchCardGrid({ arq }) {
         </div>
 
         <div className="h-0.5 bg-muted rounded-full overflow-hidden">
-          <div className="h-full rounded-full" style={{ width: `${Math.min(arq.pct_total * 3.5, 100)}%`, background: arq.color }} />
+          <div className="h-full rounded-full" style={{ width: `${Math.min(arq.pct_total * 3.5, 100)}%`, background: ac(arq) }} />
         </div>
         <div className="flex justify-between mt-1.5">
           <span className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)} atenciones</span>
@@ -96,7 +108,7 @@ function ArchCardList({ arq }) {
   return (
     <div className="island px-4 py-3 flex items-center gap-3">
       <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-        <Icon size={14} style={{ color: arq.color }} />
+        <Icon size={14} style={{ color: ac(arq) }} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
@@ -119,7 +131,7 @@ function ArchCardList({ arq }) {
           </div>
         </div>
         <div className="text-right">
-          <div className="font-heading font-bold text-[18px] tabular-nums leading-none" style={{ color: arq.color }}>
+          <div className="font-heading font-bold text-[18px] tabular-nums leading-none" style={{ color: ac(arq) }}>
             {arq.pct_total}%
           </div>
           <div className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)}</div>
@@ -163,7 +175,7 @@ function ArchTimeline({ arquetipos }) {
                 {/* Porcentaje */}
                 <div
                   className="text-[11px] font-bold font-heading tabular-nums mb-1.5 leading-none transition-opacity duration-200"
-                  style={{ color: a.color, opacity: active ? 1 : 0.45 }}
+                  style={{ color: ac(a), opacity: active ? 1 : 0.45 }}
                 >
                   {a.pct_total}%
                 </div>
@@ -184,12 +196,11 @@ function ArchTimeline({ arquetipos }) {
                       active ? 'scale-110' : 'opacity-55 hover:opacity-80 hover:scale-105',
                     )}
                     style={{
-                      background: active ? a.color : 'hsl(var(--card))',
-                      border: active ? 'none' : '1.5px solid hsl(var(--border))',
-                      boxShadow: active ? `0 2px 10px ${a.color}50, 0 0 0 4px ${a.color}18` : undefined,
+                      background: active ? ac(a) : 'hsl(var(--card))',
+                      border: `2px solid ${active ? ac(a) : 'hsl(var(--border))'}`,
                     }}
                   >
-                    <Icon size={15} style={{ color: active ? 'white' : a.color }} />
+                    <Icon size={15} style={{ color: active ? 'white' : ac(a) }} />
                   </div>
                   <div
                     className="flex-1 transition-colors duration-300"
@@ -203,14 +214,14 @@ function ArchTimeline({ arquetipos }) {
                 {/* Rango etario — mínimo 10px */}
                 <div
                   className="text-[10px] font-mono mt-1.5 leading-none transition-colors"
-                  style={{ color: active ? a.color : 'hsl(var(--muted-foreground))' }}
+                  style={{ color: active ? ac(a) : 'hsl(var(--muted-foreground))' }}
                 >
                   {a.rango}
                 </div>
                 {/* Nombre */}
                 <div
                   className="text-[10px] font-bold text-center leading-tight mt-0.5 px-0.5 transition-colors"
-                  style={{ color: active ? a.color : 'hsl(var(--muted-foreground))' }}
+                  style={{ color: active ? ac(a) : 'hsl(var(--muted-foreground))' }}
                 >
                   {a.nombre}
                 </div>
@@ -229,13 +240,13 @@ function ArchTimeline({ arquetipos }) {
               <div
                 key={a.id}
                 className="transition-all duration-500"
-                style={{ flex: a.pct_total, background: a.id === arq.id ? a.color : a.color + '28' }}
+                style={{ flex: a.pct_total, background: a.id === arq.id ? ac(a) : ac(a) + '28' }}
               />
             ))}
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground mb-3">
             <span>{fmt(arq.atenciones)} atenciones</span>
-            <span className="font-semibold" style={{ color: arq.color }}>{arq.pct_total}% del total</span>
+            <span className="font-semibold" style={{ color: ac(arq) }}>{arq.pct_total}% del total</span>
           </div>
 
           {/* Descripción */}
@@ -268,7 +279,7 @@ function ArchTimeline({ arquetipos }) {
               <span
                 key={f}
                 className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
-                style={{ background: arq.color + '18', color: arq.color }}
+                style={{ background: ac(arq) + '18', color: ac(arq) }}
               >
                 {f}
               </span>
@@ -397,13 +408,13 @@ export default function Arquetipos({ dark }) {
                 <tr key={arq.id} className={cn('border-b border-border/40', i % 2 === 1 && 'bg-muted/20')}>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: arq.color }} />
+                      <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: ac(arq) }} />
                       <span className="font-semibold text-foreground">{arq.nombre}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{arq.rango}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmt(arq.atenciones)}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: arq.color }}>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: ac(arq) }}>
                     {arq.pct_total}%
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-foreground">

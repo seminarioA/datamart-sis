@@ -613,7 +613,7 @@ def predicciones():
 _ARQUETIPOS_DEF = [
     {
         "id": "primera_infancia", "nombre": "Primera Infancia",
-        "rango": "00 – 04 años", "edad_prefix": "00", "color": "#1A67A3",
+        "rango": "00 – 04 años", "edad_prefix": "00", "color": "#5b6fb3",
         "descripcion": (
             "Etapa de mayor vulnerabilidad. Atención centrada en CRED, vacunación y control "
             "nutricional. Prácticamente cubierta en su totalidad por el SIS Gratuito "
@@ -623,7 +623,7 @@ _ARQUETIPOS_DEF = [
     },
     {
         "id": "ninez_escolar", "nombre": "Niñez Escolar",
-        "rango": "05 – 11 años", "edad_prefix": "05", "color": "#1E7BBF",
+        "rango": "05 – 11 años", "edad_prefix": "05", "color": "#57c4f2",
         "descripcion": (
             "Continuidad de la atención preventiva. Incorpora salud bucal, control de talla "
             "y detección temprana de problemas visuales y auditivos. Mayor presencia en "
@@ -633,7 +633,7 @@ _ARQUETIPOS_DEF = [
     },
     {
         "id": "adolescente", "nombre": "Adolescente",
-        "rango": "12 – 17 años", "edad_prefix": "12", "color": "#2386C8",
+        "rango": "12 – 17 años", "edad_prefix": "12", "color": "#afcc46",
         "descripcion": (
             "Transición a servicios diferenciados: salud reproductiva, salud mental y "
             "atención integral. Grupo con mayor tasa de abandono al seguimiento preventivo "
@@ -643,7 +643,7 @@ _ARQUETIPOS_DEF = [
     },
     {
         "id": "adulto_joven", "nombre": "Adulto Joven",
-        "rango": "18 – 29 años", "edad_prefix": "18", "color": "#2E6CA6",
+        "rango": "18 – 29 años", "edad_prefix": "18", "color": "#f6a64a",
         "descripcion": (
             "Dominado por mujeres en edad fértil: atenciones materno-perinatales, "
             "planificación familiar y CRED de neonatos. En varones, creciente uso de "
@@ -653,7 +653,7 @@ _ARQUETIPOS_DEF = [
     },
     {
         "id": "adulto_productivo", "nombre": "Adulto en Actividad",
-        "rango": "30 – 59 años", "edad_prefix": "30", "color": "#1F4F7B",
+        "rango": "30 – 59 años", "edad_prefix": "30", "color": "#dc388d",
         "descripcion": (
             "Inicio de enfermedades crónicas: hipertensión, diabetes, dislipidemia. "
             "Mayor uso de Nivel II y III. Presencia de planes contributivos especialmente "
@@ -663,7 +663,7 @@ _ARQUETIPOS_DEF = [
     },
     {
         "id": "adulto_mayor", "nombre": "Adulto Mayor",
-        "rango": "60 años a más", "edad_prefix": "60", "color": "#103E6E",
+        "rango": "60 años a más", "edad_prefix": "60", "color": "#4a61a1",
         "descripcion": (
             "Mayor carga de comorbilidades y complejidad de atención. Alta demanda de "
             "Nivel III. Costo por atención más elevado del sistema. Dependencia casi "
