@@ -378,17 +378,21 @@ def cuadre():
         fuente = _qmv("mv_por_fuente")
         anio   = _qmv("mv_por_anio")
         kpis   = _qmv("mv_kpis")
-        # Enriquecer cada fila con el tamaño registrado en el portal
-        for row in fuente:
-            row["portal_bytes"] = _PORTAL_SIZES.get(row.get("fuente_archivo", ""), 0)
         return {
             "por_fuente":       fuente,
             "por_anio":         anio,
             "total_atenciones": int(kpis[0]["total_atenciones"]) if kpis else 0,
             "total_filas":      int(kpis[0]["total_registros"])  if kpis else 0,
-            "portal_total_bytes": sum(_PORTAL_SIZES.values()),
         }
-    return _cached("cuadre", _fetch)
+    cached = _cached("cuadre", _fetch)
+    # _PORTAL_SIZES es constante estática — se inyecta aquí, fuera del caché,
+    # para que siempre esté presente independientemente del estado de L1/L2.
+    result = {**cached, "portal_total_bytes": sum(_PORTAL_SIZES.values())}
+    result["por_fuente"] = [
+        {**row, "portal_bytes": _PORTAL_SIZES.get(row.get("fuente_archivo", ""), 0)}
+        for row in cached.get("por_fuente", [])
+    ]
+    return result
 
 
 # ── Endpoint bundled: devuelve todo en 1 llamada (evita 8 round-trips por cloudflared) ──
