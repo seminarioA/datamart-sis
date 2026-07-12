@@ -11,7 +11,7 @@ Dashboard interactivo disponible en **[datamart-sis.vercel.app](https://datamart
 |--------|--------|
 | Seminario Medina, Alejandro Valentino | U22247454 |
 | Ortega Vilela, Sigidiego | U22323434 |
-| Mena Delgado, Sergio | U22323434 |
+| Mena Delgado, Sergio | U22209965 |
 
 **Docente:** Balcazar Chumacero, Oscar Eduardo
 **Curso:** Inteligencia de Negocios
