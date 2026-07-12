@@ -65,6 +65,10 @@ jobs:
             -e "ssh -i /tmp/k -o StrictHostKeyChecking=no -p 22" \
             web/frontend/dist/ \
             ubuntu@${{ secrets.VPS_HOST }}:/home/ubuntu/datamart-sis/web/frontend/dist/
+          # Asegurar pdflatex instalado (idempotente, <1s si ya está)
+          ssh -i /tmp/k -o StrictHostKeyChecking=no -p 22 \
+            ubuntu@${{ secrets.VPS_HOST }} \
+            "command -v pdflatex &>/dev/null || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q texlive-latex-base texlive-fonts-recommended texlive-latex-recommended > /dev/null 2>&1"
           rm -f /tmp/k
 
       - name: Pull + restart backend + Prefect

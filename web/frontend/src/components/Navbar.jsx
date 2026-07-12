@@ -7,12 +7,14 @@ export default function Navbar({ dark, onToggleTheme, status }) {
   const isError   = status === 'Error'
   const isLoading = status === 'Cargando…'
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfError,   setPdfError]   = useState(false)
 
   const handlePdf = async () => {
     setPdfLoading(true)
+    setPdfError(false)
     try {
       const resp = await fetch('/api/export/pdf')
-      if (!resp.ok) throw new Error(await resp.text())
+      if (!resp.ok) throw new Error()
       const blob = await resp.blob()
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
@@ -20,9 +22,9 @@ export default function Navbar({ dark, onToggleTheme, status }) {
       a.download = 'informe_sis.pdf'
       a.click()
       URL.revokeObjectURL(url)
-    } catch (e) {
-      console.error('PDF export failed:', e)
-      alert('No se pudo generar el PDF. Verifique que pdflatex esté instalado en el servidor.')
+    } catch {
+      setPdfError(true)
+      setTimeout(() => setPdfError(false), 4000)
     } finally {
       setPdfLoading(false)
     }
@@ -54,19 +56,29 @@ export default function Navbar({ dark, onToggleTheme, status }) {
         </span>
       )}
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handlePdf}
-        disabled={pdfLoading}
-        title="Exportar informe en PDF (LaTeX nativo)"
-        className="no-print shrink-0 rounded-xl bg-white/60 dark:bg-white/10 backdrop-blur border-border/50 hover:bg-white/80 gap-1.5 text-[11px]"
-      >
-        {pdfLoading
-          ? <Loader2 size={13} className="animate-spin" />
-          : <FileDown size={13} />}
-        PDF
-      </Button>
+      <div className="no-print relative shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handlePdf}
+          disabled={pdfLoading}
+          title="Exportar informe en PDF (LaTeX nativo)"
+          className={cn(
+            'rounded-xl bg-white/60 dark:bg-white/10 backdrop-blur border-border/50 hover:bg-white/80 gap-1.5 text-[11px]',
+            pdfError && 'border-destructive/50 text-destructive'
+          )}
+        >
+          {pdfLoading
+            ? <Loader2 size={13} className="animate-spin" />
+            : <FileDown size={13} />}
+          PDF
+        </Button>
+        {pdfError && (
+          <div className="absolute right-0 top-full mt-1.5 w-52 z-50 rounded-lg border border-destructive/30 bg-background/95 backdrop-blur px-3 py-2 text-[11px] text-destructive shadow-md">
+            Error al generar el PDF. Intenta de nuevo en unos segundos.
+          </div>
+        )}
+      </div>
 
       <Button
         variant="outline"

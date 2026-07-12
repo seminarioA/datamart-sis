@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Heart, BookOpen, User, Users, Briefcase, Activity, Info, BarChart2 } from 'lucide-react'
+import { Heart, BookOpen, User, Users, Briefcase, Activity, Info, BarChart2, LayoutGrid, List } from 'lucide-react'
 import { fmt } from '../lib/format.js'
 import { cn } from '@/lib/utils'
 
@@ -12,79 +12,61 @@ const ICONS = {
   adulto_mayor:      Activity,
 }
 
-function ArchCard({ arq }) {
+function ArchCardGrid({ arq }) {
   const Icon = ICONS[arq.id] || Users
-
   return (
-    <div className="island overflow-hidden flex flex-col">
-      {/* Cabecera coloreada — diferenciador visual contenido, no borde lateral */}
-      <div className="px-4 py-3 flex items-center gap-3" style={{ background: arq.color }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/20 shrink-0">
-          <Icon size={15} className="text-white" />
+    <div className="island flex flex-col">
+      <div className="px-4 pt-4 pb-3 flex items-start gap-3">
+        <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+          <Icon size={16} style={{ color: arq.color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-heading font-bold text-[13px] text-white leading-tight truncate">
+          <h3 className="font-heading font-bold text-[13px] text-foreground leading-tight truncate">
             {arq.nombre}
           </h3>
-          <span className="text-[10px] text-white/65">{arq.rango}</span>
+          <span className="text-[10px] text-muted-foreground">{arq.rango}</span>
         </div>
         <div className="text-right shrink-0">
-          <div className="font-heading font-bold text-[22px] tabular-nums text-white leading-none">
+          <div className="font-heading font-bold text-[22px] tabular-nums leading-none"
+               style={{ color: arq.color }}>
             {arq.pct_total}%
           </div>
-          <div className="text-[9px] text-white/60">del total</div>
+          <div className="text-[9px] text-muted-foreground">del total</div>
         </div>
       </div>
 
-      {/* Cuerpo */}
-      <div className="px-4 pt-3 pb-3 flex-1">
+      <div className="px-4 pb-3 flex-1">
         <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
           {arq.descripcion}
         </p>
 
-        {/* Métricas */}
         <div className="grid grid-cols-3 gap-1.5 mb-3">
           <div className="bg-muted/50 rounded-md px-2 py-2 text-center">
-            <div className="text-[12px] font-bold text-foreground tabular-nums">
-              {arq.pct_femenino}%
-            </div>
+            <div className="text-[12px] font-bold text-foreground tabular-nums">{arq.pct_femenino}%</div>
             <div className="text-[9px] text-muted-foreground">Femenino</div>
           </div>
           <div className="bg-muted/50 rounded-md px-2 py-2 text-center">
-            <div className="text-[12px] font-bold text-foreground">
-              Nivel {arq.nivel_predominante}
-            </div>
+            <div className="text-[12px] font-bold text-foreground">Nivel {arq.nivel_predominante}</div>
             <div className="text-[9px] text-muted-foreground">EESS típico</div>
           </div>
           <div className="bg-muted/50 rounded-md px-2 py-2 text-center">
-            <div
-              className="text-[10px] font-bold text-foreground truncate"
-              title={arq.plan_predominante}
-            >
+            <div className="text-[10px] font-bold text-foreground truncate" title={arq.plan_predominante}>
               {arq.plan_predominante}
             </div>
             <div className="text-[9px] text-muted-foreground">Plan SIS</div>
           </div>
         </div>
 
-        {/* Etiquetas de foco — neutras, sin color dinámico en pill */}
         <div className="flex flex-wrap gap-1 mb-3">
           {(arq.foco || []).map(f => (
-            <span
-              key={f}
-              className="text-[9px] font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground"
-            >
+            <span key={f} className="text-[9px] font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground">
               {f}
             </span>
           ))}
         </div>
 
-        {/* Barra de participación */}
         <div className="h-0.5 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${Math.min(arq.pct_total * 3.5, 100)}%`, background: arq.color }}
-          />
+          <div className="h-full rounded-full" style={{ width: `${Math.min(arq.pct_total * 3.5, 100)}%`, background: arq.color }} />
         </div>
         <div className="flex justify-between mt-1.5">
           <span className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)} atenciones</span>
@@ -95,10 +77,45 @@ function ArchCard({ arq }) {
   )
 }
 
+function ArchCardList({ arq }) {
+  const Icon = ICONS[arq.id] || Users
+  return (
+    <div className="island px-4 py-3 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+        <Icon size={14} style={{ color: arq.color }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="font-heading font-semibold text-[12px] text-foreground">{arq.nombre}</span>
+          <span className="text-[10px] text-muted-foreground">{arq.rango}</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-snug line-clamp-1">{arq.descripcion}</p>
+      </div>
+      <div className="flex items-center gap-5 shrink-0">
+        <div className="text-right hidden sm:block">
+          <div className="text-[11px] font-semibold text-foreground tabular-nums">{arq.pct_femenino}%</div>
+          <div className="text-[9px] text-muted-foreground">fem.</div>
+        </div>
+        <div className="text-right hidden sm:block">
+          <div className="text-[11px] font-semibold text-foreground">Nv.{arq.nivel_predominante}</div>
+          <div className="text-[9px] text-muted-foreground">EESS</div>
+        </div>
+        <div className="text-right">
+          <div className="font-heading font-bold text-[18px] tabular-nums leading-none" style={{ color: arq.color }}>
+            {arq.pct_total}%
+          </div>
+          <div className="text-[9px] text-muted-foreground">{fmt(arq.atenciones)}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Arquetipos({ dark }) {
   const [data, setData]    = useState(null)
   const [loading, setLoad] = useState(true)
   const [error, setError]  = useState(null)
+  const [view, setView]    = useState('grid')
 
   useEffect(() => {
     fetch('/api/arquetipos')
@@ -125,24 +142,48 @@ export default function Arquetipos({ dark }) {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto gap-3 p-3 min-h-0">
 
-      {/* Descripción */}
-      <div className="island flex items-start gap-2.5 px-4 py-3 text-[11px] text-muted-foreground">
+      {/* Header con descripción y toggle */}
+      <div className="island flex items-start gap-2.5 px-4 py-3">
         <Info size={13} className="shrink-0 mt-0.5 text-primary" />
-        <span>
-          <strong className="text-foreground">Arquetipos SIS</strong> — Seis perfiles de asegurado
-          derivados de los grupos etarios del Diccionario de Datos SIS (DS-01).
-          Cada arquetipo concentra una demanda de salud diferenciada, con patrones de atención,
-          planes de seguro y niveles de EESS propios.
-          Total analizado: <strong className="text-foreground">{fmt(total_global)}</strong> atenciones (2017–2025).
+        <span className="text-[11px] text-muted-foreground flex-1">
+          <strong className="text-foreground">Arquetipos SIS</strong> — Seis perfiles derivados
+          de los grupos etarios del DS-01. Total analizado:{' '}
+          <strong className="text-foreground">{fmt(total_global)}</strong> atenciones (2017–2025).
         </span>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => setView('grid')}
+            title="Vista en grilla"
+            className={cn(
+              'p-1.5 rounded-md transition-colors',
+              view === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            )}
+          >
+            <LayoutGrid size={14} />
+          </button>
+          <button
+            onClick={() => setView('list')}
+            title="Vista en lista"
+            className={cn(
+              'p-1.5 rounded-md transition-colors',
+              view === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+            )}
+          >
+            <List size={14} />
+          </button>
+        </div>
       </div>
 
-      {/* Cards 3×2 */}
-      <div className="grid grid-cols-3 gap-3">
-        {arquetipos.map(arq => (
-          <ArchCard key={arq.id} arq={arq} dark={dark} />
-        ))}
-      </div>
+      {/* Cards o Lista */}
+      {view === 'grid' ? (
+        <div className="grid grid-cols-3 gap-3">
+          {arquetipos.map(arq => <ArchCardGrid key={arq.id} arq={arq} />)}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {arquetipos.map(arq => <ArchCardList key={arq.id} arq={arq} />)}
+        </div>
+      )}
 
       {/* Tabla comparativa */}
       <div className="island overflow-hidden">
@@ -167,33 +208,20 @@ export default function Arquetipos({ dark }) {
             </thead>
             <tbody>
               {arquetipos.map((arq, i) => (
-                <tr
-                  key={arq.id}
-                  className={cn('border-b border-border/40', i % 2 === 1 && 'bg-muted/20')}
-                >
+                <tr key={arq.id} className={cn('border-b border-border/40', i % 2 === 1 && 'bg-muted/20')}>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-2.5 h-2.5 rounded-sm shrink-0"
-                        style={{ background: arq.color }}
-                      />
+                      <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: arq.color }} />
                       <span className="font-semibold text-foreground">{arq.nombre}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-muted-foreground whitespace-nowrap">{arq.rango}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
-                    {fmt(arq.atenciones)}
-                  </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold"
-                      style={{ color: arq.color }}>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{fmt(arq.atenciones)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-semibold" style={{ color: arq.color }}>
                     {arq.pct_total}%
                   </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">
-                    {arq.pct_femenino}%
-                  </td>
-                  <td className="px-3 py-2.5 text-center text-muted-foreground">
-                    Nivel {arq.nivel_predominante}
-                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-foreground">{arq.pct_femenino}%</td>
+                  <td className="px-3 py-2.5 text-center text-muted-foreground">Nivel {arq.nivel_predominante}</td>
                   <td className="px-3 py-2.5 text-muted-foreground">{arq.plan_predominante}</td>
                 </tr>
               ))}
