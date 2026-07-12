@@ -15,7 +15,8 @@
  *
  * Los antipatrones que detecta:
  *   no-pill-badge         [ERROR] rounded-full + background dinámico (badge vibecodeado)
- *   no-border-side-inline [ERROR] borderLeft/Right como inline style dinámico (pestaña vibecodeada)
+ *   no-border-side-inline [ERROR] borderLeft/Right como inline style (pestaña vibecodeada)
+ *   no-native-dialog      [ERROR] alert() / confirm() / prompt() — diálogos nativos del browser
  *   no-hex-in-style       [WARN]  Color hexadecimal hardcodeado en style prop
  */
 
@@ -77,6 +78,30 @@ const RULES = [
       lines.forEach((line, i) => {
         if (disabledLines.has(i + 1)) return
         if (/style=\{[^}]*border(Left|Right)\s*:/i.test(line)) {
+          violations.push({ line: i + 1, snippet: line.trim().slice(0, 100) })
+        }
+      })
+      return violations
+    },
+  },
+
+  {
+    id: 'no-native-dialog',
+    severity: 'error',
+    suppressable: false,
+    message: 'Uso de diálogo nativo del browser: alert(), confirm() o prompt().',
+    hint:    'Usar notificación inline, toast, o estado de error en el componente.',
+    /**
+     * Detecta llamadas a alert/confirm/prompt en código ejecutable.
+     * Ignora líneas que son puro comentario (//  o *).
+     */
+    check(lines, disabledLines) {
+      const violations = []
+      lines.forEach((line, i) => {
+        if (disabledLines.has(i + 1)) return
+        const trimmed = line.trimStart()
+        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
+        if (/\b(alert|confirm|prompt)\s*\(/.test(line)) {
           violations.push({ line: i + 1, snippet: line.trim().slice(0, 100) })
         }
       })

@@ -36,8 +36,9 @@ jobs:
           echo "Se detectaron antipatrones de diseño en los componentes JSX." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Reglas activas:**" >> $GITHUB_STEP_SUMMARY
-          echo "- \`no-pill-badge\` [ERROR, insuprimible]: badge circular (\`rounded-full\`) con \`background\` inline dinámico" >> $GITHUB_STEP_SUMMARY
-          echo "- \`no-border-side-inline\` [ERROR, insuprimible]: \`borderLeft\`/\`borderRight\` con template literal en style" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-pill-badge\` [ERROR]: badge circular (\`rounded-full\`) con \`background\` inline dinámico" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-border-side-inline\` [ERROR]: \`borderLeft\`/\`borderRight\` en style prop (cualquier valor)" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-native-dialog\` [ERROR]: \`alert()\`, \`confirm()\` o \`prompt()\` en código de componente" >> $GITHUB_STEP_SUMMARY
           echo "- \`no-hex-in-style\` [WARN, suprimible]: color hexadecimal hardcodeado en \`style\` prop" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⛔ Las reglas ERROR no tienen mecanismo de supresión. Corrige el código." >> $GITHUB_STEP_SUMMARY
