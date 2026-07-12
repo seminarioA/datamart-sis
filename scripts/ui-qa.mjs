@@ -6,13 +6,17 @@
  *
  * Uso: node scripts/ui-qa.mjs
  *
- * Suprimir una regla en una línea específica:
+ * Las reglas de severidad ERROR son INSUPRIMIBLES — no existe mecanismo
+ * de disable para ellas. Cualquier violación debe corregirse en el código.
+ *
+ * Las reglas de severidad WARNING pueden suprimirse con comentario en la
+ * línea inmediatamente anterior a la violación:
  *   // ui-qa-disable: <rule-id> — razón obligatoria
  *
  * Los antipatrones que detecta:
- *   no-pill-badge         rounded-full + background dinámico (badge vibecodeado)
- *   no-border-side-inline borderLeft/Right como inline style dinámico (pestaña vibecodeada)
- *   no-hex-in-style       Color hexadecimal hardcodeado en style prop
+ *   no-pill-badge         [ERROR] rounded-full + background dinámico (badge vibecodeado)
+ *   no-border-side-inline [ERROR] borderLeft/Right como inline style dinámico (pestaña vibecodeada)
+ *   no-hex-in-style       [WARN]  Color hexadecimal hardcodeado en style prop
  */
 
 import { readFileSync, readdirSync, statSync } from 'fs'
@@ -36,6 +40,7 @@ const RULES = [
   {
     id: 'no-pill-badge',
     severity: 'error',
+    suppressable: false,
     message: 'Badge circular (rounded-full) con background dinámico.',
     hint:    'Usar clases Tailwind (bg-muted, bg-primary/10) en lugar de style={{ background }}.',
     /**
@@ -60,8 +65,9 @@ const RULES = [
   {
     id: 'no-border-side-inline',
     severity: 'error',
+    suppressable: false,
     message: 'Borde lateral (borderLeft / borderRight) como inline style dinámico.',
-    hint:    'Usar border-l-4 de Tailwind + una variable CSS, o diseñar la diferenciación sin borde.',
+    hint:    'Eliminar el borde y diferenciar con color de icono, punto cuadrado (rounded-sm) o cabecera coloreada.',
     /**
      * Detecta: style={{ borderLeft: ... }} o style={{ borderRight: ... }}
      * con template literal o variable (no valor estático como "1px solid #eee").
@@ -82,6 +88,7 @@ const RULES = [
   {
     id: 'no-hex-in-style',
     severity: 'warning',
+    suppressable: true,
     message: 'Color hexadecimal hardcodeado en style prop.',
     hint:    'Usar variables CSS (hsl(var(--primary))) o clases Tailwind.',
     check(lines, disabledLines) {
@@ -135,12 +142,10 @@ function checkFile(filePath) {
   const results    = []
 
   for (const rule of RULES) {
-    // Construir conjunto de líneas suprimidas para esta regla
-    const disabledLines = new Set(
-      [...disableMap.entries()]
-        .filter(([, ids]) => ids.has(rule.id))
-        .map(([ln]) => ln)
-    )
+    // Las reglas ERROR son insuprimibles: disabledLines siempre vacío
+    const disabledLines = rule.suppressable
+      ? new Set([...disableMap.entries()].filter(([, ids]) => ids.has(rule.id)).map(([ln]) => ln))
+      : new Set()
 
     const violations = rule.check(lines, disabledLines)
     for (const v of violations) {
@@ -189,9 +194,8 @@ if (warnings.length) summary.push(`${YELLOW}${warnings.length} aviso(s)${RESET}`
 console.log(`Resultado: ${summary.join(', ')}`)
 
 if (errors.length > 0) {
-  console.log(`\n${RED}${BOLD}Push bloqueado — corrige los errores antes de volver a intentarlo.${RESET}`)
-  console.log(`${DIM}Para suprimir un caso excepcional justificado, agrega en la línea anterior:${RESET}`)
-  console.log(`${DIM}  {/* ui-qa-disable: <rule-id> — razón */}${RESET}\n`)
+  console.log(`\n${RED}${BOLD}Push bloqueado — los errores deben corregirse en el código.${RESET}`)
+  console.log(`${DIM}Las reglas ERROR son insuprimibles por diseño. No existe comentario disable para ellas.${RESET}\n`)
   process.exit(1)
 }
 

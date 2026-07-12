@@ -120,15 +120,15 @@ function InsightCard({ insight }) {
   const sv   = SEVERITY[insight.severity]
 
   return (
-    // ui-qa-disable: no-border-side-inline — indicador de severidad, elemento único no replicado en lista
-    <div className="island overflow-hidden" style={{ borderLeft: `3px solid ${sv.color}` }}>
+    <div className="island overflow-hidden">
       <button
         className="w-full text-left px-4 py-3.5 flex items-start gap-3 hover:bg-muted/30 transition-colors"
         onClick={() => setOpen(v => !v)}
       >
         <Icon size={15} className="mt-0.5 shrink-0" style={{ color: sv.color }} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="w-1.5 h-1.5 rounded-sm shrink-0" style={{ background: sv.color }} />
             <span className="text-[10px] font-bold font-heading uppercase tracking-wider text-muted-foreground">
               {insight.tipo}
             </span>

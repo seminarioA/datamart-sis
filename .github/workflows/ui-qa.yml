@@ -36,13 +36,10 @@ jobs:
           echo "Se detectaron antipatrones de diseño en los componentes JSX." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Reglas activas:**" >> $GITHUB_STEP_SUMMARY
-          echo "- \`no-pill-badge\`: badge circular (\`rounded-full\`) con \`background\` inline dinámico" >> $GITHUB_STEP_SUMMARY
-          echo "- \`no-border-side-inline\`: \`borderLeft\`/\`borderRight\` como inline style con template literal" >> $GITHUB_STEP_SUMMARY
-          echo "- \`no-hex-in-style\` (warning): color hexadecimal hardcodeado en \`style\` prop" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-pill-badge\` [ERROR, insuprimible]: badge circular (\`rounded-full\`) con \`background\` inline dinámico" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-border-side-inline\` [ERROR, insuprimible]: \`borderLeft\`/\`borderRight\` con template literal en style" >> $GITHUB_STEP_SUMMARY
+          echo "- \`no-hex-in-style\` [WARN, suprimible]: color hexadecimal hardcodeado en \`style\` prop" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Para suprimir un caso excepcional justificado, agrega la línea anterior:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`jsx" >> $GITHUB_STEP_SUMMARY
-          echo "{/* ui-qa-disable: <rule-id> — razón obligatoria */}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "⛔ Las reglas ERROR no tienen mecanismo de supresión. Corrige el código." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           node scripts/ui-qa.mjs 2>&1 || true
