@@ -851,7 +851,9 @@ def _bartex(val: float, max_val: float, max_cm: float = 5.5) -> str:
         return ""
     frac = min(val / max_val, 1.0)
     w    = max(frac * max_cm, 0.05)
-    return r"\textcolor{sisblue}{\rule{" + f"{w:.2f}cm" + r"}{4pt}}"
+    # Degradado visual: barras más largas en primary (sisblue), más cortas en sislblue
+    color = "sisblue" if frac > 0.5 else "sislblue"
+    return r"\textcolor{" + color + r"}{\rule{" + f"{w:.2f}cm" + r"}{5pt}}"
 
 
 def _build_latex(kd, anio_d, reg_d, edad_d, sexo_d, plan_d, nivel_d, pred_d, arq_d) -> str:
@@ -943,15 +945,21 @@ def _build_latex(kd, anio_d, reg_d, edad_d, sexo_d, plan_d, nivel_d, pred_d, arq
 \usepackage{fancyhdr}
 \usepackage{parskip}
 
-\definecolor{sisblue}{HTML}{1A67A3}
-\definecolor{sisdark}{HTML}{103E6E}
+%% Paleta SIS (sincronizada con variables CSS del dashboard)
+\definecolor{sisblue}{HTML}{5B6FB3}   %% --primary
+\definecolor{sisdark}{HTML}{4A61A1}   %% --navy2
+\definecolor{sisaccent}{HTML}{DC388D} %% --accent
+\definecolor{sisgreen}{HTML}{AFCC46}  %% --green
+\definecolor{sisorange}{HTML}{F6A64A} %% --orange
+\definecolor{sislblue}{HTML}{57C4F2}  %% --lblue
 
 \pagestyle{fancy}
 \fancyhf{}
-\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{sisblue}\leaders\hrule height \headrulewidth\hfill}}
 \lhead{\small\textbf{\textcolor{sisblue}{DataMart SIS}}}
-\rhead{\small\textcolor{gray}{Seguro Integral de Salud --- Per\'{u}}}
-\cfoot{\small\thepage}
+\rhead{\small\textcolor{sisdark}{Seguro Integral de Salud --- Per\'{u}}}
+\cfoot{\small\textcolor{gray}{\thepage}}
 
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
@@ -959,8 +967,8 @@ def _build_latex(kd, anio_d, reg_d, edad_d, sexo_d, plan_d, nivel_d, pred_d, arq
 
 \newcommand{\sisec}[1]{%
   \vspace{10pt}%
-  {\Large\bfseries\textcolor{sisblue}{#1}}\par%
-  \noindent{\color{sisblue}\rule{\linewidth}{0.6pt}}\vspace{4pt}%
+  {\Large\bfseries\textcolor{sisdark}{#1}}\par%
+  \noindent{\color{sisaccent}\rule{\linewidth}{1.2pt}}\vspace{4pt}%
 }
 
 \setlength{\LTleft}{0pt}
@@ -970,25 +978,42 @@ def _build_latex(kd, anio_d, reg_d, edad_d, sexo_d, plan_d, nivel_d, pred_d, arq
 
 %% ── Portada ────────────────────────────────────────────────────────────────
 \begin{titlepage}
-\vspace*{2.5cm}
+\vspace*{1.5cm}
 \begin{center}
-{\color{sisblue}\rule{\linewidth}{1.5pt}}\\[0.9cm]
-{\Huge\bfseries\textcolor{sisdark}{Informe de Atenciones SIS}}\\[0.45cm]
-{\large\textcolor{sisblue}{Seguro Integral de Salud --- Per\'{u}}}\\[0.3cm]
-{\large\textcolor{gray}{""" + f"{anio_ini}--{anio_fin}" + r"""}}\\[0.9cm]
-{\color{sisblue}\rule{\linewidth}{1.5pt}}\\[1.8cm]
+{\color{sisaccent}\rule{\linewidth}{2pt}}\\[0.5cm]
+{\color{sisblue}\rule{\linewidth}{0.8pt}}\\[1.1cm]
+{\Huge\bfseries\textcolor{sisdark}{Informe de Atenciones SIS}}\\[0.5cm]
+{\large\textcolor{sisblue}{Seguro Integral de Salud --- Per\'{u}}}\\[0.25cm]
+{\large\textcolor{gray}{Per\'{i}odo """ + f"{anio_ini}--{anio_fin}" + r"""}}\\[1.1cm]
+{\color{sisblue}\rule{\linewidth}{0.8pt}}\\[0.5cm]
+{\color{sisaccent}\rule{\linewidth}{2pt}}\\[2cm]
 \renewcommand{\arraystretch}{1.5}
 \begin{tabular}{L{9cm}R{5cm}}
-\textbf{Total de atenciones} & \textbf{\textcolor{sisblue}{""" + _fmtn(total_a) + r"""}} \\
+\textbf{Total de atenciones} & \textbf{\textcolor{sisaccent}{""" + _fmtn(total_a) + r"""}} \\
 \textbf{Per\'{i}odo cubierto}  & """ + f"{anio_ini}--{anio_fin}" + r""" \\
 \textbf{Regiones}             & """ + str(regiones) + r""" \\
 \textbf{IPRESS activas}       & """ + _fmtn(ipress) + r""" \\
 \textbf{Planes de seguro}     & """ + str(planes) + r""" \\
 \textbf{Generado el}          & """ + fecha_str + r""" \\
 \end{tabular}
+
+\vspace{1.8cm}
+{\color{sisblue}\rule{0.6\linewidth}{0.4pt}}\\[0.5cm]
+{\small\textbf{\textcolor{sisdark}{Autores}}}\\[0.25cm]
+{\normalsize Alejandro Seminario Medina}\\
+{\normalsize Sigidiego Ortega Vilela}\\
+{\normalsize Sergio Mena Delgado}\\[0.4cm]
+{\small\textcolor{gray}{%
+  Docente: Balcazar Chumacero, Oscar Eduardo\\
+  Curso: Inteligencia de Negocios\\
+  Universidad Tecnol\'{o}gica del Per\'{u} --- 2026%
+}}
+
 \vfill
-{\small\textcolor{gray}{Fuente: Plataforma Nacional de Datos Abiertos del Per\'{u} --- datosabiertos.gob.pe}\\
-Seguro Integral de Salud --- Ministerio de Salud del Per\'{u}}
+{\small\textcolor{gray}{%
+  Fuente: Plataforma Nacional de Datos Abiertos del Per\'{u} --- datosabiertos.gob.pe\\
+  Seguro Integral de Salud --- Ministerio de Salud del Per\'{u}%
+}}
 \end{center}
 \end{titlepage}
 
@@ -1088,6 +1113,21 @@ Seis perfiles derivados de los grupos etarios del Diccionario de Datos SIS (DS-0
   \item \textbf{Arquetipos:} Agrupaciones basadas en el campo \texttt{GRUPO\_EDAD}
         del diccionario de datos SIS. Calculados sobre el universo completo 2017--""" + str(anio_fin) + r""".
 \end{itemize}
+
+\vspace{1cm}
+\noindent{\color{sisaccent}\rule{\linewidth}{0.8pt}}
+\vspace{0.3cm}
+
+\begin{center}
+{\small\textcolor{gray}{%
+  \textbf{Autores:} Alejandro Seminario Medina \textperiodcentered\
+  Sigidiego Ortega Vilela \textperiodcentered\ Sergio Mena Delgado\\[0.15cm]
+  \textbf{Docente:} Balcazar Chumacero, Oscar Eduardo \quad
+  \textbf{Curso:} Inteligencia de Negocios\\
+  Universidad Tecnol\'{o}gica del Per\'{u} --- 2026 \quad
+  \texttt{github.com/seminarioA/datamart-sis}%
+}}
+\end{center}
 
 \end{document}
 """
