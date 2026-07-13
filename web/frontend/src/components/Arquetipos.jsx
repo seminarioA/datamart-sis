@@ -443,7 +443,7 @@ export default function Arquetipos({ dark }) {
           </table>
         </div>
       </div>
-    </div>  {/* inner layout */}
-    </div>  {/* scroll wrapper */}
+    </div>
+    </div>
   )
 }
