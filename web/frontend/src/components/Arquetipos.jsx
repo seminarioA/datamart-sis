@@ -155,6 +155,7 @@ function ArchTimeline({ arquetipos }) {
   const maxPct = Math.max(...pcts)
   const nodeSize = (pct) => Math.round(32 + ((pct - minPct) / (maxPct - minPct)) * 12)
   const iconSize = (pct) => Math.round(13 + ((pct - minPct) / (maxPct - minPct)) * 4)
+  const maxSz = nodeSize(maxPct)  // altura fija del row → todos los centros al mismo Y
 
   return (
     <div className="island">
@@ -189,8 +190,9 @@ function ArchTimeline({ arquetipos }) {
                   {a.pct_total}%
                 </div>
 
-                {/* Conector left-half + nodo proporcional + right-half */}
-                <div className="flex items-center w-full">
+                {/* Conector left-half + nodo proporcional + right-half.
+                    height fijo = maxSz → todos los nodos comparten el mismo centro Y */}
+                <div className="flex items-center w-full" style={{ height: maxSz }}>
                   <div
                     className="flex-1 transition-colors duration-300"
                     style={{ height: 2, background: isFirst ? 'transparent' : 'hsl(var(--border))' }}
