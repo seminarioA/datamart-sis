@@ -243,14 +243,13 @@ _MV_SQLS = {
         FROM datamart_sis.fact_atenciones_sis
         GROUP BY grupo_edad, nivel_eess
     """,
+    # JOIN eliminado: GROUP BY solo sobre columnas del fact table.
+    # El nombre del plan se resuelve al leer desde mv_por_plan (ya existente).
     "mv_arq_plan": """
-        SELECT f.grupo_edad,
-               f.cod_plan_seguro,
-               COALESCE(p.desc_plan_seguro, f.cod_plan_seguro) AS desc_plan_seguro,
-               SUM(f.cantidad_atenciones) AS atenciones
-        FROM datamart_sis.fact_atenciones_sis f
-        LEFT JOIN datamart_sis.dim_plan_seguro p ON p.cod_plan_seguro = f.cod_plan_seguro
-        GROUP BY f.grupo_edad, f.cod_plan_seguro, p.desc_plan_seguro
+        SELECT grupo_edad, cod_plan_seguro,
+               SUM(cantidad_atenciones) AS atenciones
+        FROM datamart_sis.fact_atenciones_sis
+        GROUP BY grupo_edad, cod_plan_seguro
     """,
 }
 
@@ -265,6 +264,20 @@ def _build_mvs(refresh: bool = False):
         c.autocommit = True
         with c.cursor() as cur:
             cur.execute("SET work_mem = '256MB'")
+            cur.execute("SET statement_timeout = '3600000'")   # 1 h máx por sentencia
+            # Migración: si mv_arq_plan tiene el esquema viejo (con JOIN desc_plan_seguro)
+            # la eliminamos para que se recree sin JOIN en este mismo arranque.
+            try:
+                cur.execute("""
+                    SELECT COUNT(*) FROM information_schema.columns
+                    WHERE table_schema = 'datamart_sis'
+                      AND table_name   = 'mv_arq_plan'
+                      AND column_name  = 'desc_plan_seguro'
+                """)
+                if cur.fetchone()[0] > 0:
+                    cur.execute("DROP MATERIALIZED VIEW IF EXISTS datamart_sis.mv_arq_plan")
+            except Exception:
+                pass
             for name, sql in _MV_SQLS.items():
                 try:
                     if refresh:
@@ -686,6 +699,12 @@ def arquetipos():
         nivel_raw = _qmv("mv_arq_nivel")
         plan_raw  = _qmv("mv_arq_plan")
 
+        # Lookup cod→desc desde mv_por_plan (MV ya consolidada, no requiere JOIN en mv_arq_plan)
+        plan_names: dict[str, str] = {
+            str(r.get("cod_plan_seguro", "")): str(r.get("desc_plan_seguro") or r.get("cod_plan_seguro") or "?")
+            for r in _qmv("mv_por_plan")
+        }
+
         total_global = sum(float(d["atenciones"]) for d in edad_raw) or 1
 
         result = []
@@ -710,11 +729,12 @@ def arquetipos():
                 nivel_acc[k] = nivel_acc.get(k, 0.0) + float(r["atenciones"])
             nivel_pred = max(nivel_acc, key=nivel_acc.get) if nivel_acc else "?"
 
-            # Plan predominante (nombre corto)
+            # Plan predominante — resuelve nombre desde plan_names (cod→desc)
             plan_rows = [r for r in plan_raw if str(r.get("grupo_edad", ""))[:2].strip() == pfx]
             plan_acc: dict[str, float] = {}
             for r in plan_rows:
-                k = str(r.get("desc_plan_seguro") or r.get("cod_plan_seguro") or "?").strip()
+                cod = str(r.get("cod_plan_seguro") or "?").strip()
+                k = plan_names.get(cod, cod)
                 plan_acc[k] = plan_acc.get(k, 0.0) + float(r["atenciones"])
             plan_full = max(plan_acc, key=plan_acc.get) if plan_acc else "?"
             plan_short = (plan_full
