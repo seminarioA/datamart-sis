@@ -182,7 +182,7 @@ export default function App() {
       case 'demographics':
         return (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <FilterBar force />
+            <FilterBar force showTopN={false} />
             <div className="flex-1 p-3 grid grid-cols-2 gap-2 overflow-y-auto">
               <div className="h-[340px]">
                 <ChartPanel type="donut" title="Asegurados por Sexo"
@@ -252,7 +252,7 @@ export default function App() {
         const anioData = applyYearFilter(charts?.anio)
         return (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <FilterBar force />
+            <FilterBar force showTopN={false} />
             <div className="flex-1 p-3 overflow-y-auto">
               <div className="h-[400px]">
                 <ChartPanel type="line" title="Evolución de Atenciones SIS"
