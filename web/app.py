@@ -82,6 +82,23 @@ def _disk_write(key: str, data) -> bool:
         return False
 
 
+def _has_content(data) -> bool:
+    """Devuelve True solo si data tiene filas reales — evita cachear respuestas vacías."""
+    if data is None or data in ([], {}):
+        return False
+    if isinstance(data, list):
+        return len(data) > 0
+    if isinstance(data, dict):
+        # Valida que al menos uno de los valores tenga contenido real
+        return any(
+            (isinstance(v, list) and len(v) > 0) or
+            (isinstance(v, dict) and v) or
+            (isinstance(v, (int, float)) and v != 0)
+            for v in data.values()
+        )
+    return True
+
+
 def _bg_refresh(key: str, fn):
     """Refresca DB en background; escribe a disco SOLO si el resultado es íntegro."""
     with _rlock:
@@ -92,8 +109,7 @@ def _bg_refresh(key: str, fn):
     def _run():
         try:
             data = fn()
-            is_valid = data is not None and data not in ([], {})
-            if is_valid:
+            if _has_content(data):
                 _mem[key] = {"ts": time.time(), "data": data}
                 _disk_write(key, data)
         except Exception:
@@ -112,21 +128,18 @@ def _cached(key: str, fn):
     if entry and now - entry["ts"] < MEM_TTL:
         return entry["data"]
 
-    # L3 — intentar DB sincrónicamente (primera carga o TTL expirado)
-    # Si falla, L2 (disco) actúa como fallback sin TTL
     disk = _disk_read(key)
 
-    if disk is not None:
-        # Servir dato estable de inmediato; refrescar DB en background
-        # Ajustamos ts para reintentar en ~60 s si el bg_refresh no llega primero
+    if disk is not None and _has_content(disk):
+        # L2 hit: servir dato estable de inmediato; refrescar DB en background
         _mem[key] = {"ts": now - MEM_TTL + 60, "data": disk}
         _bg_refresh(key, fn)
         return disk
 
-    # Sin caché en disco todavía (primera ejecución o caché borrado)
+    # Sin caché válida en disco → consultar DB sincrónicamente
     try:
         data = fn()
-        if data is not None and data not in ([], {}):
+        if _has_content(data):
             _mem[key] = {"ts": now, "data": data}
             _disk_write(key, data)
             return data

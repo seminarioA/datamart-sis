@@ -66,6 +66,10 @@ export default function App() {
   const fetchCharts = useCallback(async () => {
     try {
       const d = await fetch('/api/dashboard').then(r => r.json())
+      // Si el backend todavía no tiene los MVs listos, los arrays llegan vacíos.
+      // Reintentamos en 8 s para no quedarnos pegados en "Cargando…".
+      const hasData = d.region?.length > 0 || d.anio?.length > 0
+      if (!hasData) { setTimeout(fetchCharts, 8000); return }
       if (d.kpis?.total_atenciones != null) setKpis(d.kpis)
       setCharts({ anio: d.anio||[], region: d.region||[], edad: d.edad||[], sexo: d.sexo||[], servicios: d.servicios||[], nivel: d.nivel||[], plan: d.plan||[] })
     } catch {
@@ -78,6 +82,7 @@ export default function App() {
         fetch('/api/por-nivel').then(r => r.json()).catch(() => []),
         fetch('/api/por-plan').then(r => r.json()).catch(() => []),
       ])
+      if (!anio.length && !region.length) { setTimeout(fetchCharts, 8000); return }
       setCharts({ anio, region, edad, sexo, servicios, nivel, plan })
     }
   }, [])

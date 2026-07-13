@@ -97,6 +97,24 @@ jobs:
               >> /home/ubuntu/web.log 2>&1 &
             echo "API PID: $!"
 
+            # Esperar a que la API responda (hasta 60 s)
+            for i in $(seq 1 30); do
+              curl -sf http://localhost:8080/api/status > /dev/null 2>&1 && break
+              sleep 2
+            done
+
+            # Esperar a que los MVs estén listos, luego precalentar cache L2
+            for i in $(seq 1 45); do
+              BUILDING=$(curl -sf http://localhost:8080/api/status \
+                | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('building','true'))" 2>/dev/null || echo "true")
+              [ "$BUILDING" = "False" ] && break
+              sleep 4
+            done
+            # Warm-up: poblar cache de disco antes de que lleguen usuarios
+            curl -sf http://localhost:8080/api/dashboard > /dev/null || true
+            curl -sf http://localhost:8080/api/kpis      > /dev/null || true
+            echo "Cache precalentado."
+
             # Reiniciar Prefect
             cd /home/ubuntu/datamart-sis
             DATABASE_URL='${{ secrets.DATABASE_URL }}' \
