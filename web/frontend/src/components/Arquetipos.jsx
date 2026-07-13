@@ -82,9 +82,9 @@ function ArchCardGrid({ arq }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1 mb-3">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {(arq.foco || []).map(f => (
-            <span key={f} className="text-[9px] font-semibold px-2 py-0.5 rounded bg-muted text-muted-foreground">
+            <span key={f} className="text-[11px] font-semibold px-3 py-1 rounded-full bg-muted text-muted-foreground">
               {f}
             </span>
           ))}
@@ -142,12 +142,19 @@ function ArchCardList({ arq }) {
 }
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
-// Diseño: columnas proporcionales (flex: pct_total), conector dividido
-// en left-half + node + right-half por columna — sin absolute positioning.
-// Ref: Tufte (1983) proporcionalidad; Fitts (1954) área de clic completa.
+// Columnas equidistantes (flex:1) + nodos con tamaño proporcional al % (32–44px).
+// La proporción se lee en el nodo, no en el ancho de columna — columnas iguales
+// evitan que los arquetipos pequeños queden aplastados.
+// Ref: Tufte (1983) — encode data in mark size, not layout width.
 function ArchTimeline({ arquetipos }) {
   const [selectedId, setSelectedId] = useState(arquetipos[0]?.id || '')
   const arq = arquetipos.find(a => a.id === selectedId) || arquetipos[0]
+
+  const pcts   = arquetipos.map(a => a.pct_total)
+  const minPct = Math.min(...pcts)
+  const maxPct = Math.max(...pcts)
+  const nodeSize = (pct) => Math.round(32 + ((pct - minPct) / (maxPct - minPct)) * 12)
+  const iconSize = (pct) => Math.round(13 + ((pct - minPct) / (maxPct - minPct)) * 4)
 
   return (
     <div className="island">
@@ -159,10 +166,12 @@ function ArchTimeline({ arquetipos }) {
       >
         <div className="flex min-w-[480px] flex-1">
           {arquetipos.map((a, i) => {
-            const Icon   = ICONS[a.id] || User
-            const active = selectedId === a.id
+            const Icon    = ICONS[a.id] || User
+            const active  = selectedId === a.id
             const isFirst = i === 0
             const isLast  = i === arquetipos.length - 1
+            const sz  = nodeSize(a.pct_total)
+            const icz = iconSize(a.pct_total)
             return (
               <button
                 key={a.id}
@@ -170,7 +179,7 @@ function ArchTimeline({ arquetipos }) {
                 aria-pressed={active}
                 aria-label={`${a.nombre} — ${a.pct_total}% del total`}
                 className="flex flex-col items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
-                style={{ flex: a.pct_total }}
+                style={{ flex: 1 }}
               >
                 {/* Porcentaje */}
                 <div
@@ -180,38 +189,33 @@ function ArchTimeline({ arquetipos }) {
                   {a.pct_total}%
                 </div>
 
-                {/* Conector left-half + nodo + right-half */}
+                {/* Conector left-half + nodo proporcional + right-half */}
                 <div className="flex items-center w-full">
                   <div
                     className="flex-1 transition-colors duration-300"
-                    style={{
-                      height: 3,
-                      background: isFirst ? 'transparent' : 'hsl(var(--border))',
-                    }}
+                    style={{ height: 2, background: isFirst ? 'transparent' : 'hsl(var(--border))' }}
                   />
                   <div
                     className={cn(
-                      'w-9 h-9 rounded-full flex items-center justify-center shrink-0',
+                      'rounded-full flex items-center justify-center shrink-0',
                       'transition-all duration-200',
-                      active ? 'scale-110' : 'opacity-55 hover:opacity-80 hover:scale-105',
+                      active ? 'scale-105' : 'opacity-55 hover:opacity-80 hover:scale-100',
                     )}
                     style={{
+                      width: sz, height: sz,
                       background: active ? ac(a) : 'hsl(var(--card))',
                       border: `2px solid ${active ? ac(a) : 'hsl(var(--border))'}`,
                     }}
                   >
-                    <Icon size={15} style={{ color: active ? 'white' : ac(a) }} />
+                    <Icon size={icz} style={{ color: active ? 'white' : ac(a) }} />
                   </div>
                   <div
                     className="flex-1 transition-colors duration-300"
-                    style={{
-                      height: 3,
-                      background: isLast ? 'transparent' : 'hsl(var(--border))',
-                    }}
+                    style={{ height: 2, background: isLast ? 'transparent' : 'hsl(var(--border))' }}
                   />
                 </div>
 
-                {/* Rango etario — mínimo 10px */}
+                {/* Rango etario */}
                 <div
                   className="text-[10px] font-mono mt-1.5 leading-none transition-colors"
                   style={{ color: active ? ac(a) : 'hsl(var(--muted-foreground))' }}
@@ -274,11 +278,11 @@ function ArchTimeline({ arquetipos }) {
           </div>
 
           {/* Tags de foco */}
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {(arq.foco || []).map(f => (
               <span
                 key={f}
-                className="text-[9px] font-semibold px-2 py-0.5 rounded-full"
+                className="text-[11px] font-semibold px-3 py-1 rounded-full"
                 style={{ background: ac(arq) + '18', color: ac(arq) }}
               >
                 {f}
