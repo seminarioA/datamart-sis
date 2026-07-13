@@ -110,8 +110,9 @@ export default function App() {
   const availableYears = [...new Set((charts?.anio || []).map(d => String(d.anio)))].sort()
 
   // ── Filter Bar ─────────────────────────────────────────────────────────────
-  const FilterBar = ({ force = false, showTopN = true }) => {
+  const FilterBar = ({ force = false, showTopN = true, showYear = true }) => {
     if (!showFilters && !force) return null
+    if (!showTopN && !showYear) return null   // nada que mostrar → no renderizar
     return (
       <div className="no-print filter-bar-anim glass border-b border-border/50 px-4 py-2.5 flex items-center flex-wrap gap-3">
         {showTopN && (
@@ -131,7 +132,7 @@ export default function App() {
             </div>
           </div>
         )}
-        {availableYears.length > 1 && (
+        {showYear && availableYears.length > 1 && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-muted-foreground font-semibold whitespace-nowrap">Años:</span>
             <div className="flex gap-1 flex-wrap">
@@ -182,7 +183,8 @@ export default function App() {
       case 'demographics':
         return (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <FilterBar force showTopN={false} />
+            {/* Sin FilterBar: sexo/edad son MVs anualizadas sin columna año;
+                Top N tampoco aplica (categorías fijas, no rankings) */}
             <div className="flex-1 p-3 grid grid-cols-2 gap-2 overflow-y-auto">
               <div className="h-[340px]">
                 <ChartPanel type="donut" title="Asegurados por Sexo"
@@ -205,7 +207,7 @@ export default function App() {
       case 'geography':
         return (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <FilterBar force />
+            <FilterBar force showYear={false} />
             <div className="flex-1 p-3 grid grid-cols-2 gap-2 overflow-y-auto">
               <div className="h-[380px]">
                 <ChartPanel type="hbar" title={`Top ${filterTopN} Regiones`}
@@ -228,7 +230,7 @@ export default function App() {
       case 'services':
         return (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <FilterBar force />
+            <FilterBar force showYear={false} />
             <div className="flex-1 p-3 grid grid-cols-2 gap-2 overflow-y-auto">
               <div className="h-[380px]">
                 <ChartPanel type="hbar" title={`Top ${filterTopN} Prestaciones`}
