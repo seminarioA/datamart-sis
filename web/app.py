@@ -177,9 +177,10 @@ def _q(sql: str, params=None) -> list[dict]:
 async def cache_headers(request: Request, call_next):
     response = await call_next(request)
     path = request.url.path
-    if path.startswith("/api/") and path not in ("/api/status", "/api/export/pdf"):
-        response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=60"
-    elif path in ("/api/status", "/api/export/pdf"):
+    if path.startswith("/api/"):
+        # El cache de rendimiento está en L1/L2 (memoria + disco) del servidor.
+        # no-store en el browser evita que respuestas vacías (arranque en frío)
+        # queden cacheadas 5 min y muestren spinners indefinidamente.
         response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -494,15 +495,21 @@ def dashboard():
                 (SELECT MIN(anio) FROM datamart_sis.dim_tiempo)                     AS anio_inicio,
                 (SELECT MAX(anio) FROM datamart_sis.dim_tiempo)                     AS anio_fin
         """)
+        region = _qmv("mv_por_region")
+        anio   = _qmv("mv_por_anio")
+        # Si los arrays core están vacíos, los MVs aún no están listos.
+        # Retornar {} para que _cached no guarde este vacío en disco.
+        if not region or not anio:
+            return {}
         return {
-            "kpis":       {**(fact[0] if fact else {}), **(dim[0] if dim else {})},
-            "anio":       _qmv("mv_por_anio"),
-            "region":     _qmv("mv_por_region"),
-            "edad":       _qmv("mv_por_edad"),
-            "sexo":       _qmv("mv_por_sexo"),
-            "servicios":  _qmv("mv_top_servicios"),
-            "nivel":      _qmv("mv_por_nivel"),
-            "plan":       _qmv("mv_por_plan"),
+            "kpis":      {**(fact[0] if fact else {}), **(dim[0] if dim else {})},
+            "anio":      anio,
+            "region":    region,
+            "edad":      _qmv("mv_por_edad"),
+            "sexo":      _qmv("mv_por_sexo"),
+            "servicios": _qmv("mv_top_servicios"),
+            "nivel":     _qmv("mv_por_nivel"),
+            "plan":      _qmv("mv_por_plan"),
         }
     return _cached("dashboard", _fetch)
 
