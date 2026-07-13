@@ -558,24 +558,31 @@ def predicciones():
         max_anio     = max(anios)
         future_years = list(range(max_anio + 1, max_anio + 4))
 
-        # ── 1. Holt-Winters Double Exp. Smoothing (tendencia aditiva) ─────────
-        try:
-            from statsmodels.tsa.holtwinters import ExponentialSmoothing
-            hw = ExponentialSmoothing(
-                y, trend="add", seasonal=None, initialization_method="estimated"
-            ).fit(optimized=True, use_brute=False)
-            y_pred_hist = np.array(hw.fittedvalues)
-            y_fut       = np.array(hw.forecast(3))
-            modelo_nombre = "Holt-Winters (suavizado exponencial doble)"
-        except ImportError:
-            # Fallback OLS si statsmodels aún no instalado en el entorno
-            from sklearn.linear_model import LinearRegression
-            X = np.array(anios).reshape(-1, 1)
-            lin = LinearRegression().fit(X, y)
-            y_pred_hist = lin.predict(X)
-            X_fut = np.array(future_years).reshape(-1, 1)
-            y_fut = lin.predict(X_fut)
-            modelo_nombre = "Regresión Lineal OLS (fallback)"
+        # ── 1. Regresión cuadrática + dummy COVID-19 ─────────────────────────
+        # Holt-Winters simple no puede separar el shock exógeno de 2020-2021
+        # (caída abrupta de atenciones) de la tendencia estructural de crecimiento,
+        # produciendo R² bajo. La regresión cuadrática con dummy captura:
+        #   - tendencia (coef. lineal) + aceleración (coef. cuadrático)
+        #   - magnitud del shock COVID (coef. dummy)
+        # Forecast: extrapolación LINEAL desde el último punto (pendiente de la
+        # parábola en x=n) — evita sobre-proyección del término cuadrático.
+        from sklearn.linear_model import LinearRegression
+
+        t0 = anios[0]
+        t  = np.array(anios, dtype=float) - t0  # tiempo centrado en 0
+        covid = np.array([1.0 if a in (2020, 2021) else 0.0 for a in anios])
+
+        X_hist = np.column_stack([t, t ** 2, covid])
+        mdl    = LinearRegression(fit_intercept=True).fit(X_hist, y)
+        y_pred_hist  = mdl.predict(X_hist)
+        modelo_nombre = "Regresión Polinómica (cuadrática) + Corrección COVID-19"
+
+        # Pendiente de la parábola en el último año (dy/dt en t = t[-1])
+        # Usamos esa pendiente para extrapolar linealmente: más conservador
+        t_last = t[-1]
+        slope  = mdl.coef_[0] + 2.0 * mdl.coef_[1] * t_last
+        y_last = float(mdl.predict([[t_last, t_last ** 2, 0.0]])[0])
+        y_fut  = np.array([y_last + slope * h for h in range(1, 4)])
 
         resid     = y - y_pred_hist
         resid_std = float(np.std(resid, ddof=1)) if len(resid) > 1 else float(np.std(resid))
@@ -641,7 +648,9 @@ def predicciones():
                 "pendiente_anual": round(slope),
                 "tendencia": "creciente" if slope > 0 else "decreciente",
                 "interpretacion": (
-                    f"Modelo: {modelo_nombre}. "
+                    f"Modelo: {modelo_nombre} (R²={round(r2, 3)}). "
+                    "El modelo separa la tendencia estructural de crecimiento del shock "
+                    "exógeno de 2020-2021 (COVID-19). "
                     f"Se proyecta un {'aumento' if slope > 0 else 'descenso'} de "
                     f"{abs(round(slope / 1e6, 2))}M atenciones por año. "
                     "Los intervalos de confianza al 90% se amplían con el horizonte de proyección."
