@@ -398,7 +398,17 @@ def kpis():
                 (SELECT MIN(anio) FROM datamart_sis.dim_tiempo)                     AS anio_inicio,
                 (SELECT MAX(anio) FROM datamart_sis.dim_tiempo)                     AS anio_fin
         """)
-        return {**(fact[0] if fact else {}), **(dim[0] if dim else {})}
+        combined = {**(fact[0] if fact else {}), **(dim[0] if dim else {})}
+        # Sin total_atenciones el dato está incompleto — no cachear
+        return combined if combined.get("total_atenciones") else {}
+
+    # Auto-sanar: si el disco tiene datos sin total_atenciones, borrarlos
+    # para forzar una consulta fresca en el siguiente _cached()
+    disk = _disk_read("kpis")
+    if isinstance(disk, dict) and not disk.get("total_atenciones"):
+        (CACHE_DIR / "kpis.json").unlink(missing_ok=True)
+        _mem.pop("kpis", None)
+
     return _cached("kpis", _fetch)
 
 
