@@ -15,7 +15,7 @@ import Cuadre       from './components/Cuadre.jsx'
 import Arquetipos   from './components/Arquetipos.jsx'
 import { fmt, fmtFull, trunc } from './lib/format.js'
 import { resolveChartSeries } from './lib/chartColors.js'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +30,7 @@ export default function App() {
   const [status, setStatus]        = useState('Cargando…')
   const [showOnboarding, setOnboarding] = useState(() => !localStorage.getItem('visited_v1'))
   const [expandedChart, setExpandedChart] = useState(null)
-  const [showFilters, setShowFilters] = useState(false)
+
   const [filterTopN, setFilterTopN]   = useState(12)
   const [filterYears, setFilterYears] = useState([])
 
@@ -53,9 +53,7 @@ export default function App() {
   }, [])
 
   const closeOnboarding = () => { localStorage.setItem('visited_v1', '1'); setOnboarding(false) }
-  const handlePrint = () => window.print()
-
-  const fetchKPIs = useCallback(async () => {
+const fetchKPIs = useCallback(async () => {
     try {
       const d = await fetch('/api/kpis').then(r => r.json())
       setKpis(d)
@@ -66,25 +64,11 @@ export default function App() {
   const fetchCharts = useCallback(async () => {
     try {
       const d = await fetch('/api/dashboard').then(r => r.json())
-      // Si el backend todavía no tiene los MVs listos, los arrays llegan vacíos.
-      // Reintentamos en 8 s para no quedarnos pegados en "Cargando…".
       const hasData = d.region?.length > 0 || d.anio?.length > 0
       if (!hasData) { setTimeout(fetchCharts, 8000); return }
       if (d.kpis?.total_atenciones != null) setKpis(d.kpis)
       setCharts({ anio: d.anio||[], region: d.region||[], edad: d.edad||[], sexo: d.sexo||[], servicios: d.servicios||[], nivel: d.nivel||[], plan: d.plan||[] })
-    } catch {
-      const [anio, region, edad, sexo, servicios, nivel, plan] = await Promise.all([
-        fetch('/api/por-anio').then(r => r.json()).catch(() => []),
-        fetch('/api/por-region').then(r => r.json()).catch(() => []),
-        fetch('/api/por-edad').then(r => r.json()).catch(() => []),
-        fetch('/api/por-sexo').then(r => r.json()).catch(() => []),
-        fetch('/api/top-servicios').then(r => r.json()).catch(() => []),
-        fetch('/api/por-nivel').then(r => r.json()).catch(() => []),
-        fetch('/api/por-plan').then(r => r.json()).catch(() => []),
-      ])
-      if (!anio.length && !region.length) { setTimeout(fetchCharts, 8000); return }
-      setCharts({ anio, region, edad, sexo, servicios, nivel, plan })
-    }
+    } catch { setTimeout(fetchCharts, 8000) }
   }, [])
 
   useEffect(() => {
@@ -116,7 +100,7 @@ export default function App() {
 
   // ── Filter Bar ─────────────────────────────────────────────────────────────
   const FilterBar = ({ force = false, showTopN = true, showYear = true }) => {
-    if (!showFilters && !force) return null
+    if (!force) return null
     if (!showTopN && !showYear) return null   // nada que mostrar → no renderizar
     return (
       <div className="no-print filter-bar-anim glass border-b border-border/50 px-4 py-2.5 flex items-center flex-wrap gap-3">
@@ -276,29 +260,30 @@ export default function App() {
       default: // overview
         return (
           <div className="flex-1 flex flex-col overflow-y-auto">
-            {/* Toolbar */}
-            <div className="no-print px-3 pt-1.5 flex items-center justify-end gap-2">
-              <Button
-                data-tour="filters"
-                size="sm"
-                variant={showFilters ? 'default' : 'outline'}
-                onClick={() => setShowFilters(v => !v)}
-                className="gap-1.5 text-[11px]"
-              >
-                <SlidersHorizontal size={12} />
-                Filtros{filterYears.length > 0 ? ' (Años)' : ''}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handlePrint}
-                className="text-[11px]"
-              >
-                Imprimir / Guardar PDF
-              </Button>
-            </div>
-
-            <FilterBar showTopN={false} />
+            {/* Años inline — solo si hay más de un año disponible */}
+            {availableYears.length > 1 && (
+              <div className="no-print px-3 pt-1.5 flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] text-muted-foreground font-semibold whitespace-nowrap">Años:</span>
+                {availableYears.map(yr => (
+                  <Button
+                    key={yr}
+                    size="xs"
+                    variant={filterYears.includes(yr) ? 'default' : 'outline'}
+                    onClick={() => setFilterYears(p => p.includes(yr) ? p.filter(y => y !== yr) : [...p, yr])}
+                  >
+                    {yr}
+                  </Button>
+                ))}
+                {filterYears.length > 0 && (
+                  <Button size="xs" variant="outline"
+                    onClick={() => setFilterYears([])}
+                    className="border-[var(--accent-c)] text-[var(--accent-c)] hover:bg-[var(--accent-c)] hover:text-white gap-1"
+                  >
+                    <X size={10} /> Limpiar
+                  </Button>
+                )}
+              </div>
+            )}
 
             {/* Main row */}
             <div className="main-row flex gap-2 h-[480px] px-3 pt-1.5">
