@@ -26,7 +26,7 @@ export default function App() {
   const [moduleKey, setModuleKey]  = useState(0)
   const [kpis, setKpis]            = useState(null)
   const [charts, setCharts]        = useState(null)
-  const [mvStatus, setMvStatus]    = useState({ ready: 0, total: 8 })
+  const [mvStatus, setMvStatus]    = useState({ ready: 0, total: 13 })
   const [status, setStatus]        = useState('Cargando…')
   const [showOnboarding, setOnboarding] = useState(() => !localStorage.getItem('visited_v1'))
   const [expandedChart, setExpandedChart] = useState(null)

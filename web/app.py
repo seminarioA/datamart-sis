@@ -32,7 +32,18 @@ if (FRONTEND / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND / "assets")), name="assets")
 
 # ── Connection pool ──────────────────────────────────────────────────────────────
-_pool = psycopg2.pool.ThreadedConnectionPool(1, 5, DATABASE_URL)
+# Inicialización lazy: si la DB no está accesible al arrancar, uvicorn igual levanta
+# y reintenta en el primer request en lugar de crashear en el import.
+_pool: psycopg2.pool.ThreadedConnectionPool | None = None
+_pool_lock = threading.Lock()
+
+def _get_pool() -> psycopg2.pool.ThreadedConnectionPool:
+    global _pool
+    if _pool is None:
+        with _pool_lock:
+            if _pool is None:
+                _pool = psycopg2.pool.ThreadedConnectionPool(1, 5, DATABASE_URL)
+    return _pool
 
 # ── Cache en 3 capas ────────────────────────────────────────────────────────────
 # L1: dict en memoria (sub-ms)
@@ -132,7 +143,11 @@ def _invalidate(key: str):
 
 
 def _q(sql: str, params=None) -> list[dict]:
-    c = _pool.getconn()
+    try:
+        pool = _get_pool()
+        c = pool.getconn()
+    except Exception:
+        return []
     try:
         with c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SET work_mem = '256MB'")
@@ -141,7 +156,7 @@ def _q(sql: str, params=None) -> list[dict]:
     except Exception:
         return []
     finally:
-        _pool.putconn(c)
+        pool.putconn(c)
 
 
 # ── HTTP cache middleware (browser-level caching) ──────────────────────────────
