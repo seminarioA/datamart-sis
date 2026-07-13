@@ -382,9 +382,11 @@ export default function App() {
         {/* Main content island */}
         <div className="flex-1 glass rounded-2xl flex flex-col overflow-hidden min-h-0">
           <MvBanner ready={mvStatus.ready} total={mvStatus.total} />
-          <div data-tour="kpi">
-            <KPIStrip data={kpis} rawData={charts} onDrawerOpen={() => setCollapsed(true)} />
-          </div>
+          {module === 'overview' && (
+            <div data-tour="kpi">
+              <KPIStrip data={kpis} rawData={charts} onDrawerOpen={() => setCollapsed(true)} />
+            </div>
+          )}
           <div data-tour="content" key={moduleKey} className="module-enter flex-1 flex flex-col overflow-hidden min-h-0">
             {moduleContent()}
           </div>
