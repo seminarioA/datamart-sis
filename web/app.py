@@ -255,10 +255,12 @@ _MV_SQLS = {
 
 _MV_READY: dict[str, bool] = {k: False for k in _MV_SQLS}
 _MV_LAST_REFRESH: float = 0.0
+_MV_REFRESHING:  bool  = False
 
 
 def _build_mvs(refresh: bool = False):
-    global _MV_LAST_REFRESH
+    global _MV_LAST_REFRESH, _MV_REFRESHING
+    _MV_REFRESHING = True
     try:
         c = psycopg2.connect(DATABASE_URL)
         c.autocommit = True
@@ -307,7 +309,11 @@ def _build_mvs(refresh: bool = False):
     except Exception:
         pass
     finally:
-        threading.Timer(600, _build_mvs, kwargs={"refresh": True}).start()
+        _MV_REFRESHING = False
+        # Auto-reintento SOLO si el arranque inicial dejó MVs pendientes (errores de red, etc.).
+        # Una vez todas construidas, el refresco es exclusivamente manual via POST /api/admin/refresh.
+        if not all(_MV_READY.values()):
+            threading.Timer(60, _build_mvs, kwargs={"refresh": False}).start()
 
 
 def _qmv(mv_name: str) -> list[dict]:
@@ -332,12 +338,22 @@ def index():
 def api_status():
     ready = sum(_MV_READY.values())
     return {
-        "mvs_ready": ready,
-        "mvs_total": len(_MV_READY),
-        "building": ready < len(_MV_READY),
+        "mvs_ready":    ready,
+        "mvs_total":    len(_MV_READY),
+        "building":     ready < len(_MV_READY),
+        "refreshing":   _MV_REFRESHING,
         "last_refresh": int(_MV_LAST_REFRESH) or None,
-        "detail": _MV_READY,
+        "detail":       _MV_READY,
     }
+
+
+@app.post("/api/admin/refresh")
+def admin_refresh():
+    """Dispara un REFRESH MATERIALIZED VIEW manual sobre todas las MVs."""
+    if _MV_REFRESHING:
+        return JSONResponse({"status": "already_running"}, status_code=409)
+    threading.Thread(target=_build_mvs, kwargs={"refresh": True}, daemon=True).start()
+    return {"status": "started", "mvs": list(_MV_SQLS.keys())}
 
 
 @app.get("/api/kpis")
