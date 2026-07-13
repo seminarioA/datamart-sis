@@ -350,24 +350,22 @@ export default function App() {
             </div>
 
             {/* Quick nav */}
-            <div className="no-print px-3 pb-3 flex gap-2 flex-wrap">
+            <div className="no-print px-3 pb-3 grid grid-cols-4 gap-2">
               {[
                 ['Red Prestacional', 'geography',    Map],
                 ['Prestaciones',     'services',     Stethoscope],
                 ['Perfil Asegurado', 'demographics', Users],
                 ['Evolución',        'trends',       TrendingUp],
               ].map(([label, id, Icon]) => (
-                <Button
+                <button
                   key={id}
-                  size="xs"
-                  variant="outline"
                   onClick={() => { setModule(id); setModuleKey(k => k + 1) }}
-                  className="gap-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5"
+                  className="group flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-card/50 hover:bg-primary/5 hover:border-primary/30 transition-all duration-150 text-left"
                 >
-                  <Icon size={11} />
-                  {label}
-                  <ArrowRight size={10} />
-                </Button>
+                  <Icon size={13} className="text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                  <span className="text-[11px] font-medium text-muted-foreground group-hover:text-primary transition-colors flex-1 leading-tight">{label}</span>
+                  <ArrowRight size={10} className="text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
               ))}
             </div>
           </div>
