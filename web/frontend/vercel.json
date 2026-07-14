@@ -6,6 +6,7 @@
     { "source": "/api/cuadre",       "destination": "/static-api/cuadre.json" },
     { "source": "/api/predicciones", "destination": "/static-api/predicciones.json" },
     { "source": "/api/arquetipos",   "destination": "/static-api/arquetipos.json" },
-    { "source": "/static/peru.geojson", "destination": "/static-api/peru.geojson" }
+    { "source": "/static/peru.geojson", "destination": "/static-api/peru.geojson" },
+    { "source": "/api/export/pdf",      "destination": "/static-api/informe_sis.pdf" }
   ]
 }
